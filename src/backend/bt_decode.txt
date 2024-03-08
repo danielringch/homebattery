@@ -1,0 +1,51 @@
+
+
+Burst 1
+00 dd
+01 03
+02 00
+03 1b
+04 0a04 - 2564 | Voltage
+05 0000 - 0000 | Current
+06 0483 - 1154 | Capacity remaining
+10 1838 - 6200 | Capacity full
+12 001c - 0028 | Cycles
+14 2c
+15 94
+16 00
+17 00
+18 00
+19 00
+
+Burst 2
+00
+00
+16
+13 - 19 | SoC
+03
+08
+02
+0b
+77
+0b
+78
+fc
+e9
+77
+
+Burst 3
+dd - 221
+04 - 4
+00 - 0
+10 - 16
+0c85 - 3205 | Cell 1
+0c86 - 3206 | Cell 2
+0c84 - 3204 | Cell 3
+0c83 - 3203 | Cell 4
+0c84 - 3204 | Cell 5
+0c87 - 3207 | Cell 6
+0c86 - 3206 | Cell 7
+0c8a - 3210 | Cell 8
+
+Burst 4
+fb6377

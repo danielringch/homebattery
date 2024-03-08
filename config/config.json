@@ -1,0 +1,76 @@
+{
+  "network":
+  {
+    "ssid": "",
+    "password": "",
+    "timeout": 0,
+    "ntp_server": "",
+    "timezone": 0,
+    "ntp_timeout": 0
+  },
+  "mqtt":
+  {
+    "host": "",
+    "ca": "",
+    "tls_insecure": false,
+    "user": "",
+    "password": "",
+    "root": "",
+    "live_power_topic": ""
+  },
+  "logging":
+  {
+    "host": "",
+    "name": ""
+  },
+  "netzero":
+  {
+    "evaluated_time_span": 0,
+    "maturity_time_span": 0,
+    "power_offset": 0,
+    "power_hysteresis": 0,
+    "power_change_upwards": 0,
+    "power_change_downwards": 0
+  },
+  "supervisor":
+  {
+    "check_interval": 0,
+    "live_data_tolerance": 0,
+    "battery_data_tolerance": 0,
+    "minimum_cell_voltage": 0,
+    "minimum_cell_voltage_hysteresis": 0,
+    "maximum_cell_voltage": 0,
+    "maximum_cell_voltage_hysteresis": 0
+  },
+  "devices":
+  {
+    "bat1":
+    {
+      "driver": "accuratT6024V",
+      "mac": "",
+      "reserved_capacity": 0
+    },
+    "bat2":
+    {
+      "driver": "daly8S24V60A",
+      "mac": "",
+      "reserved_capacity": 0
+    },
+    "chrg1":
+    {
+      "driver": "shelly",
+      "host": "",
+      "power_correction_factor": 0.0,
+      "relay_id": 0,
+      "quick_charge": false
+    },
+    "inv1":
+    {
+      "driver": "opendtu",
+      "host": "",
+      "serial": "",
+      "password": "",
+      "power_lut": ""
+    }
+  }
+}
