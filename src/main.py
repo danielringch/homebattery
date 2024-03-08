@@ -7,12 +7,12 @@ from backend.core.display import display
 
 __version__ = "0.1.0"
 
-prefix = '[daytradebatterybackend] {0}'
+prefix = '[homebattery] {0}'
 
 
 async def main():
-    log.debug(f'DayTradeBattery Backend {__version__}')
-    display.print('DayTradeBattery', __version__)
+    log.debug(f'Homebattery {__version__}')
+    display.print('Homebattery', __version__)
 
     with open("/config/config.json", "r") as stream:
         config = json.load(stream)

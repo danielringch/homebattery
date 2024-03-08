@@ -51,7 +51,7 @@ class Display:
         self.__display.show()
 
     def __refresh(self):
-        header = 'DayTradeBattery'
+        header = 'Homebattery'
         mode = f'Mode: {self.__mode.name if self.__mode else "unknown"}'
         lock = f'! {self.__lock}' if self.__lock is not None else 'normal operation'
         p_rem = f'P_rem: {self.__p_rem} W'

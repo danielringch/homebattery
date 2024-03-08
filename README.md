@@ -1,4 +1,4 @@
-# daytradebattery
+# homebattery
 
 ## MQTT topics
 
