@@ -150,17 +150,22 @@ class Supervisor:
                 self.__watchdog.feed()
             await asyncio.sleep(1.0)
 
-    async def __set_mode(self, mode: OperationMode):
+    async def __try_set_mode(self, mode: OperationMode):
         self.__requested_mode = mode
-        self.__operation_mode, solar_on = self.__get_effective_mode(mode)
-        if self.__operation_mode != mode:
+        effective_mode, solar_on = self.__get_effective_mode(mode)
+        if effective_mode != mode:
             log.supervisor(f'Switch to mode {mode.name} suppressed.')
             if len(self.__locks) > 0:
                 self.__mqtt.send_locked(sorted(self.__locks)[0].message)
+            return
+        await self.__set_mode(effective_mode, solar_on)
+
+    async def __set_mode(self, mode: OperationMode, solar_on: bool):
+        self.__operation_mode = mode
         await self.__switch_charger(mode)
         await self.__switch_solar(solar_on)
         await self.__switch_inverter(mode)
-        display.update_mode(self.__operation_mode)
+        display.update_mode(mode)
 
     def __get_effective_mode(self, mode: OperationMode):
         solar_on = not any(x.blocks_solar for x in self.__locks)
@@ -225,11 +230,10 @@ class Supervisor:
             self.__mqtt.send_locked(top_priority_lock.message if top_priority_lock is not None else None)
             display.update_lock(top_priority_lock.name if top_priority_lock is not None else None)
 
-        if self.__requested_mode != self.__operation_mode:
-            effective_mode, effective_solar = self.__get_effective_mode(self.__requested_mode)
-            #TODO: handle solar
-            if effective_mode != self.__operation_mode:
-                await self.__set_mode(self.__requested_mode)
+        effective_mode, effective_solar = self.__get_effective_mode(self.__requested_mode)
+        #TODO: handle solar
+        if effective_mode != self.__operation_mode:
+            await self.__set_mode(effective_mode, effective_solar)
 
         if not self.__unhealty:
             self.__health_check_passed = now
@@ -314,4 +318,4 @@ class Supervisor:
         self.__live_data_timestamp = time.time()
 
     def __on_mode(self, mode):
-        self.__commands.append(CommandBundle(self.__set_mode, (mode,)))
+        self.__commands.append(CommandBundle(self.__try_set_mode, (mode,)))
