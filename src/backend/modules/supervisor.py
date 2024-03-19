@@ -70,13 +70,6 @@ class Supervisor:
                     blocks_charge=True,
                     blocks_solar=False,
                     blocks_inverter=True)
-            self.soc = Supervisor.LockedReason(
-                    name='soc',
-                    message='State of charge low.',
-                    priority=33,
-                    blocks_charge=False,
-                    blocks_solar=False,
-                    blocks_inverter=True)
             self.startup = Supervisor.LockedReason(
                     name='startup',
                     message='System startup.',
@@ -212,7 +205,6 @@ class Supervisor:
             self.__check_battery_online(now)
             self.__check_battery_min_voltage()
             self.__check_battery_max_voltage()
-            self.__check_battery_soc()
             self.__check_live_data(now)
             self.__check_mqtt_connected()
             self.__check_startup(now)
@@ -271,17 +263,6 @@ class Supervisor:
             self.__locks.add(self.__locked_reasons.cell_high)
         else:
             self.__clear_lock(self.__locked_reasons.cell_high)
-
-    def __check_battery_soc(self):
-        battery_data = self.__battery.data
-        if battery_data is None or battery_data.capacity_remaining is None:
-            return
-        soc = battery_data.capacity_remaining
-        treshold = 2 if self.__locked_reasons.soc in self.__locks else 0
-        if soc <= treshold:
-            self.__locks.add(self.__locked_reasons.soc)
-        else:
-            self.__clear_lock(self.__locked_reasons.soc)
 
     def __check_live_data(self, now):
         if (now - self.__live_data_timestamp) > self.__live_data_tolerance:

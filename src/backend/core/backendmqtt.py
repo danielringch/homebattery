@@ -77,7 +77,7 @@ class Mqtt():
 
     def send_battery_state(self, data: BatterySummary):
         if data.capacity_remaining is not None:
-            payload = struct.pack('!H', round(data.capacity_remaining * 10))
+            payload = struct.pack('!h', round(data.capacity_remaining * 10))
             self.__mqtt.publish(self.__battery_capacity_topic, payload, qos=1, retain=False)
 
     def send_locked(self, reason: str):

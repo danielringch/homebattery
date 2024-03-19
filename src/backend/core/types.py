@@ -19,7 +19,7 @@ class BatterySummary:
     def merge(self, battery: BatteryData, reserved_capacity: float):
         if self.capacity_remaining is None:
             self.capacity_remaining = 0.0
-        self.capacity_remaining += max(0.0, battery.capacity_remaining - reserved_capacity)
+        self.capacity_remaining += battery.capacity_remaining - reserved_capacity
 
         if self.min_cell_voltage is None:
             self.min_cell_voltage = min(battery.cell_voltages)
