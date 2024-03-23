@@ -1,4 +1,4 @@
-import aioble, asyncio, bluetooth, ubinascii
+import asyncio, bluetooth, ubinascii
 
 from .microdeque import MicroDeque
 from .logging import log
@@ -314,6 +314,7 @@ class MicroBleCentral:
                         addr_type != self.__current_device.__address_type or \
                         addr != self.__current_device.__address:
                     log.bluetooth(f'No matching device for event.')
+                    self.__ble.gap_disconnect(conn_handle)
                     return
                 self.__current_device.__handle = conn_handle
             elif event == _IRQ_PERIPHERAL_DISCONNECT:
