@@ -49,7 +49,6 @@ class AccuratT6024V:
     def __init__(self, name, config):
         self.__device_types = (devicetype.battery,)
         self.__mac = config['mac']
-        self.__reserved_capacity = config['reserved_capacity']
 
         self.__log = log.get_custom_logger(name)
 
@@ -111,10 +110,6 @@ class AccuratT6024V:
     @property
     def device_types(self):
         return self.__device_types
-    
-    @property
-    def reserved_capacity(self):
-        return self.__reserved_capacity
 
     async def __receive(self, characteristic):
         characteristic.enable_rx()

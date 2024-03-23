@@ -54,7 +54,7 @@ class Battery:
                     data.timestamp = time.time()
                     self.__data = data
 
-                    log.battery(f'Effective capacity remaining: {data.capacity_remaining:.1f} Ah')
+                    log.battery(f'Capacity remaining: {data.capacity_remaining:.1f} Ah')
                     log.battery(f'Minimum cell voltage: {data.min_cell_voltage:.3f} V')
                     log.battery(f'Maximum cell voltage: {data.max_cell_voltage:.3f} V')
 
@@ -81,7 +81,7 @@ class Battery:
                 battery.online = False
                 raise Exception('Battery did not response.')
             battery.online = True
-            summary.merge(battery_data, battery.battery.reserved_capacity)
+            summary.merge(battery_data)
             return True
         except Exception as e:
             log.battery(f'Battery query failed: {e}') 

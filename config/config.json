@@ -47,14 +47,12 @@
     "bat1":
     {
       "driver": "accuratT6024V",
-      "mac": "",
-      "reserved_capacity": 0
+      "mac": ""
     },
     "bat2":
     {
       "driver": "daly8S24V60A",
-      "mac": "",
-      "reserved_capacity": 0
+      "mac": ""
     },
     "chrg1":
     {
