@@ -122,7 +122,6 @@ class Supervisor:
         self.__watchdog_task = asyncio.create_task(self.__run_watchdog())
         while True:
             try:
-                await self.__tick()
                 while len(self.__commands) > 0:
                     await self.__commands.popleft().run()
                 self.__on_cycle_finished.run_all()
@@ -136,12 +135,18 @@ class Supervisor:
         return self.__on_cycle_finished
     
     async def __run_watchdog(self):
-        deadline = 3 * self.__check_interval
         while True:
+            try:
+                self.__tick()
+            except Exception as e:
+                log.error(f'Supervisor check failed: {e}')
+                sys.print_exception(e, log.trace)
+            
+            deadline = 3 * self.__check_interval
             now = time.time()
             if self.__health_check_passed + deadline > now:
                 self.__watchdog.feed()
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(0.5)
 
     async def __try_set_mode(self, mode: OperationMode):
         self.__requested_mode = mode
@@ -173,25 +178,17 @@ class Supervisor:
         return effective_mode, solar_on
 
     async def __switch_charger(self, mode: OperationMode):
-        expected_on = mode in (operationmode.charge, operationmode.quickcharge)
-        on = await self.__charger.set_mode(mode)
-        if expected_on == on:
-            log.supervisor(f'Switched charger to mode {mode}.')
-        else:
-            log.supervisor(f'Failed to switch charger to mode {mode}.')
+        log.supervisor(f'Switching charger to mode {mode}.')
+        await self.__charger.set_mode(mode)
 
     async def __switch_solar(self, on: bool):
         pass
             
     async def __switch_inverter(self, mode: OperationMode):
-        expected_on = mode == operationmode.discharge
-        on = await self.__inverter.set_mode(mode)
-        if expected_on == on:
-            log.supervisor(f'Switched inverter to mode {mode}.')
-        else:
-            log.supervisor(f'Failed to switch inverter to mode {mode}.')
+        log.supervisor(f'Switching inverter to mode {mode}.')
+        await self.__inverter.set_mode(mode)
 
-    async def __tick(self):
+    def __tick(self):
         now = time.time()
         if now < self.__next_check:
             return
@@ -225,7 +222,7 @@ class Supervisor:
         effective_mode, effective_solar = self.__get_effective_mode(self.__requested_mode)
         #TODO: handle solar
         if effective_mode != self.__operation_mode:
-            await self.__set_mode(effective_mode, effective_solar)
+            self.__commands.append(CommandBundle(self.__set_mode, (effective_mode, effective_solar)))
 
         if not self.__unhealty:
             self.__health_check_passed = now
