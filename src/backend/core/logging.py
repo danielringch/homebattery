@@ -30,7 +30,10 @@ class Logging:
         self.__send('error', message)
 
     def info(self, message):
-        self.__send('info', message)            
+        self.__send('info', message)
+
+    def inverter(self, message):
+        self.__send('inverter', message)      
 
     def accounting(self, message):
         self.__send('accounting', message)

@@ -66,9 +66,15 @@
     {
       "driver": "opendtu",
       "host": "",
-      "serial": "",
       "password": "",
-      "power_lut": ""
+      "devices":
+      {
+        "foo":
+        {
+          "serial": "",
+          "power_lut": ""
+        }
+      }
     }
   }
 }

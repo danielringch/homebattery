@@ -1,3 +1,4 @@
+import struct
 
 class BatteryData:
     def __init__(self):
@@ -31,6 +32,7 @@ class BatterySummary:
         else:
             self.max_cell_voltage = max(self.max_cell_voltage, max(battery.cell_voltages))
 
+bool2string = {True: 'true', False: 'false', None: 'none'}
 
 class CallbackCollection:
     def __init__(self):
@@ -125,3 +127,69 @@ class DeviceTypeValues:
         self.solar = DeviceType('solar', self.__dict)
 
 devicetype = DeviceTypeValues()
+
+class PowerLut:
+    def __init__(self, path):
+        self.__lut = None
+        self.__lut_length = 0
+        self.__min_percent = 100
+        self.__min_power = 65535
+        self.__max_power = 0
+        with open(path, 'r') as file:
+            for line in file:
+                line = line.strip().strip('{},')
+                if not line:
+                    continue
+                self.__lut_length += 1
+            file.seek(0)
+
+            self.__lut = bytearray(3 * self.__lut_length)
+            lut_index = 0
+
+            for line in file:
+                line = line.strip().strip('{},')
+                if not line:
+                    continue
+
+                key, value = line.split(':')
+                percent = int(key.strip(' "'))
+                power = int(value.strip())
+                self.__min_percent = min(self.__min_percent, percent)
+                self.__min_power = min(self.__min_power, power)
+                self.__max_power = max(self.__max_power, power)
+                struct.pack_into('@HB', self.__lut, lut_index, power, percent)
+                lut_index += 3
+
+    def get_power(self, percent):
+        for i in range(self.__lut_length):
+            power_entry, percent_entry = struct.unpack_from('@HB', self.__lut, 3 * i)
+            # if percent is smaller than supported, this returns the smallest power possible
+            if percent <= percent_entry:
+                return power_entry, percent_entry
+        else:
+            # if percent is higher than supported, this returns the biggest power possible
+            return power_entry, percent_entry
+                
+    def get_percent(self, power):
+        previous_power, previous_percent = struct.unpack_from('@HB', self.__lut, 0)
+        power = max(self.__min_power, min(self.__max_power, power))
+        for i in range(self.__lut_length):
+            power_entry, percent_entry = struct.unpack_from('@HB', self.__lut, 3 * i)
+            if power_entry > power:
+                return previous_percent, previous_power
+            previous_percent = percent_entry
+            previous_power = power_entry
+        else:
+            return previous_percent, previous_power
+                
+    @property
+    def min_percent(self):
+        return self.__min_percent
+
+    @property
+    def min_power(self):
+        return self.__min_power
+
+    @property
+    def max_power(self):
+        return self.__max_power
