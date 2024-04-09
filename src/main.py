@@ -1,4 +1,4 @@
-import asyncio, gc, json, machine
+import asyncio, gc, json
 from machine import Pin, WDT
 
 from backend.core.logging import *
@@ -14,18 +14,19 @@ async def main():
     log.debug(f'Homebattery {__version__}')
     display.print('Homebattery', __version__)
 
+    await asyncio.sleep(3.0)
+
     with open("/config/config.json", "r") as stream:
         config = json.load(stream)
 
-    await asyncio.sleep(1.0)
-
+    watchdog = WDT(timeout=5000)
+    
     from backend.core.network import Network
     log.debug('Connecting to network...')
     display.print('Connecting to', 'network...')
     network = Network(config)
-    if not network.connect():
-        machine.reset()
-    watchdog = WDT(timeout=5000)
+    network.connect(watchdog)
+    network.get_network_time(watchdog)
 
     log.debug('Configuring logging...')
     display.print('Configuring', 'logging...')
