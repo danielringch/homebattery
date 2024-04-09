@@ -128,6 +128,22 @@ class DeviceTypeValues:
 
 devicetype = DeviceTypeValues()
 
+class InverterStatus(EnumEntry):
+    pass
+
+class InverterStatusValues:
+    def __init__(self):
+        self.__dict = {}
+        self.off = InverterStatus('off', self.__dict)
+        self.syncing = InverterStatus('syncing', self.__dict)
+        self.on = InverterStatus('on', self.__dict)
+        self.fault = InverterStatus('fault', self.__dict)
+
+    def from_string(self, str):
+        return self.__dict[str]
+    
+inverterstatus = InverterStatusValues()
+
 class PowerLut:
     def __init__(self, path):
         self.__lut = None

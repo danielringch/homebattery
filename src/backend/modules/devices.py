@@ -1,16 +1,15 @@
 import sys
 from ..core.logging import *
-from ..core.microblecentral import MicroBleCentral
 
 from ..drivers.accuratt6024v import AccuratT6024V
+from ..drivers.ahoydtu import AhoyDtu
 from ..drivers.daly8s24v60a import Daly8S24V60A
-from ..drivers.opendtu import OpenDtu
 from ..drivers.shelly import Shelly
 
 drivers = {
     'accuratT6024V': AccuratT6024V,
+    'ahoydtu': AhoyDtu,
     'daly8S24V60A': Daly8S24V60A,
-    'opendtu': OpenDtu,
     'shelly': Shelly
 }
 
@@ -22,6 +21,7 @@ class Devices:
         for name, meta in config.items():
             try:
                 driver = drivers[meta['driver']]
+                log.debug(f'Loading device {name} with driver {driver.__name__}.')
                 instance = driver(name, meta)
                 self.__devices.append(instance)
             except Exception as e:

@@ -1,7 +1,6 @@
 import asyncio, sys, time
 from collections import deque
 from machine import WDT
-from ..drivers.opendtu import *
 from ..core.commandbundle import CommandBundle
 from ..core.types import EnumEntry, OperationMode, operationmode, CallbackCollection
 from ..core.logging import *

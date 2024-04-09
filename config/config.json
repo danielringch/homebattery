@@ -64,17 +64,12 @@
     },
     "inv1":
     {
-      "driver": "opendtu",
+      "driver": "ahoydtu",
       "host": "",
       "password": "",
-      "devices":
-      {
-        "foo":
-        {
-          "serial": "",
-          "power_lut": ""
-        }
-      }
+      "serial": "",
+      "id": 0,
+      "power_lut": ""
     }
   }
 }
