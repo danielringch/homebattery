@@ -114,6 +114,7 @@ class Supervisor:
         self.__requested_mode = operationmode.idle
         self.__operation_mode = operationmode.idle
         self.__locks = set()
+        self.__locks.add(self.__locked_reasons.startup)
         self.__unhealty = False
 
         self.__health_check_passed = time.time()
@@ -275,9 +276,12 @@ class Supervisor:
             self.__clear_lock(self.__locked_reasons.mqtt)
 
     def __check_startup(self, now):
-        if now < self.__mature_timestamp:
-            self.__locks.add(self.__locked_reasons.startup)
-        else:
+        if len(self.__locks) == 0:
+            return
+        if len(self.__locks) == 1 and self.__locked_reasons.startup in self.__locks:
+            self.__clear_lock(self.__locked_reasons.startup)
+            return
+        if now > self.__mature_timestamp:
             self.__clear_lock(self.__locked_reasons.startup)
 
     def __clear_lock(self, lock):
