@@ -1,5 +1,5 @@
 
-import asyncio, socket, struct, time
+import asyncio, socket, time
 from collections import namedtuple, deque
 from uio import IOBase
 from .microsocket import BUSY_ERRORS
@@ -8,11 +8,15 @@ class Logging:
     MessageBlob = namedtuple("MessageBlob", "channel message")
 
     def __init__(self):
+        self.__blacklist = set()
         self.__task = None
         self.__queue = deque((), 50)
         self.trace = TraceLogger(self, 'trace')
 
     def configure(self, config):
+        config = config['logging']
+        for sender in config['ignore']:
+            self.__blacklist.add(sender)
         self.__event = asyncio.Event()
         self.__task = asyncio.create_task(self.__run(config, self.__queue))
         self.__event.set()
@@ -57,6 +61,8 @@ class Logging:
         self.__send('supervisor', message)
 
     def __send(self, channel, message):
+        if channel in self.__blacklist:
+            return
         now = time.localtime()  # Get current time
         formatted_time = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}".format(
             now[0], now[1], now[2],
@@ -73,7 +79,6 @@ class Logging:
             pass
     
     async def __run(self, config, queue):
-        config = config['logging']
         host, port = config['host'].split(':')
         address = socket.getaddrinfo(host, int(port))[0][-1]
         socke = None
