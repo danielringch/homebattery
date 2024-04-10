@@ -6,6 +6,7 @@ from ..core.types import EnumEntry, OperationMode, operationmode, CallbackCollec
 from ..core.logging import *
 from ..core.backendmqtt import Mqtt
 from ..core.display import display
+from ..core.leds import leds
 from .inverter import Inverter
 from .charger import Charger
 from .battery import Battery
@@ -146,6 +147,7 @@ class Supervisor:
             now = time.time()
             if self.__health_check_passed + deadline > now:
                 self.__watchdog.feed()
+                leds.notify_watchdog()
             await asyncio.sleep(0.5)
 
     async def __try_set_mode(self, mode: OperationMode):

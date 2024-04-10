@@ -5,17 +5,19 @@ from machine import Pin, Timer
 class Leds:
     def __init__(self):
         self.__queue = deque((), 10)
-        self.__timer = Timer(-1)
-        self.__timer.init(mode=Timer.PERIODIC, freq=10, callback=self.__on_timer)
 
         self.__mqtt_on = False
         self.__control_on = False
         self.__bluetooth_on = False
+        self.__watchdog_on = False
 
         self.__mqtt_pin = Pin(4 , Pin.OUT)
         self.__control_pin = Pin(3 , Pin.OUT)
         self.__bluetooth_pin = Pin(2 , Pin.OUT)
+        self.__watchdog_pin = Pin("LED", Pin.OUT)
 
+        self.__timer = Timer(-1)
+        self.__timer.init(mode=Timer.PERIODIC, freq=10, callback=self.__on_timer)
 
     def notify_mqtt(self):
         self.__mqtt_on = True
@@ -25,6 +27,9 @@ class Leds:
 
     def notify_bluetooth(self):
         self.__bluetooth_on = True
+
+    def notify_watchdog(self):
+        self.__watchdog_on = True
 
     def __on_timer(self, t):
         if self.__mqtt_on:
@@ -44,5 +49,11 @@ class Leds:
             self.__bluetooth_on = False
         else:
             self.__bluetooth_pin.off()
+
+        if self.__watchdog_on:
+            self.__watchdog_pin.on()
+            self.__watchdog_on = False
+        else:
+            self.__watchdog_pin.off()
 
 leds = Leds()

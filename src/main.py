@@ -79,27 +79,16 @@ async def main():
     charger_task = asyncio.create_task(charger.run())
     inverter_task = asyncio.create_task(inverter.run())
     solar_task = asyncio.create_task(solar.run())
-
     supervisor_task = asyncio.create_task(supervisor.run())
-    supervisor_ping = False
-    def supervisor_callback():
-        nonlocal supervisor_ping
-        supervisor_ping = True
-    supervisor.on_cycle_finished.add(supervisor_callback)
 
     gc.collect()
 
     from backend.modules.outputs import Outputs
-
     outputs = Outputs(mqtt, supervisor, battery, charger, inverter, solar)
 
-    led = Pin("LED", Pin.OUT)
     while True:
         gc.collect()
-        if supervisor_ping:
-            led.toggle()
-            supervisor_ping = False
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.5)
 
 
 if __name__ == "__main__":
