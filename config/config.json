@@ -59,8 +59,7 @@
       "driver": "shelly",
       "host": "",
       "power_correction_factor": 0.0,
-      "relay_id": 0,
-      "quick_charge": false
+      "relay_id": 0
     },
     "inv1":
     {

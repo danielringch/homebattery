@@ -93,7 +93,6 @@ class OperationModeValues:
         self.charge = OperationMode('charge', self.__dict)
         self.discharge = OperationMode('discharge', self.__dict)
         self.idle = OperationMode('idle', self.__dict)
-        self.quickcharge = OperationMode('quickcharge', self.__dict)
 
     def from_string(self, str):
         return self.__dict[str]
@@ -108,7 +107,6 @@ class ChargeModeValues:
         self.__dict = {}
         self.off = ChargeMode('off', self.__dict)
         self.charge = ChargeMode('charge', self.__dict)
-        self.quickcharge = ChargeMode('quickcharge', self.__dict)
 
     def from_string(self, str):
         return self.__dict[str]

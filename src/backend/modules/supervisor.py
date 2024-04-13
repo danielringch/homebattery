@@ -170,7 +170,7 @@ class Supervisor:
     def __get_effective_mode(self, mode: OperationMode):
         solar_on = not any(x.blocks_solar for x in self.__locks)
         effective_mode = operationmode.idle
-        if mode in (operationmode.charge, operationmode.quickcharge):
+        if mode == operationmode.charge:
             effective_mode = operationmode.idle if any(x.blocks_charge for x in self.__locks) else mode
         elif mode == operationmode.discharge:
             effective_mode = operationmode.idle if any(x.blocks_inverter for x in self.__locks) else mode

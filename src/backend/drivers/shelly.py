@@ -11,7 +11,6 @@ class Shelly:
         self.__host, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
         self.__relay_id = int(config['relay_id'])
-        self.__is_quickcharge = bool(config['quick_charge'])
 
         self.__on_request = f'relay/{self.__relay_id}?turn=on&timer=4000'
         self.__off_request = f'relay/{self.__relay_id}?turn=off'
@@ -44,10 +43,6 @@ class Shelly:
     @property
     def device_types(self):
         return self.__device_types
-
-    @property
-    def is_quickcharge(self):
-        return self.__is_quickcharge
 
     def __create_session(self):
         return ClientSession(self.__host, self.__port)
