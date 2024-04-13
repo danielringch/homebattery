@@ -101,10 +101,10 @@ class Supervisor:
 
         self.__mature_timestamp = time.time() + 60
 
-        self.__live_data_timestamp = time.time()
+        self.__live_data_timestamp = 0
         self.__live_data_tolerance = int(config['supervisor']['live_data_tolerance'])
 
-        self.__battery_data_timestamp = time.time()
+        self.__battery_data_timestamp = 0
         self.__battery_data_tolerance = int(config['supervisor']['battery_data_tolerance'])
         self.__minimum_cell_voltage = float(config['supervisor']['minimum_cell_voltage'])
         self.__minimum_cell_voltage_hysteresis = float(config['supervisor']['minimum_cell_voltage_hysteresis'])
@@ -114,7 +114,6 @@ class Supervisor:
         self.__requested_mode = operationmode.idle
         self.__operation_mode = operationmode.idle
         self.__locks = set()
-        self.__locks.add(self.__locked_reasons.startup)
         self.__unhealty = False
 
         self.__health_check_passed = time.time()
@@ -277,12 +276,13 @@ class Supervisor:
             self.__clear_lock(self.__locked_reasons.mqtt)
 
     def __check_startup(self, now):
-        if len(self.__locks) == 0:
-            return
-        if len(self.__locks) == 1 and self.__locked_reasons.startup in self.__locks:
-            self.__clear_lock(self.__locked_reasons.startup)
-            return
-        if now > self.__mature_timestamp:
+        if len(self.__locks) > 0 \
+                and self.__locked_reasons.startup not in self.__locks \
+                and now < self.__mature_timestamp:
+            self.__locks.add(self.__locked_reasons.startup)
+        elif (len(self.__locks) == 1 and self.__locked_reasons.startup in self.__locks) \
+                or (now >= self.__mature_timestamp):
+            self.__mature_timestamp = now
             self.__clear_lock(self.__locked_reasons.startup)
 
     def __clear_lock(self, lock):
