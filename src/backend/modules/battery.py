@@ -76,7 +76,7 @@ class Battery:
 
     async def __read_battery(self, battery: BatteryBundle, summary: BatterySummary):
         try:
-            battery_data = await battery.battery.read()
+            battery_data = await battery.battery.read_battery()
             if battery_data is None:
                 battery.online = False
                 raise Exception('Battery did not response.')

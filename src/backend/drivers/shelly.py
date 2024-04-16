@@ -1,11 +1,13 @@
 import asyncio
+from .interfaces import ChargerInterface
 from ..core.microaiohttp import ClientSession
 from ..core.leds import leds
 from ..core.logging import log
 from ..core import devicetype
 
-class Shelly:
+class Shelly(ChargerInterface):
     def __init__(self, name, config):
+        super(Shelly, self).__init__()
         self.__device_types = (devicetype.charger,)
         self.__log = log.get_custom_logger(name)
         self.__host, self.__port = config['host'].split(':')
@@ -17,9 +19,6 @@ class Shelly:
         self.__state_request = f'relay/{self.__relay_id}'
         self.__energy_request = f'rpc/Switch.GetStatus?id={self.__relay_id}'
         self.__energy_reset_request = f'rpc/Switch.ResetCounters?id={self.__relay_id}&type=["aenergy"]'
-
-    async def tick(self):
-        pass
 
     async def switch_charger(self, on):
         with self.__create_session() as session:

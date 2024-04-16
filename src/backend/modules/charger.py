@@ -33,8 +33,6 @@ class Charger:
             try:
                 now = time.time()
                 async with self.__lock:
-                    for charger in self.__chargers:
-                        await charger.tick()
                     if now >= self.__next_energy_execution:
                         await self.__get_energy()
                         self.__set_next_energy_execution()

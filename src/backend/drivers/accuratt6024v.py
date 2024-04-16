@@ -1,9 +1,10 @@
 import asyncio, bluetooth, ubinascii, struct, sys
+from .interfaces import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, ble_instance
 from ..core.logging import log
 from ..core.types import BatteryData, devicetype
 
-class AccuratT6024V:
+class AccuratT6024V(BatteryInterface):
     class DataBundle(BatteryData):
         def __init__(self):
             super().__init__()
@@ -56,7 +57,7 @@ class AccuratT6024V:
         self.__receive_task = None
         self.__data = None
 
-    async def read(self):
+    async def read_battery(self):
         try:
             self.__data = self.DataBundle()
 

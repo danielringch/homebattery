@@ -1,5 +1,5 @@
 import asyncio, sys, time
-
+from .interfaces import InverterInterface
 from ..core.microaiohttp import ClientSession
 from ..core.logging import *
 from ..core.leds import leds
@@ -19,7 +19,7 @@ class AhoyCommandValues:
 
 ahoycommand = AhoyCommandValues()
 
-class AhoyDtu:
+class AhoyDtu(InverterInterface):
     __ahoy_state_to_internal_state = {
         0: inverterstatus.fault,
         1: inverterstatus.off,
@@ -74,9 +74,9 @@ class AhoyDtu:
 # Status
 ###################
     
-    async def switch_inverter(self, status: InverterStatus):
+    async def switch_inverter(self, on: bool):
         old_value = self.__shall_status
-        self.__shall_status = inverterstatus.on if status == inverterstatus.on else inverterstatus.off
+        self.__shall_status = inverterstatus.on if on else inverterstatus.off
         if old_value != self.__shall_status:
             self.__shall_percent = self.__power_lut.min_percent
             self.__log.send(f'New target state: {self.__shall_status}')

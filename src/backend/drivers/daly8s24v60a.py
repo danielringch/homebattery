@@ -1,9 +1,10 @@
 import asyncio, bluetooth, ubinascii, struct, sys
+from .interfaces import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, ble_instance
 from ..core.logging import log
 from ..core.types import BatteryData, devicetype
 
-class Daly8S24V60A:
+class Daly8S24V60A(BatteryInterface):
     class DataBundle(BatteryData):
         def __init__(self):
             super().__init__()
@@ -37,7 +38,7 @@ class Daly8S24V60A:
         self.__receive_task = None
         self.__data = None
 
-    async def read(self):
+    async def read_battery(self):
         try:
             self.__data = self.DataBundle()
 

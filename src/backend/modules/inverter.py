@@ -79,9 +79,10 @@ class Inverter:
 
     async def set_mode(self, mode: OperationMode):
         async with self.__lock:
-            shall_status = inverterstatus.on if mode == operationmode.discharge else inverterstatus.off
+            shall_on = mode == operationmode.discharge
+            shall_status = inverterstatus.on if shall_on else inverterstatus.off
             for inverter in self.__inverters:
-                await inverter.switch_inverter(shall_status)
+                await inverter.switch_inverter(shall_on)
             actual_status = await self.__get_status()
             if actual_status == shall_status:
                 # Operation mode requests must be answered, but since we are
