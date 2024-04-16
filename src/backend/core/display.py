@@ -1,12 +1,12 @@
 from machine import Pin, I2C
-from .ssd1306 import SSD1306_I2C
-from .types import operationmode, OperationMode
+from .ssd1306 import SSD1306
+from .types import OperationMode
 
 class Display:
     def __init__(self):
         try:
             i2c = I2C(id=0, sda=Pin(12), scl=Pin(13))
-            self.__display = SSD1306_I2C(128, 64, i2c)
+            self.__display = SSD1306(128, 64, i2c)
 
             self.__display.contrast(51)
 
@@ -16,9 +16,10 @@ class Display:
 
         self.__mode = None
         self.__lock = None
-        self.__p_rem = None
-        self.__p_inv = None
         self.__c_bat = None
+        self.__p_sol = None
+        self.__p_inv = None
+        self.__p_grd = None
 
     def update_mode(self, mode: OperationMode):
         self.__mode = mode
@@ -28,16 +29,20 @@ class Display:
         self.__lock = lock
         self.__refresh()
 
-    def update_consumption(self, power: int):
-        self.__p_rem = power
+    def update_battery_capacity(self, capacity: float):
+        self.__c_bat = f'{capacity:.1f}' if capacity is not None else None
+        self.__refresh()
+
+    def update_solar_power(self, power: int):
+        self.__p_sol = power
         self.__refresh()
 
     def update_inverter_power(self, power: int):
         self.__p_inv = power
         self.__refresh()
 
-    def update_battery_capacity(self, capacity: float):
-        self.__c_bat = f'{capacity:.1f}' if capacity is not None else None
+    def update_consumption(self, power: int):
+        self.__p_grd = power
         self.__refresh()
 
     def print(self, *lines: str):
@@ -51,12 +56,12 @@ class Display:
         self.__display.show()
 
     def __refresh(self):
-        header = 'Homebattery'
         mode = f'Mode: {self.__mode.name if self.__mode else "unknown"}'
         lock = f'! {self.__lock}' if self.__lock is not None else 'normal operation'
-        p_rem = f'P_rem: {self.__p_rem} W'
+        c_bat = f'C_bat: {self.__c_bat} Ah'
+        p_sol = f'P_sol: {self.__p_sol} W'
         p_inv = f'P_inv: {self.__p_inv} W'
-        c_bat  = f'C_bat: {self.__c_bat} Ah'
-        self.print(header, mode, lock, p_rem, p_inv, c_bat)
+        p_grd = f'P_grd: {self.__p_grd} W'
+        self.print(mode, lock, c_bat, p_sol, p_inv, p_grd)
 
 display = Display()
