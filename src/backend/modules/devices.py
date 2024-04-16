@@ -1,13 +1,13 @@
 import sys
 from ..core.logging import *
 
-from ..drivers.accuratt6024v import AccuratT6024V
+from ..drivers.lltpowerbmsv4ble import LltPowerBmsV4Ble
 from ..drivers.ahoydtu import AhoyDtu
 from ..drivers.daly8s24v60a import Daly8S24V60A
 from ..drivers.shelly import Shelly
 
 drivers = {
-    'accuratT6024V': AccuratT6024V,
+    'lltPowerBmsV4Ble': LltPowerBmsV4Ble,
     'ahoydtu': AhoyDtu,
     'daly8S24V60A': Daly8S24V60A,
     'shelly': Shelly

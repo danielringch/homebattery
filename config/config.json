@@ -46,7 +46,7 @@
   {
     "bat1":
     {
-      "driver": "accuratT6024V",
+      "driver": "lltPowerBmsV4Ble",
       "mac": ""
     },
     "bat2":
