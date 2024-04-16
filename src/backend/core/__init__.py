@@ -5,5 +5,6 @@ from .leds import *
 from .logging import *
 from .micromqtt import *
 from .network import *
+from .ssd1306 import SSD1306_I2C
 from .types import *
 from .urllib import *

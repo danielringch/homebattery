@@ -1,5 +1,5 @@
 from machine import Pin, I2C
-from ..drivers.ssd1306 import SSD1306_I2C
+from .ssd1306 import SSD1306_I2C
 from .types import operationmode, OperationMode
 
 class Display:
