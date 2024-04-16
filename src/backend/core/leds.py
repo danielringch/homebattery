@@ -1,59 +1,47 @@
 
-from collections import deque
 from machine import Pin, Timer
 
 class Leds:
+    class SingleLed:
+        def __init__(self, pin):
+            self.__on = False
+            self.__pin = Pin(pin, Pin.OUT)
+
+        def notify(self):
+            self.__on = True
+
+        def switch(self):
+            if self.__on:
+                self.__pin.on()
+                self.__on = False
+            else:
+                self.__pin.off()
+
     def __init__(self):
-        self.__queue = deque((), 10)
-
-        self.__mqtt_on = False
-        self.__control_on = False
-        self.__bluetooth_on = False
-        self.__watchdog_on = False
-
-        self.__mqtt_pin = Pin(4 , Pin.OUT)
-        self.__control_pin = Pin(3 , Pin.OUT)
-        self.__bluetooth_pin = Pin(2 , Pin.OUT)
-        self.__watchdog_pin = Pin("LED", Pin.OUT)
+        self.__mqtt = self.SingleLed(4)
+        self.__control = self.SingleLed(3)
+        self.__bluetooth = self.SingleLed(2)
+        self.__watchdog = self.SingleLed("LED")
 
         self.__timer = Timer(-1)
         self.__timer.init(mode=Timer.PERIODIC, freq=10, callback=self.__on_timer)
 
     def notify_mqtt(self):
-        self.__mqtt_on = True
+        self.__mqtt.notify()
 
     def notify_control(self):
-        self.__control_on = True
+        self.__control.notify()
 
     def notify_bluetooth(self):
-        self.__bluetooth_on = True
+        self.__bluetooth.notify()
 
     def notify_watchdog(self):
-        self.__watchdog_on = True
+        self.__watchdog.notify()
 
     def __on_timer(self, t):
-        if self.__mqtt_on:
-            self.__mqtt_pin.on()
-            self.__mqtt_on = False
-        else:
-            self.__mqtt_pin.off()
-
-        if self.__control_on:
-            self.__control_pin.on()
-            self.__control_on = False
-        else:
-            self.__control_pin.off()
-
-        if self.__bluetooth_on:
-            self.__bluetooth_pin.on()
-            self.__bluetooth_on = False
-        else:
-            self.__bluetooth_pin.off()
-
-        if self.__watchdog_on:
-            self.__watchdog_pin.on()
-            self.__watchdog_on = False
-        else:
-            self.__watchdog_pin.off()
+        self.__mqtt.switch()
+        self.__control.switch()
+        self.__bluetooth.switch()
+        self.__watchdog.switch()
 
 leds = Leds()
