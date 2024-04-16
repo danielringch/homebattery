@@ -1,5 +1,5 @@
 import asyncio, bluetooth, ubinascii, struct, sys
-from .interfaces import BatteryInterface
+from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, ble_instance
 from ..core.logging import log
 from ..core.types import BatteryData, devicetype

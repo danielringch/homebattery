@@ -1,9 +1,9 @@
 import asyncio
-from .interfaces import ChargerInterface
+from .interfaces.chargerinterface import ChargerInterface
 from ..core.microaiohttp import ClientSession
 from ..core.leds import leds
 from ..core.logging import log
-from ..core import devicetype
+from ..core.types import devicetype
 
 class Shelly(ChargerInterface):
     def __init__(self, name, config):

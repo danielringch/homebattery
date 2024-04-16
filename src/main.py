@@ -1,5 +1,5 @@
 import asyncio, gc, json
-from machine import Pin, WDT
+from machine import WDT
 
 from backend.core.logging import *
 from backend.core.display import display
