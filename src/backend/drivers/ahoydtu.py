@@ -47,7 +47,6 @@ class AhoyDtu(InverterInterface):
 
         self.__name = name
         self.__id = config['id']
-        self.__serial = config['serial']
         self.__power_lut = PowerLut(config['power_lut'])
         self.__shall_status = inverterstatus.off
         self.__current_status = inverterstatus.syncing

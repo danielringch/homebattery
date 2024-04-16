@@ -65,8 +65,6 @@
     {
       "driver": "ahoydtu",
       "host": "",
-      "password": "",
-      "serial": "",
       "id": 0,
       "power_lut": ""
     }
