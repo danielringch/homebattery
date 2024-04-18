@@ -35,12 +35,33 @@
   "supervisor":
   {
     "check_interval": 0,
-    "live_data_tolerance": 0,
-    "battery_data_tolerance": 0,
-    "minimum_cell_voltage": 0,
-    "minimum_cell_voltage_hysteresis": 0,
-    "maximum_cell_voltage": 0,
-    "maximum_cell_voltage_hysteresis": 0
+    "battery_offline":
+    {
+      "enabled": true,
+      "threshold": 300
+    },
+    "cell_high":
+    {
+      "enabled": true,
+      "threshold": 3.75,
+      "hysteresis": 0.25
+    },
+    "cell_low":
+    {
+      "enabled": true,
+      "threshold": 3.1,
+      "hysteresis": 0.1
+    },
+    "live_data_lost":
+    {
+      "enabled": true,
+      "threshold": 60
+    },
+    "mqtt_offline":
+    {
+      "enabled": true,
+      "threshold": 60
+    }
   },
   "devices":
   {

@@ -2,7 +2,7 @@ import asyncio, sys, time
 from collections import deque
 from machine import WDT
 from ..core.commandbundle import CommandBundle
-from ..core.types import EnumEntry, OperationMode, operationmode, CallbackCollection
+from ..core.types import devicetype, EnumEntry, OperationMode, operationmode
 from ..core.logging import *
 from ..core.backendmqtt import Mqtt
 from ..core.display import display
@@ -15,106 +15,47 @@ from .netzero import *
 
 class Supervisor:
     class LockedReason(EnumEntry):
-        def __init__(self, name, message, priority, blocks_charge, blocks_solar, blocks_inverter):
+        def __init__(self, name, priority, blocked_devices, fatal=False):
             super().__init__(name, None)
-            self.message = message
             self.priority = priority
-            self.blocks_charge = blocks_charge
-            self.blocks_solar = blocks_solar
-            self.blocks_inverter = blocks_inverter
+            self.blocked_devices = blocked_devices
+            self.fatal = fatal
 
         def __lt__(self, other):
-            return self.priority < other.priority
-        
-    class LockedReasons():
-        def __init__(self):
-            self.battery_data = Supervisor.LockedReason(
-                    name='battery_data', 
-                    message='Battery data lost.', 
-                    priority=30,
-                    blocks_charge=True,
-                    blocks_solar=True,
-                    blocks_inverter=True)
-            self.cell_high = Supervisor.LockedReason(
-                    name='cell_high',
-                    message='Battery cell voltage high.',
-                    priority=31,
-                    blocks_charge=True,
-                    blocks_solar=True,
-                    blocks_inverter=False)
-            self.cell_low = Supervisor.LockedReason(
-                    name='cell_low',
-                    message='Battery cell voltage low.',
-                    priority=32,
-                    blocks_charge=False,
-                    blocks_solar=False,
-                    blocks_inverter=True)
-            self.internal = Supervisor.LockedReason(
-                    name='internal',
-                    message='Internal supervisor error.',
-                    priority=0,
-                    blocks_charge=True,
-                    blocks_solar=True,
-                    blocks_inverter=True)
-            self.live_data = Supervisor.LockedReason(
-                    name='live_data',
-                    message='Live data lost.',
-                    priority=10,
-                    blocks_charge=True,
-                    blocks_solar=False,
-                    blocks_inverter=True)
-            self.mqtt = Supervisor.LockedReason(
-                    name='mqtt',
-                    message='MQTT connection lost.',
-                    priority=5,
-                    blocks_charge=True,
-                    blocks_solar=False,
-                    blocks_inverter=True)
-            self.startup = Supervisor.LockedReason(
-                    name='startup',
-                    message='System startup.',
-                    priority=2,
-                    blocks_charge=True,
-                    blocks_solar=True,
-                    blocks_inverter=True)
+            return self.priority < other.priority            
 
     def __init__(self, config: dict, watchdog: WDT, mqtt: Mqtt, inverter: Inverter, charger: Charger, battery: Battery):
-        self.__locked_reasons = self.LockedReasons()
-
+        config = config['supervisor']
         self.__commands = deque((), 10)
-
-        self.__on_cycle_finished = CallbackCollection()
 
         self.__watchdog = watchdog
         self.__inverter = inverter
         self.__charger = charger
         self.__battery = battery
 
-        self.__battery.on_battery_data.add(self.__on_battery_data)
-
         self.__mqtt = mqtt
         self.__mqtt.on_mode.add(self.__on_mode)
-        self.__mqtt.on_live_consumption.add(self.__on_live_consumption)
 
-        self.__check_interval = int(config['supervisor']['check_interval'])
+        self.__check_interval = int(config['check_interval'])
         self.__next_check = 0
 
-        self.__mature_timestamp = time.time() + 60
+        self.__internal_error = self.internal = Supervisor.LockedReason(
+                name='internal',
+                priority=0,
+                blocked_devices=(devicetype.charger, devicetype.solar, devicetype.inverter),
+                fatal=True)
 
-        self.__live_data_timestamp = 0
-        self.__live_data_tolerance = int(config['supervisor']['live_data_tolerance'])
-
-        self.__battery_data_timestamp = 0
-        self.__battery_data_tolerance = int(config['supervisor']['battery_data_tolerance'])
-        self.__minimum_cell_voltage = float(config['supervisor']['minimum_cell_voltage'])
-        self.__minimum_cell_voltage_hysteresis = float(config['supervisor']['minimum_cell_voltage_hysteresis'])
-        self.__maximum_cell_voltage = float(config['supervisor']['maximum_cell_voltage'])
-        self.__maximum_cell_voltage_hysteresis = float(config['supervisor']['maximum_cell_voltage_hysteresis'])
-
+        self.__locks = set()
+        self.__checkers = (
+                self.BatteryOfflineChecker(config, battery),
+                self.CellHighChecker(config, battery),
+                self.CellLowChecker(config, battery),
+                self.LiveDataOfflineChecker(config, mqtt),
+                self.MqttOfflineChecker(config, mqtt),
+                self.StartupChecker(config, self.__locks))
+    
         self.__requested_mode = operationmode.idle
         self.__operation_mode = operationmode.idle
-        self.__locks = set()
-        self.__unhealty = False
 
         self.__health_check_passed = time.time()
 
@@ -124,15 +65,10 @@ class Supervisor:
             try:
                 while len(self.__commands) > 0:
                     await self.__commands.popleft().run()
-                self.__on_cycle_finished.run_all()
             except Exception as e:
                 log.error(f'Supervisor cycle failed: {e}')
                 sys.print_exception(e, log.trace)
             await asyncio.sleep(0.1)
-
-    @property
-    def on_cycle_finished(self):
-        return self.__on_cycle_finished
     
     async def __run_watchdog(self):
         while True:
@@ -155,7 +91,7 @@ class Supervisor:
         if effective_mode != mode:
             log.supervisor(f'Switch to mode {mode.name} suppressed.')
             if len(self.__locks) > 0:
-                self.__mqtt.send_locked(sorted(self.__locks)[0].message)
+                self.__mqtt.send_locked(sorted(self.__locks)[0].name)
             return
         await self.__set_mode(effective_mode, solar_on)
 
@@ -167,16 +103,19 @@ class Supervisor:
         display.update_mode(mode)
 
     def __get_effective_mode(self, mode: OperationMode):
-        solar_on = not any(x.blocks_solar for x in self.__locks)
+        blocked_devices = set()
+        for lock in self.__locks:
+            blocked_devices.update(lock.blocked_devices)
+
         effective_mode = operationmode.idle
         if mode == operationmode.charge:
-            effective_mode = operationmode.idle if any(x.blocks_charge for x in self.__locks) else mode
+            effective_mode = operationmode.idle if devicetype.charger in blocked_devices else mode
         elif mode == operationmode.discharge:
-            effective_mode = operationmode.idle if any(x.blocks_inverter for x in self.__locks) else mode
+            effective_mode = operationmode.idle if devicetype.inverter in blocked_devices else mode
         else:
             effective_mode = operationmode.idle
 
-        return effective_mode, solar_on
+        return effective_mode, bool(devicetype.solar in blocked_devices)
 
     async def __switch_charger(self, mode: OperationMode):
         log.supervisor(f'Switching charger to mode {mode}.')
@@ -193,31 +132,32 @@ class Supervisor:
         now = time.time()
         if now < self.__next_check:
             return
-        self.__set_next_check(now)
+        self.__next_check = now + self.__check_interval
 
         previous_locked = sorted(self.__locks)[0] if len(self.__locks) else None
 
-        self.__unhealty = False
-
         try:
-            self.__check_battery_online(now)
-            self.__check_battery_min_voltage()
-            self.__check_battery_max_voltage()
-            self.__check_live_data(now)
-            self.__check_mqtt_connected()
-            self.__check_startup(now)
+            for checker in self.__checkers:
+                result = checker.check(now)
+                if result is None:
+                    continue
+                if result[0]:
+                    self.__locks.add(result[1])
+                else:
+                    self.__clear_lock(result[1])
+            self.__clear_lock(self.__internal_error)
 
         except Exception as e:
             log.supervisor(f'Cycle failed: {e}')
-            self.__locks.add(self.__locked_reasons.internal)
+            self.__locks.add(self.__internal_error)
 
         for lock in self.__locks:
-            log.supervisor(f'System lock: {lock.message}')
+            log.supervisor(f'System lock: {lock.name}')
 
         top_priority_lock = sorted(self.__locks)[0] if len(self.__locks) else None
 
         if previous_locked != top_priority_lock:
-            self.__mqtt.send_locked(top_priority_lock.message if top_priority_lock is not None else None)
+            self.__mqtt.send_locked(top_priority_lock.name if top_priority_lock is not None else None)
             display.update_lock(top_priority_lock.name if top_priority_lock is not None else None)
 
         effective_mode, effective_solar = self.__get_effective_mode(self.__requested_mode)
@@ -225,65 +165,8 @@ class Supervisor:
         if effective_mode != self.__operation_mode:
             self.__commands.append(CommandBundle(self.__set_mode, (effective_mode, effective_solar)))
 
-        if not self.__unhealty:
+        if not any(x.fatal for x in self.__locks):
             self.__health_check_passed = now
-
-    def __check_battery_online(self, now):
-        if (now - self.__battery_data_timestamp) > self.__battery_data_tolerance:
-            self.__locks.add(self.__locked_reasons.battery_data)
-        else:
-            self.__clear_lock(self.__locked_reasons.battery_data)
-
-    def __check_battery_min_voltage(self):
-        battery_data = self.__battery.data
-        if battery_data is None or battery_data.min_cell_voltage is None:
-            return
-
-        treshold = self.__minimum_cell_voltage
-        if self.__locked_reasons.cell_low in self.__locks:
-            treshold += self.__minimum_cell_voltage_hysteresis
-
-        if battery_data.min_cell_voltage < treshold:
-            self.__locks.add(self.__locked_reasons.cell_low)
-        else:
-            self.__clear_lock(self.__locked_reasons.cell_low)
-
-    def __check_battery_max_voltage(self):
-        battery_data = self.__battery.data
-        if battery_data is None or battery_data.max_cell_voltage is None:
-            return
-
-        treshold = self.__maximum_cell_voltage
-        if self.__locked_reasons.cell_high in self.__locks:
-            treshold += self.__maximum_cell_voltage_hysteresis
-
-        if battery_data.max_cell_voltage > treshold:
-            self.__locks.add(self.__locked_reasons.cell_high)
-        else:
-            self.__clear_lock(self.__locked_reasons.cell_high)
-
-    def __check_live_data(self, now):
-        if (now - self.__live_data_timestamp) > self.__live_data_tolerance:
-            self.__locks.add(self.__locked_reasons.live_data)
-        else:
-            self.__clear_lock(self.__locked_reasons.live_data)
-
-    def __check_mqtt_connected(self):
-        if not self.__mqtt.connected:
-            self.__locks.add(self.__locked_reasons.mqtt)
-            self.__unhealty = True
-        else:
-            self.__clear_lock(self.__locked_reasons.mqtt)
-
-    def __check_startup(self, now):
-        if len(self.__locks) > 0 \
-                and self.__locked_reasons.startup not in self.__locks \
-                and now < self.__mature_timestamp:
-            self.__locks.add(self.__locked_reasons.startup)
-        elif (len(self.__locks) == 1 and self.__locked_reasons.startup in self.__locks) \
-                or (now >= self.__mature_timestamp):
-            self.__mature_timestamp = now
-            self.__clear_lock(self.__locked_reasons.startup)
 
     def __clear_lock(self, lock):
         try:
@@ -291,14 +174,125 @@ class Supervisor:
         except KeyError:
             pass
 
-    def __set_next_check(self, now):
-        self.__next_check = now + self.__check_interval
-
-    def __on_battery_data(self):
-        self.__battery_data_timestamp = time.time()
-
-    def __on_live_consumption(self, _):
-        self.__live_data_timestamp = time.time()
-
     def __on_mode(self, mode):
         self.__commands.append(CommandBundle(self.__try_set_mode, (mode,)))
+
+    class SubChecker:
+        def __init__(self, config, name, priority, blocked_devices, fatal=False):
+            self.__name = name
+            if config[self.__name]['enabled']:
+                self._lock = Supervisor.LockedReason(
+                        name=name,
+                        priority=priority,
+                        blocked_devices=blocked_devices,
+                        fatal=fatal)
+            else:
+                self._lock = None
+
+    class BatteryOfflineChecker(SubChecker):
+        def __init__(self, config, battery):
+            super().__init__(config, 'battery_offline', 30, (devicetype.charger, devicetype.solar, devicetype.inverter))
+            self.__threshold = int(config[self.__name]['threshold'])
+            self.__last_data = 0
+            battery.on_battery_data.add(self.__on_battery_data)
+
+        def check(self, now):
+            if self._lock is None:
+                return None
+            active = bool((now - self.__last_data) > self.__threshold)
+            return (active, self._lock)
+        
+        def __on_battery_data(self):
+            self.__last_data = time.time()
+        
+    class CellHighChecker(SubChecker):
+        def __init__(self, config, battery):
+            super().__init__(config, 'cell_high', 31, (devicetype.charger, devicetype.solar))
+            self.__threshold = float(config[self.__name]['threshold'])
+            self.__hysteresis = float(config[self.__name]['hysteresis'])
+            self.__threshold_exceeded = False
+            self.__battery = battery
+
+        def check(self, now):
+            if self._lock is None:
+                return None
+            battery_data = self.__battery.data
+            if battery_data is None or battery_data.max_cell_voltage is None:
+                return None
+
+            threshold = self.__threshold
+            if self.__threshold_exceeded:
+                threshold -= self.__hysteresis
+
+            self.__threshold_exceeded = battery_data.max_cell_voltage > threshold
+            return (self.__threshold_exceeded, self._lock)
+        
+    class CellLowChecker(SubChecker):
+        def __init__(self, config, battery):
+            super().__init__(config, 'cell_low', 32, (devicetype.inverter,))
+            self.__threshold = float(config[self.__name]['threshold'])
+            self.__hysteresis = float(config[self.__name]['hysteresis'])
+            self.__threshold_exceeded = False
+            self.__battery = battery
+
+        def check(self, now):
+            if self._lock is None:
+                return None
+            battery_data = self.__battery.data
+            if battery_data is None or battery_data.max_cell_voltage is None:
+                return None
+
+            threshold = self.__threshold
+            if self.__threshold_exceeded:
+                threshold += self.__hysteresis
+
+            self.__threshold_exceeded = battery_data.max_cell_voltage < threshold
+            return (self.__threshold_exceeded, self._lock)
+        
+    class LiveDataOfflineChecker(SubChecker):
+        def __init__(self, config, mqtt):
+            super().__init__(config, 'live_data_lost', 10, (devicetype.inverter, devicetype.charger))
+            self.__threshold = int(config[self.__name]['threshold'])
+            self.__last_data = 0
+            mqtt.on_live_consumption.add(self.__on_live_consumption)
+
+        def check(self, now):
+            if self._lock is None:
+                return None
+            active = bool((now - self.__last_data) > self.__threshold)
+            return (active, self._lock)
+        
+        def __on_live_consumption(self, _):
+            self.__last_data = time.time()
+
+    class MqttOfflineChecker(SubChecker):
+        def __init__(self, config, mqtt):
+            super().__init__(config, 'mqtt_offline', 5, (devicetype.charger, devicetype.inverter), True)
+            self.__threshold = int(config[self.__name]['threshold'])
+            self.__last_online = 0
+            self.__mqtt = mqtt
+
+        def check(self, now):
+            if self._lock is None:
+                return None
+            if self.__mqtt.connected:
+                self.__last_online = time.time()
+            active = bool((now - self.__last_online) > self.__threshold)
+            return (active, self._lock)
+
+    class StartupChecker(SubChecker):
+        def __init__(self, config, locks):
+            config = {'startup': {'enabled': True}}
+            super().__init__(config, 'startup', 2, (devicetype.inverter, devicetype.solar, devicetype.charger))
+            self.__mature_timestamp = time.time() + 60
+            self.__locks = locks
+
+        def check(self, now):
+            if len(self.__locks) > 0 \
+                and self._lock not in self.__locks \
+                and now < self.__mature_timestamp:
+                return (True, self._lock)
+            elif (len(self.__locks) == 1 and self._lock in self.__locks) \
+                    or (now >= self.__mature_timestamp):
+                self.__mature_timestamp = now
+                return (False, self._lock)
