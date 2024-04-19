@@ -44,8 +44,8 @@ class NetZero:
             self.__power_data.append(element)
         except MicroDequeOverflowError:
             pass # losing some old data is not critical
-        delete_treshold = timestamp - self.__time_span
-        while self.__power_data[0].timestamp < delete_treshold:
+        delete_threshold = timestamp - self.__time_span
+        while self.__power_data[0].timestamp < delete_threshold:
             self.__power_data.popleft()
 
     def __evaluate_power(self):
