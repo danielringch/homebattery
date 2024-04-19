@@ -4,6 +4,7 @@ from ..core.types import CommandBundle, devicetype, OperationMode, operationmode
 from ..core.logging import log
 from ..core.backendmqtt import Mqtt
 from ..core.display import display
+from ..core.leds import leds
 from .inverter import Inverter
 from .charger import Charger
 
@@ -46,6 +47,9 @@ class ModeSwitcher:
             return
         self.__locked_devices.clear()
         self.__locked_devices.update(devices)
+        leds.switch_charger_locked(devicetype.charger in self.__locked_devices)
+        leds.switch_inverter_locked(devicetype.inverter in self.__locked_devices)
+        leds.switch_solar_locked(devicetype.solar in self.__locked_devices)
         self.__commands.append(CommandBundle(self.__update, ()))
         self.__event.set()
 
