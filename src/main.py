@@ -65,8 +65,10 @@ async def main():
     from backend.modules.solar import Solar
     solar = Solar(config, devices)
 
+    from backend.modules.modeswitcher import ModeSwitcher
     from backend.modules.supervisor import Supervisor
-    supervisor = Supervisor(config, watchdog, mqtt, inverter, charger, battery)
+    modeswitcher = ModeSwitcher(config, mqtt, inverter, charger)
+    supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, inverter, charger, battery)
     watchdog.feed()
 
     log.debug('Connecting to MQTT broker...')
@@ -79,7 +81,8 @@ async def main():
     charger_task = asyncio.create_task(charger.run())
     inverter_task = asyncio.create_task(inverter.run())
     solar_task = asyncio.create_task(solar.run())
-    supervisor_task = asyncio.create_task(supervisor.run())
+    modeswitcher.run()
+    supervisor.run()
 
     gc.collect()
 

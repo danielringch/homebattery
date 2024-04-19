@@ -51,6 +51,9 @@ class Logging:
     def bluetooth(self, message):
         self.__send('bluetooth', message)
 
+    def modeswitch(self, message):
+        self.__send('modeswitch', message)
+
     def mqtt(self, message):
         self.__send('mqtt', message)
 
