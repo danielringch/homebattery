@@ -1,7 +1,6 @@
 import asyncio, sys
 from collections import deque
-from ..core.commandbundle import CommandBundle
-from ..core.types import devicetype, OperationMode, operationmode
+from ..core.types import CommandBundle, devicetype, OperationMode, operationmode
 from ..core.logging import log
 from ..core.backendmqtt import Mqtt
 from ..core.display import display
