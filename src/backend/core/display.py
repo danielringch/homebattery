@@ -5,7 +5,7 @@ from .types import OperationMode
 class Display:
     def __init__(self):
         try:
-            i2c = I2C(id=0, sda=Pin(12), scl=Pin(13))
+            i2c = I2C(id=0, sda=Pin(0), scl=Pin(1))
             self.__display = SSD1306(128, 64, i2c)
 
             self.__display.contrast(51)

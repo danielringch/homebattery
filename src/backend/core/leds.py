@@ -18,9 +18,9 @@ class Leds:
                 self.__pin.off()
 
     def __init__(self):
-        self.__mqtt = self.SingleLed(4)
-        self.__control = self.SingleLed(3)
-        self.__bluetooth = self.SingleLed(2)
+        self.__mqtt = self.SingleLed(18)
+        self.__control = self.SingleLed(19)
+        self.__bluetooth = self.SingleLed(20)
         self.__watchdog = self.SingleLed("LED")
 
         self.__timer = Timer(-1)
