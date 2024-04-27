@@ -30,6 +30,10 @@ class Battery:
 
 
     async def run(self):
+        if len(self.__batteries) == 0:
+            log.battery('No batteries found.')
+            return
+
         while True:
             await asyncio.sleep(0.1)
             if time.time() < self.__next_run:
