@@ -1,15 +1,15 @@
 import network, ntptime
 from time import sleep
-from machine import WDT
 
 from uerrno import ETIMEDOUT
 from .logging import log
+from .watchdog import Watchdog
 
 class Network():
     def __init__(self, config: dict):
         self.__config = config["network"]
 
-    def connect(self, watchdog: WDT):
+    def connect(self, watchdog: Watchdog):
         watchdog.feed()
         wlan = network.WLAN(network.STA_IF)
         wlan.active(True)
@@ -26,7 +26,7 @@ class Network():
                 break
         log.debug('Network connected.')
 
-    def get_network_time(self, watchdog: WDT):
+    def get_network_time(self, watchdog: Watchdog):
         log.debug('Synchronizing clock...')
         countdown = int(self.__config['ntp_timeout']) // 2
         while True:

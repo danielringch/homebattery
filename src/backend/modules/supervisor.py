@@ -1,10 +1,10 @@
 import asyncio, sys, time
-from machine import WDT
 from ..core.types import devicetype, EnumEntry
 from ..core.logging import log
 from ..core.backendmqtt import Mqtt
 from ..core.display import display
 from ..core.leds import leds
+from ..core.watchdog import Watchdog
 from .inverter import Inverter
 from .charger import Charger
 from .battery import Battery
@@ -22,7 +22,7 @@ class Supervisor:
         def __lt__(self, other):
             return self.priority < other.priority            
 
-    def __init__(self, config: dict, watchdog: WDT, mqtt: Mqtt, modeswitcher: ModeSwitcher, inverter: Inverter, charger: Charger, battery: Battery):
+    def __init__(self, config: dict, watchdog: Watchdog, mqtt: Mqtt, modeswitcher: ModeSwitcher, inverter: Inverter, charger: Charger, battery: Battery):
         config = config['supervisor']
 
         self.__watchdog = watchdog

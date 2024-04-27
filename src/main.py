@@ -1,8 +1,8 @@
 import asyncio, gc, json
-from machine import WDT
 
 from backend.core.logging import *
 from backend.core.display import display
+from backend.core.watchdog import Watchdog
 
 
 __version__ = "0.1.0"
@@ -19,7 +19,7 @@ async def main():
     with open("/config/config.json", "r") as stream:
         config = json.load(stream)
 
-    watchdog = WDT(timeout=5000)
+    watchdog = Watchdog()
     
     from backend.core.network import Network
     log.debug('Connecting to network...')
