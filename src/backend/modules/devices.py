@@ -1,15 +1,17 @@
 import sys
 from ..core.logging import *
 
-from ..drivers.lltpowerbmsv4ble import LltPowerBmsV4Ble
 from ..drivers.ahoydtu import AhoyDtu
 from ..drivers.daly8s24v60a import Daly8S24V60A
+from ..drivers.jkbmsbd4 import JkBmsBd4
+from ..drivers.lltpowerbmsv4ble import LltPowerBmsV4Ble
 from ..drivers.shelly import Shelly
 
 drivers = {
-    'lltPowerBmsV4Ble': LltPowerBmsV4Ble,
     'ahoydtu': AhoyDtu,
     'daly8S24V60A': Daly8S24V60A,
+    'jkBmsBd4': JkBmsBd4,
+    'lltPowerBmsV4Ble': LltPowerBmsV4Ble,
     'shelly': Shelly
 }
 
