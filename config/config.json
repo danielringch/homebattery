@@ -16,7 +16,7 @@
     "user": "",
     "password": "",
     "root": "",
-    "live_power_topic": ""
+    "live_consumption_topic": ""
   },
   "logging":
   {

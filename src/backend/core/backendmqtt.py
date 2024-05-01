@@ -15,7 +15,7 @@ class Mqtt():
         user = config.get('user', None)
         password = config.get('password', None)
 
-        self.__live_consumption_topic = config["live_power_topic"]
+        self.__live_consumption_topic = config["live_consumption_topic"]
         self.__charger_state_topic = f'{config["root"]}/charger/state'
         self.__charger_energy_topic = f'{config["root"]}/charger/energy'
         self.__inverter_state_topic = f'{config["root"]}/inverter/state'
