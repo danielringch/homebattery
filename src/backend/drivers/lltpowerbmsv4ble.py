@@ -146,7 +146,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 self.__log.send(f'Voltage: {self.__data.voltage} V | Current: {self.__data.current} A')
                 self.__log.send(f'SoC: {self.__data.soc} % | Capacity: {self.__data.capacity_remaining}/{self.__data.capacity_full} Ah')
                 temperatues_str = ' ; '.join(f'{x:.1f}' for x in self.__data.temperatures)
-                self.__log.send(f'Cycles: {self.__data.cycles} Temperatures [°C]: {temperatues_str}')
+                self.__log.send(f'Cycles: {self.__data.cycles} | Temperatures [°C]: {temperatues_str}')
                 cells_str = ' ; '.join(f'{x:.3f}' for x in self.__data.cell_voltages)
                 self.__log.send(f'Cells [V]: {cells_str}')
                 return self.__data
