@@ -36,6 +36,11 @@ async def main():
     log.debug('Configuring MQTT...')
     display.print('Configuring', 'MQTT...')
     mqtt = Mqtt(config)
+ 
+    watchdog.feed()
+    log.debug('Connecting to MQTT broker...')
+    display.print('Connecting to', 'MQTT broker...')
+    await mqtt.connect()
 
     watchdog.feed()
     gc.collect()
@@ -69,12 +74,6 @@ async def main():
     from backend.modules.supervisor import Supervisor
     modeswitcher = ModeSwitcher(config, mqtt, inverter, charger)
     supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, inverter, charger, battery)
-    watchdog.feed()
-
-    log.debug('Connecting to MQTT broker...')
-    display.print('Connecting to', 'MQTT broker...')
-
-    await mqtt.connect()
     watchdog.feed()
 
     battery_task = asyncio.create_task(battery.run())
