@@ -17,16 +17,18 @@ class Daly8S24V60A(BatteryInterface):
         def parse(self, data):
             self.__complete = True
             view = memoryview(data)
-            self.voltage = struct.unpack('!H', view[79:81])[0] / 10.0
-            self.current = None
+            self.voltage = struct.unpack('!H', view[83:85])[0] / 10
+            self.current = (struct.unpack('!H', view[85:87])[0] - 30000) / 10
             self.soc = struct.unpack('!H', view[87:89])[0] / 10.0
             self.capacity_remaining = struct.unpack('!H', view[99:101])[0] / 10.0
             self.capacity_full = None
             self.cycles = struct.unpack('!H', view[105:107])[0]
-            for i in range(8):
-                position = 3 + (2 * i)
-                voltage = struct.unpack('!H', view[position: position + 2])[0] / 1000.0
-                self.cell_voltages.append(voltage)
+            temp_1 = struct.unpack('!B', view[94:95])[0] - 40
+            temp_2 = struct.unpack('!B', view[96:97])[0] - 40
+            self.temperatures = (temp_1, temp_2)
+
+            cell_format_string = '!' + ('H' * 16)
+            self.cell_voltages = tuple(x / 1000 for x in struct.unpack(cell_format_string, view[3:35]) if x > 0)
 
     def __init__(self, name, config):
         self.__device_types = (devicetype.battery,)
@@ -70,7 +72,8 @@ class Daly8S24V60A(BatteryInterface):
             
             self.__log.send(f'Voltage: {self.__data.voltage} V | Current: {self.__data.current} A')
             self.__log.send(f'SoC: {self.__data.soc} % | {self.__data.capacity_remaining} / {self.__data.capacity_full} Ah')
-            self.__log.send(f'Cycles: {self.__data.cycles}')
+            temperatues_str = ' ; '.join(f'{x:.1f}' for x in self.__data.temperatures)
+            self.__log.send(f'Cycles: {self.__data.cycles} | Temperatures [°C]: {temperatues_str}')
             cells_str = ' | '.join(f'{x:.3f}' for x in self.__data.cell_voltages)
             self.__log.send(f'Cells [V]: {cells_str}')
             return self.__data
