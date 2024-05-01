@@ -52,7 +52,12 @@
       "threshold": 3.1,
       "hysteresis": 0.1
     },
-    "live_data_lost":
+    "live_data_lost_charge":
+    {
+      "enabled": true,
+      "threshold": 180
+    },
+    "live_data_lost_discharge":
     {
       "enabled": true,
       "threshold": 60

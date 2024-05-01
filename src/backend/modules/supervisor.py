@@ -44,7 +44,8 @@ class Supervisor:
                 self.BatteryOfflineChecker(config, battery),
                 self.CellHighChecker(config, battery),
                 self.CellLowChecker(config, battery),
-                self.LiveDataOfflineChecker(config, mqtt),
+                self.LiveDataOfflineChargeChecker(config, mqtt),
+                self.LiveDataOfflineDischargeChecker(config, mqtt),
                 self.MqttOfflineChecker(config, mqtt),
                 self.StartupChecker(config, self.__locks))
 
@@ -184,9 +185,25 @@ class Supervisor:
             self.__threshold_exceeded = battery_data.max_cell_voltage < threshold
             return (self.__threshold_exceeded, self._lock)
         
-    class LiveDataOfflineChecker(SubChecker):
+    class LiveDataOfflineChargeChecker(SubChecker):
         def __init__(self, config, mqtt):
-            super().__init__(config, 'live_data_lost', 10, (devicetype.inverter, devicetype.charger))
+            super().__init__(config, 'live_data_lost_charge', 11, (devicetype.charger,))
+            self.__threshold = int(config[self.__name]['threshold'])
+            self.__last_data = 0
+            mqtt.on_live_consumption.add(self.__on_live_consumption)
+
+        def check(self, now):
+            if self._lock is None:
+                return None
+            active = bool((now - self.__last_data) > self.__threshold)
+            return (active, self._lock)
+        
+        def __on_live_consumption(self, _):
+            self.__last_data = time.time()
+
+    class LiveDataOfflineDischargeChecker(SubChecker):
+        def __init__(self, config, mqtt):
+            super().__init__(config, 'live_data_lost_discharge', 10, (devicetype.inverter,))
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_data = 0
             mqtt.on_live_consumption.add(self.__on_live_consumption)
