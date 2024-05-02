@@ -1,10 +1,10 @@
-import asyncio, time
+import asyncio
 from machine import Pin
 
 from .interfaces.solarinterface import SolarInterface
 from ..core.addonport import addon_ports
+from ..core.byteringbuffer import ByteRingBuffer
 from ..core.logging import log
-from ..core.microdeque import MicroDeque
 from ..core.types import bool2on, CallbackCollection, devicetype
 
 class VictronMppt(SolarInterface):
@@ -20,7 +20,7 @@ class VictronMppt(SolarInterface):
            raise Exception(f'Unknown port: {port}')
         self.__port.connect(19200, 0, None, 1)
         self.__port.on_rx.add(self.__on_rx)
-        self.__rx_packets = MicroDeque(32)
+        self.__rx_buffer = ByteRingBuffer(1024)
         self.__rx_task = asyncio.create_task(self.__receive())
         self.__rx_trigger = asyncio.Event()
 
@@ -66,9 +66,9 @@ class VictronMppt(SolarInterface):
     def device_types(self):
         return self.__device_types
     
-    def __on_rx(self, data):
-        if not self.__rx_packets.full():
-            self.__rx_packets.append(data)
+    def __on_rx(self, data, length):
+        if not self.__rx_buffer.full():
+            self.__rx_buffer.extend(data, length)
             self.__rx_trigger.set()
         else:
             self.__log.send('Input buffer overflow.')
@@ -80,25 +80,24 @@ class VictronMppt(SolarInterface):
         split = 0
         
         while True:
-            while not self.__rx_packets.empty():
-                blob = self.__rx_packets.popleft()
-                for byte in blob:
-                    if byte == 13:
-                        # ignore \r
-                        pass
-                    elif byte == 10:
-                        if pointer > 0:
-                            header = view[:split]
-                            payload = view[split:pointer] if pointer > split else None
-                            self.__parse(header, payload)
-                            pointer = 0
-                            split = 0
-                    elif byte == 9:
-                        split = pointer
-                    else:
-                        buffer[pointer] = byte
-                        pointer += 1
-                        pointer = min(pointer, len(buffer) - 1)
+            while not self.__rx_buffer.empty():
+                byte = self.__rx_buffer.popleft()
+                if byte == 13:
+                    # ignore \r
+                    pass
+                elif byte == 10:
+                    if pointer > 0:
+                        header = view[:split]
+                        payload = view[split:pointer] if pointer > split else None
+                        self.__parse(header, payload)
+                        pointer = 0
+                        split = 0
+                elif byte == 9:
+                    split = pointer
+                else:
+                    buffer[pointer] = byte
+                    pointer += 1
+                    pointer = min(pointer, len(buffer) - 1)
 
             await self.__rx_trigger.wait()
             self.__rx_trigger.clear()

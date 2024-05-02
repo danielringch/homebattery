@@ -13,6 +13,7 @@ class AddonPort:
         self.__uart = UART(uart_id)
         _ = spi_id
 
+        self.__rx_buffer = bytearray(64)
         self.__connected = False
         self.__rx_task = None
         self.__on_rx = CallbackCollection()
@@ -30,10 +31,9 @@ class AddonPort:
     async def __receive(self):
         while self.__connected:
             while True:
-                bytes = self.__uart.any()
-                if bytes > 0:
-                    data = self.__uart.read(min(64, bytes))
-                    self.on_rx.run_all(data)
+                if self.__uart.any() > 0:
+                    length = self.__uart.readinto(self.__rx_buffer)
+                    self.on_rx.run_all(self.__rx_buffer, length)
                 else:
                     break
             await asyncio.sleep(0.1)
