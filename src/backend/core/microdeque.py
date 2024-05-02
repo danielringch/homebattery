@@ -37,6 +37,9 @@ class MicroDeque:
 
     def empty(self):
         return self.__start == self.__end
+    
+    def full(self):
+        return self.__increment(self.__end) == self.__start
 
     def clear(self):
         i = self.__start
