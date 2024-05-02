@@ -68,11 +68,11 @@ async def main():
     gc.collect()
 
     from backend.modules.solar import Solar
-    solar = Solar(config, devices)
+    solar = Solar(config, devices, mqtt)
 
     from backend.modules.modeswitcher import ModeSwitcher
     from backend.modules.supervisor import Supervisor
-    modeswitcher = ModeSwitcher(config, mqtt, inverter, charger)
+    modeswitcher = ModeSwitcher(config, mqtt, inverter, charger, solar)
     supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, inverter, charger, battery)
     watchdog.feed()
 

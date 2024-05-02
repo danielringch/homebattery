@@ -6,6 +6,7 @@ from ..core.backendmqtt import Mqtt
 from .devices import Devices
 
 operation_mode_to_charge_mode = {
+    operationmode.protect: chargemode.off,
     operationmode.idle: chargemode.off,
     operationmode.discharge: chargemode.off,
     operationmode.charge: chargemode.charge

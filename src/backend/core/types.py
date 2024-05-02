@@ -102,6 +102,7 @@ class OperationModeValues:
         self.charge = OperationMode('charge', self.__dict)
         self.discharge = OperationMode('discharge', self.__dict)
         self.idle = OperationMode('idle', self.__dict)
+        self.protect = OperationMode('protect', self.__dict)
 
     def from_string(self, str):
         return self.__dict[str]
