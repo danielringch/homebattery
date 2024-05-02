@@ -30,6 +30,9 @@ class Logging:
     def debug(self, message):
         self.__send('debug', message)
 
+    def display(self, message):
+        self.__send('display', message)
+
     def error(self, message):
         self.__send('error', message)
 

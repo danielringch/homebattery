@@ -1,5 +1,6 @@
 from machine import Pin, I2C
 from .ssd1306 import SSD1306
+from .logging import log
 from .types import OperationMode
 
 class Display:
@@ -12,6 +13,7 @@ class Display:
 
             self.__display.show()
         except OSError as e:
+            log.display('No display detected.')
             self.__display = None
 
         self.__mode = None
@@ -53,7 +55,10 @@ class Display:
         for line in lines:
             self.__display.text(line, 0, i, 1)
             i += 10
-        self.__display.show()
+        try:
+            self.__display.show()
+        except OSError as e:
+            log.display(f'Update failed: {e}')
 
     def __refresh(self):
         mode = f'Mode: {self.__mode.name if self.__mode else "unknown"}'
