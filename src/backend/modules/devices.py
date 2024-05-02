@@ -6,13 +6,15 @@ from ..drivers.daly8s24v60a import Daly8S24V60A
 from ..drivers.jkbmsbd4 import JkBmsBd4
 from ..drivers.lltpowerbmsv4ble import LltPowerBmsV4Ble
 from ..drivers.shelly import Shelly
+from ..drivers.victronmppt import VictronMppt
 
 drivers = {
     'ahoydtu': AhoyDtu,
     'daly8S24V60A': Daly8S24V60A,
     'jkBmsBd4': JkBmsBd4,
     'lltPowerBmsV4Ble': LltPowerBmsV4Ble,
-    'shelly': Shelly
+    'shelly': Shelly,
+    'victronmppt': VictronMppt
 }
 
 class Devices:
