@@ -1,23 +1,18 @@
-import asyncio, time
+import asyncio, sys, time
+from collections import deque
 from ..drivers.shelly import *
-from ..core.types import OperationMode, operationmode, ChargeMode, chargemode, CallbackCollection, devicetype
+from ..core.types import bool2on, CommandBundle, OperationMode, operationmode, CallbackCollection, devicetype
 from ..core.logging import *
 from ..core.backendmqtt import Mqtt
 from .devices import Devices
 
-operation_mode_to_charge_mode = {
-    operationmode.protect: chargemode.off,
-    operationmode.idle: chargemode.off,
-    operationmode.discharge: chargemode.off,
-    operationmode.charge: chargemode.charge
-}
-
 class Charger:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
         self.__lock = asyncio.Lock()
+        self.__commands = deque((), 10)
         self.__mqtt = mqtt
 
-        self.__charge_mode = None
+        self.__last_state = None
 
         self.__on_energy = CallbackCollection()
 
@@ -26,6 +21,7 @@ class Charger:
             if devicetype.charger not in device.device_types:
                 continue
             self.__chargers.append(device)
+            device.on_charger_status_change.add(self.__on_charger_status)
 
         self.__set_next_energy_execution()
 
@@ -34,60 +30,51 @@ class Charger:
             try:
                 now = time.time()
                 async with self.__lock:
+                    while len(self.__commands) > 0:
+                        await self.__commands.popleft().run()
                     if now >= self.__next_energy_execution:
                         await self.__get_energy()
                         self.__set_next_energy_execution()
             except Exception as e:
                 log.error(f'Charger cycle failed: {e}')
+                sys.print_exception(e, log.trace)
             await asyncio.sleep(0.1)
 
     async def is_on(self):
         async with self.__lock:
-            actual_mode = await self.__get_charge_mode()
-            if actual_mode == self.__charge_mode:
-                return actual_mode != chargemode.off
-            return None
+            return await self.__get_state()
 
     async def set_mode(self, mode: OperationMode):
         async with self.__lock:
-            self.__charge_mode = operation_mode_to_charge_mode[mode]
+            shall_on = mode == operationmode.charge
+            if shall_on == self.__last_state:
+                # mode request must be answered
+                self.__mqtt.send_charger_state(self.__last_state)
             for charger in self.__chargers:
-                await charger.switch_charger(self.__charge_mode == chargemode.charge)
-
-            state_confirmed, state = await self.__confirm_on(self.__charge_mode)
-            if not state_confirmed:
-                log.alert(f'Not all chargers are confirmed in mode {self.__charge_mode.name}.')
-                state = None
-            on = None if state is None else state != chargemode.off
-            self.__mqtt.send_charger_state(on)
-            return on
+                await charger.switch_charger(shall_on)
 
     @property
     def on_energy(self):
         return self.__on_energy
 
-    async def __confirm_on(self, mode: ChargeMode, retries: int =15):
-        for _ in range(retries):
-            actual_mode = await self.__get_charge_mode()
-            if mode == actual_mode:
-                return True, actual_mode
-            await asyncio.sleep(2.0)
-        else:
-            return False, actual_mode
-
-    async def __get_charge_mode(self):
+    async def __get_state(self):
         if len(self.__chargers) == 0:
             return False
         mode = None
         for charger in self.__chargers:
-            on = await charger.is_charger_on()
+            on = charger.get_charger_status()
             if on is None:
-                return None
+                mode = None
+                break
             if mode is None:
                 mode = on
             elif on != mode:
-                return None
-        return chargemode.charge if on else chargemode.off
+                mode = None
+                break
+        if self.__last_state != on:
+            self.__mqtt.send_charger_state(on)
+            self.__last_state = on
+        return on
 
     async def __get_energy(self):
         energy = 0.0
@@ -105,3 +92,6 @@ class Charger:
         extra_seconds = (minutes % 15) * 60 + seconds
         seconds_to_add = (15 * 60) - extra_seconds
         self.__next_energy_execution = now_seconds + seconds_to_add
+
+    def __on_charger_status(self, status):
+        self.__commands.append(CommandBundle(self.__get_state, ()))

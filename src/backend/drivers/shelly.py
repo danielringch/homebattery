@@ -3,7 +3,7 @@ from .interfaces.chargerinterface import ChargerInterface
 from ..core.microaiohttp import ClientSession
 from ..core.leds import leds
 from ..core.logging import log
-from ..core.types import devicetype
+from ..core.types import CallbackCollection, devicetype
 
 class Shelly(ChargerInterface):
     __refresh_interval = 120
@@ -22,6 +22,8 @@ class Shelly(ChargerInterface):
         self.__sync_trigger = asyncio.Event()
         self.__sync_task = asyncio.create_task(self.__sync())
 
+        self.__on_status_change = CallbackCollection()
+
         self.__on_request = f'relay/{self.__relay_id}?turn=on&timer=300'
         self.__off_request = f'relay/{self.__relay_id}?turn=off'
         self.__state_request = f'relay/{self.__relay_id}'
@@ -32,15 +34,12 @@ class Shelly(ChargerInterface):
         self.__shall_on = on
         self.__sync_trigger.set()
 
-    async def is_charger_on(self):
-        self.__is_on = None
-        self.__sync_trigger.set()
-        for _ in range(10):
-            await asyncio.sleep(0.5)
-            if self.__is_on is not None:
-                return self.__is_on
-        else:
-            return None
+    def get_charger_status(self):
+        return self.__is_on
+    
+    @property
+    def on_charger_status_change(self):
+        return self.__on_status_change
 
     async def get_charger_energy(self):
         with self.__create_session() as session:
@@ -61,9 +60,13 @@ class Shelly(ChargerInterface):
             is_synced = False
             with self.__create_session() as session:
                 json = await self.__get(session, self.__state_request)
+                was_on = self.__is_on
                 self.__is_on = json['ison'] if json is not None else None
-                is_synced = self.__is_on == self.__shall_on
                 self.__log.send(f'State: on={self.__is_on}, synced={is_synced}')
+                if self.__is_on != was_on:
+                    self.__on_status_change.run_all(self.__is_on)
+
+                is_synced = self.__is_on == self.__shall_on
                 now = time.time()
                 if not is_synced or\
                         (self.__shall_on and (now - self.__last_on_command) >= (self.__refresh_interval - 5)):

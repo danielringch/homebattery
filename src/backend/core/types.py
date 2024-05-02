@@ -109,20 +109,6 @@ class OperationModeValues:
     
 operationmode = OperationModeValues()
 
-class ChargeMode(EnumEntry):
-    pass
-
-class ChargeModeValues:
-    def __init__(self):
-        self.__dict = {}
-        self.off = ChargeMode('off', self.__dict)
-        self.charge = ChargeMode('charge', self.__dict)
-
-    def from_string(self, str):
-        return self.__dict[str]
-    
-chargemode = ChargeModeValues()
-
 class DeviceType(EnumEntry):
     pass
 
