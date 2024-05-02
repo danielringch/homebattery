@@ -34,6 +34,8 @@ class BatterySummary:
 
 bool2string = {True: 'true', False: 'false', None: 'none'}
 
+bool2on = {True: 'on', False: 'off', None: 'unknown'}
+
 class CallbackCollection:
     def __init__(self):
         self.__callbacks = list()
