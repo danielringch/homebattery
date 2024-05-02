@@ -80,6 +80,16 @@
       "driver": "daly8S24V60A",
       "mac": ""
     },
+    "bat3":
+    {
+      "driver": "jkBmsBd4",
+      "mac": ""
+    },
+    "sol1":
+    {
+      "driver": "victronmppt",
+      "port": "ext1"
+    },
     "chrg1":
     {
       "driver": "shelly",
