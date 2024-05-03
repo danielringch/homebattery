@@ -4,10 +4,11 @@ class ByteRingBufferOverflowError(Exception):
 
 class ByteRingBuffer:
     def __init__(self, size):
-        self.__buffer = bytearray(size + 1)
+        self.__max = size + 1
+        self.__buffer = bytearray(self.__max)
+        self.__view = memoryview(self.__buffer)
         self.__begin = 0
         self.__end = 0
-        self.__max = size
 
     def __bool__(self):
         return not self.empty()
@@ -16,18 +17,18 @@ class ByteRingBuffer:
         if self.__begin < self.__end:
             return self.__end - self.__begin
         else:
-            return (self.__max + 1) - (self.__begin - self.__end)
+            return (self.__max) - (self.__begin - self.__end)
         
     def __getitem__(self, index):
         #TODO bounday checks
         if index >= 0:
             tmp_index = self.__begin + index
-            if tmp_index > self.__max:
-                tmp_index -= self.__max + 1
+            if tmp_index >= self.__max:
+                tmp_index -= self.__max
         else:
             tmp_index = self.__end + index
             if tmp_index < 0:
-                tmp_index += self.__max + 1
+                tmp_index += self.__max
         return self.__buffer[tmp_index]
     
     def __iter__(self):
@@ -42,17 +43,18 @@ class ByteRingBuffer:
     def clear(self):
         self.__begin = self.__end
 
-    def append(self, byte):
+    def append(self, byte, ignore_overflow=False):
         self.__buffer[self.__end] = byte
         self.__end = self.__increment(self.__end)
         if self.__end == self.__begin: #overflow
             self.__begin = self.__increment(self.__begin)
-            raise ByteRingBufferOverflowError('Deque overflow.')
+            if not ignore_overflow:
+                raise ByteRingBufferOverflowError('Deque overflow.')
         
-    def extend(self, bytes, length):
+    def extend(self, bytes, length, ignore_overflow=False):
         effective_length = min(len(bytes), length)
         for i in range(effective_length):
-            self.append(bytes[i])
+            self.append(bytes[i], ignore_overflow)
 
     def peekleft(self):
         if self.empty():
@@ -65,12 +67,24 @@ class ByteRingBuffer:
         value = self.__buffer[self.__begin]
         self.__begin = self.__increment(self.__begin)
         return value
-
-    def __increment(self, value):
-        if value >= self.__max:
-            return 0
+    
+    def popuntil(self, length):
+        length = min(length, self.__len__())
+        if self.__begin + length >= self.__max:
+            result = self.__view[self.__begin:]
+            self.__begin = 0
         else:
-            return value + 1
+            begin = self.__begin
+            self.__begin = self.__increment(self.__begin, length)
+            result = self.__view[begin:self.__begin]
+        return result
+
+    def __increment(self, value, step=1):
+        value += step
+        if value >= self.__max:
+            return value - self.__max
+        else:
+            return value
 
     class Iter:
         def __init__(self, instance):
