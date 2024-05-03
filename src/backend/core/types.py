@@ -2,13 +2,34 @@ import struct
 
 class BatteryData:
     def __init__(self):
-        self.voltage = None
-        self.current = None
-        self.capacity_remaining = None
-        self.capacity_full = None
-        self.cycles = None
+        self.v = None
+        self.i = None
         self.soc = None
-        self.cell_voltages = list()
+        self.c = None
+        self.c_full = None
+        self.n = None
+        self.temps = tuple()
+        self.cells = tuple()
+        self.valid = False
+
+    def update(self, v, i, soc, c, c_full, n, temps, cells):
+        self.v = v # voltage [V]
+        self.i = i # current [A]
+        self.soc = soc # state of charge [%]
+        self.c = c # capacity remaining [Ah]
+        self.c_full = c_full # capacity full [Ah]
+        self.n = n # cycles
+        self.temps = temps # cell temperatures [°C]
+        self.cells = cells # cell voltages [V]
+        self.valid = True
+
+    def invalidate(self):
+        self.valid = False
+
+    def __str__(self) -> str:
+        temperatues_str = ' ; '.join(f'{x:.1f}' for x in self.temps)
+        cells_str = ' | '.join(f'{x:.3f}' for x in self.cells)
+        return f'Voltage: {self.v} V | Current: {self.i} A\nSoC: {self.soc} % | {self.c} / {self.c_full} Ah\nCycles: {self.n} | Temperatures [°C]: {temperatues_str}\nCells [V]: {cells_str}'
 
 class BatterySummary:
     def __init__(self):
@@ -20,17 +41,17 @@ class BatterySummary:
     def merge(self, battery: BatteryData):
         if self.capacity_remaining is None:
             self.capacity_remaining = 0.0
-        self.capacity_remaining += battery.capacity_remaining
+        self.capacity_remaining += battery.c
 
         if self.min_cell_voltage is None:
-            self.min_cell_voltage = min(battery.cell_voltages)
+            self.min_cell_voltage = min(battery.cells)
         else:
-            self.min_cell_voltage = min(self.min_cell_voltage, min(battery.cell_voltages))
+            self.min_cell_voltage = min(self.min_cell_voltage, min(battery.cells))
 
         if self.max_cell_voltage is None:
-            self.max_cell_voltage = max(battery.cell_voltages)
+            self.max_cell_voltage = max(battery.cells)
         else:
-            self.max_cell_voltage = max(self.max_cell_voltage, max(battery.cell_voltages))
+            self.max_cell_voltage = max(self.max_cell_voltage, max(battery.cells))
 
 bool2string = {True: 'true', False: 'false', None: 'none'}
 

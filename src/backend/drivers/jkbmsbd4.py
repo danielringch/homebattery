@@ -1,4 +1,5 @@
 import asyncio, bluetooth, ubinascii, struct, sys
+from micropython import const
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, ble_instance
 from ..core.logging import log
@@ -7,33 +8,9 @@ from ..core.types import BatteryData, devicetype
 # ressources:
 
 
+_JK_CELL_FORMAT_STR = const('<HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH')
+
 class JkBmsBd4(BatteryInterface):
-    class DataBundle(BatteryData):
-        def __init__(self):
-            super().__init__()
-            self.__complete = False
-        
-        @property
-        def complete(self):
-            return self.__complete
-        
-        def parse(self, decoder):
-            view = decoder.data
-            self.voltage = struct.unpack('<I', view[144:148])[0] / 1000
-            self.current = struct.unpack('<i', view[152:156])[0] / 1000
-            self.capacity_remaining = struct.unpack('<I', view[168:172])[0] / 1000
-            self.capacity_full = struct.unpack('<I', view[172:176])[0] / 1000
-            self.cycles = struct.unpack('<I', view[176:180])[0]
-            self.soc = struct.unpack('!B', view[167:168])[0]
-
-            number_of_cells = 32
-            format_string = '<' + ('H' * number_of_cells)
-            self.cell_voltages = tuple(x / 1000 for x in struct.unpack(format_string, view[0:2 * number_of_cells]) if x > 0)
-
-            self.temperatures = tuple(x / 10 for x in struct.unpack('<HH', view[156:160]))
-            
-            self.__complete = True
-
     class MesssageDecoder:
         def __init__(self, log):
             self.__log = log
@@ -80,12 +57,12 @@ class JkBmsBd4(BatteryInterface):
 
         self.__device = None
         self.__receive_task = None
-        self.__data = None
+        self.__data = BatteryData()
         self.__current_decoder = None
 
     async def read_battery(self):
         try:
-            self.__data = self.DataBundle()
+            self.__data.invalidate()
 
             if self.__device is None:
                 self.__device = MicroBleDevice(ble_instance)
@@ -109,15 +86,11 @@ class JkBmsBd4(BatteryInterface):
             success = await self.__send(characteristic,
                                          ubinascii.unhexlify('aa5590eb960013e9e22d518e1f56085727a705a1'))
             if success:
-                self.__data.parse(self.__current_decoder)
+                self.__parse(self.__current_decoder.data)
 
-            if self.__data.complete:
-                self.__log.send(f'Voltage: {self.__data.voltage} V | Current: {self.__data.current} A')
-                self.__log.send(f'SoC: {self.__data.soc} % | Capacity: {self.__data.capacity_remaining:.1f}/{self.__data.capacity_full:.1f} Ah')
-                temperatues_str = ' ; '.join(f'{x:.1f}' for x in self.__data.temperatures)
-                self.__log.send(f'Cycles: {self.__data.cycles} | Temperatures [°C]: {temperatues_str}')
-                cells_str = ' ; '.join(f'{x:.3f}' for x in self.__data.cell_voltages)
-                self.__log.send(f'Cells [V]: {cells_str}')
+            if self.__data.valid:
+                for line in str(self.__data).split('\n'):
+                    self.__log.send(line)
                 return self.__data
             else:
                 self.__log.send(f'Failed to receive battery data.')
@@ -134,7 +107,6 @@ class JkBmsBd4(BatteryInterface):
             if self.__device is not None:
                 await self.__device.disconnect()
             self.__current_decoder = None
-            self.__data = None
 
     @property
     def device_types(self):
@@ -144,7 +116,7 @@ class JkBmsBd4(BatteryInterface):
         characteristic.enable_rx()
         while True:
             response = await characteristic.notified()
-            if self.__data is None or self.__current_decoder is None:
+            if self.__current_decoder is None:
                 continue
             self.__current_decoder.read(response)
 
@@ -158,3 +130,18 @@ class JkBmsBd4(BatteryInterface):
                     return True
             self.__log.send(f'Attempt {i} for command failed.')
         return False
+    
+    def __parse(self, data):
+        temps = tuple(x / 10 for x in struct.unpack('<HH', data[156:160]))
+        cells = tuple(x / 1000 for x in struct.unpack(_JK_CELL_FORMAT_STR, data[0:64]) if x > 0)
+
+        self.__data.update(
+            v=struct.unpack('<I', data[144:148])[0] / 1000,
+            i=struct.unpack('<i', data[152:156])[0] / 1000,
+            soc=struct.unpack('!B', data[167:168])[0],
+            c=struct.unpack('<I', data[168:172])[0] / 1000,
+            c_full=struct.unpack('<I', data[172:176])[0] / 1000,
+            n=struct.unpack('<I', data[176:180])[0],
+            temps=temps,
+            cells=cells
+        )

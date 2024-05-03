@@ -1,35 +1,13 @@
 import asyncio, bluetooth, ubinascii, struct, sys
+from micropython import const
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, ble_instance
 from ..core.logging import log
 from ..core.types import BatteryData, devicetype
 
+_DALY_CELL_FORMAT_STR = const('!HHHHHHHHHHHHHHHH')
+
 class Daly8S24V60A(BatteryInterface):
-    class DataBundle(BatteryData):
-        def __init__(self):
-            super().__init__()
-            self.__complete = False
-
-        @property
-        def complete(self):
-            return self.__complete
-
-        def parse(self, data):
-            self.__complete = True
-            view = memoryview(data)
-            self.voltage = struct.unpack('!H', view[83:85])[0] / 10
-            self.current = (struct.unpack('!H', view[85:87])[0] - 30000) / 10
-            self.soc = struct.unpack('!H', view[87:89])[0] / 10.0
-            self.capacity_remaining = struct.unpack('!H', view[99:101])[0] / 10.0
-            self.capacity_full = None
-            self.cycles = struct.unpack('!H', view[105:107])[0]
-            temp_1 = struct.unpack('!B', view[94:95])[0] - 40
-            temp_2 = struct.unpack('!B', view[96:97])[0] - 40
-            self.temperatures = (temp_1, temp_2)
-
-            cell_format_string = '!' + ('H' * 16)
-            self.cell_voltages = tuple(x / 1000 for x in struct.unpack(cell_format_string, view[3:35]) if x > 0)
-
     def __init__(self, name, config):
         self.__device_types = (devicetype.battery,)
         self.__mac = config['mac']
@@ -38,11 +16,12 @@ class Daly8S24V60A(BatteryInterface):
 
         self.__device = None
         self.__receive_task = None
-        self.__data = None
+        self.__receiving = False
+        self.__data = BatteryData()
 
     async def read_battery(self):
         try:
-            self.__data = self.DataBundle()
+            self.__data.invalidate()
 
             if self.__device is None:
                 self.__device = MicroBleDevice(ble_instance)
@@ -60,22 +39,19 @@ class Daly8S24V60A(BatteryInterface):
             await tx_characteristic.write(b'')
             await rx_descriptor.write(ubinascii.unhexlify('01'), is_request=True)
 
+            self.__receiving = True
             await tx_characteristic.write(ubinascii.unhexlify('d2030000003ed7b9'))
 
             for _ in range(50):
                 await asyncio.sleep(0.1)
-                if self.__data.complete:
+                if self.__data.valid:
                     break
             else:
                 self.__log.send(f'Failed to receive battery data.')
                 return None
             
-            self.__log.send(f'Voltage: {self.__data.voltage} V | Current: {self.__data.current} A')
-            self.__log.send(f'SoC: {self.__data.soc} % | {self.__data.capacity_remaining} / {self.__data.capacity_full} Ah')
-            temperatues_str = ' ; '.join(f'{x:.1f}' for x in self.__data.temperatures)
-            self.__log.send(f'Cycles: {self.__data.cycles} | Temperatures [°C]: {temperatues_str}')
-            cells_str = ' | '.join(f'{x:.3f}' for x in self.__data.cell_voltages)
-            self.__log.send(f'Cells [V]: {cells_str}')
+            for line in str(self.__data).split('\n'):
+                self.__log.send(line)
             return self.__data
 
         except MicroBleTimeoutError as e:
@@ -88,7 +64,6 @@ class Daly8S24V60A(BatteryInterface):
                 self.__receive_task.cancel()
             if self.__device is not None:
                 await self.__device.disconnect()
-            self.__data = None
 
     @property
     def device_types(self):
@@ -98,13 +73,31 @@ class Daly8S24V60A(BatteryInterface):
         characteristic.enable_rx()
         while True:
             response = await characteristic.notified()
-            if self.__data is None:
+            if not self.__receiving:
                 continue
             if len(response) < 128:
                 self.__log.send(f'Dropping too short bluetooth packet, mac={self.__mac}, len={len(response)}.')
                 continue
             if response[0] == 0xd2 and response[1] == 0x03 and response[2] == 0x7c:
-                self.__data.parse(response)
+                self.__parse(response)
+                self.__receiving = False
                 continue
                     
             self.__log.send(f'Dropping unknown bluetooth packet, mac={self.__mac}, data={response} .')
+
+    def __parse(self, data):
+        temp_1 = struct.unpack('!B', data[94:95])[0] - 40
+        temp_2 = struct.unpack('!B', data[96:97])[0] - 40
+        temps = (temp_1, temp_2)
+        cells = tuple(x / 1000 for x in struct.unpack(_DALY_CELL_FORMAT_STR, memoryview(data)[3:35]) if x > 0)
+
+        self.__data.update(
+                v=struct.unpack('!H', data[83:85])[0] / 10,
+                i=(struct.unpack('!H', data[85:87])[0] - 30000) / 10,
+                soc=struct.unpack('!H', data[87:89])[0] / 10.0,
+                c=struct.unpack('!H', data[99:101])[0] / 10.0,
+                c_full=0,
+                n=struct.unpack('!H', data[105:107])[0],
+                temps=temps,
+                cells=cells
+        )

@@ -10,49 +10,43 @@ from ..core.types import BatteryData, devicetype
 # https://www.lithiumbatterypcb.com/wp-content/uploads/2023/05/RS485-UART-RS232-Communication-protocol.pdf
 
 class LltPowerBmsV4Ble(BatteryInterface):
-    class DataBundle(BatteryData):
+    class DataBundle:
         def __init__(self):
-            super().__init__()
-            self.__general_present = False
-            self.__cells_present = False
-        
+            self.__general_blob = None
+            self.__cells_blob = None
+
+        def add(self, decoder):
+            if decoder.command == 3:
+                self.__general_blob = decoder.data
+            elif decoder.command == 4:
+                self.__cells_blob = decoder.data
+
         @property
         def complete(self):
-            return self.__general_present and self.__cells_present
+            return self.__general_blob is not None and self.__cells_blob is not None
         
-        def parse(self, decoder):
-            if decoder.command == 3:
-                self.__parse_general(decoder)
-            elif decoder.command == 4:
-                self.__parse_cells(decoder)
+        def parse(self, battery_data: BatteryData):
+            if not self.complete:
+                return None
+            g = self.__general_blob
+            c = self.__cells_blob
+            number_of_temperatures = (len(g) - 23) // 2
+            temp_format_string = '!' + ('H' * number_of_temperatures)
+            temps = tuple((x - 2731) / 10 for x in struct.unpack(temp_format_string, g[23:23 +  (2 * number_of_temperatures)]))
+            number_of_cells = len(c) // 2
+            cell_format_string = '!' + ('H' * number_of_cells)
+            cells = tuple(x / 1000 for x in struct.unpack(cell_format_string, c[0:(2 * number_of_cells)]))
 
-        def __parse_general(self, decoder):
-            view = decoder.data
-            self.voltage = struct.unpack('!H', view[0:2])[0] / 100.0
-            self.current = struct.unpack('!h', view[2:4])[0] / 100.0
-            self.capacity_remaining = struct.unpack('!H', view[4:6])[0] / 100.0
-            self.capacity_full = struct.unpack('!H', view[6:8])[0] / 100.0
-            self.cycles = struct.unpack('!H', view[8:10])[0]
-            # bytes 10+11 are production date
-            # bytes 12+13 are balance low
-            # bytes 14+15 are balance high
-            # bytes 16+17 are protection
-            # byte 18 is version
-            self.soc = struct.unpack('!B', view[19:20])[0]
-            # byte 20 is MOS status
-            # byte 21 is number of cells
-            # byte 22 is number of temperature probes
-            number_of_temperatures = (len(view) - 23) // 2
-            format_string = '!' + ('H' * number_of_temperatures)
-            self.temperatures = tuple((x - 2731) / 10 for x in struct.unpack(format_string, view[23:23 +  (2 * number_of_temperatures)]))
-            self.__general_present = True
-
-        def __parse_cells(self, decoder):
-            view = decoder.data
-            number_of_cells = len(view) // 2
-            format_string = '!' + ('H' * number_of_cells)
-            self.cell_voltages = tuple(x / 1000 for x in struct.unpack(format_string, view[0:(2 * number_of_cells)]))
-            self.__cells_present = True
+            battery_data.update(
+                v=struct.unpack('!H', g[0:2])[0] / 100.0,
+                i=struct.unpack('!h', g[2:4])[0] / 100.0,
+                soc=struct.unpack('!B', g[19:20])[0],
+                c=struct.unpack('!H', g[4:6])[0] / 100.0,
+                c_full=struct.unpack('!H', g[6:8])[0] / 100.0,
+                n=struct.unpack('!H', g[8:10])[0],
+                temps=temps,
+                cells=cells
+            )
 
     class MesssageDecoder:
         def __init__(self, log):
@@ -110,12 +104,14 @@ class LltPowerBmsV4Ble(BatteryInterface):
 
         self.__device = None
         self.__receive_task = None
-        self.__data = None
+        self.__data = BatteryData()
+        self.__current_bundle = None
         self.__current_decoder = None
 
     async def read_battery(self):
         try:
-            self.__data = self.DataBundle()
+            self.__data.invalidate()
+            self.__current_bundle = self.DataBundle()
 
             if self.__device is None:
                 self.__device = MicroBleDevice(ble_instance)
@@ -136,19 +132,16 @@ class LltPowerBmsV4Ble(BatteryInterface):
             success = await self.__send(send_characteristic,
                                          ubinascii.unhexlify('dda50300fffd77'))
             if success:
-                self.__data.parse(self.__current_decoder)
+                self.__current_bundle.add(self.__current_decoder)
                 success = await self.__send(send_characteristic,
                                              ubinascii.unhexlify('dda50400fffc77'))
                 if success:
-                    self.__data.parse(self.__current_decoder)
+                    self.__current_bundle.add(self.__current_decoder)
 
-            if self.__data.complete:
-                self.__log.send(f'Voltage: {self.__data.voltage} V | Current: {self.__data.current} A')
-                self.__log.send(f'SoC: {self.__data.soc} % | Capacity: {self.__data.capacity_remaining}/{self.__data.capacity_full} Ah')
-                temperatues_str = ' ; '.join(f'{x:.1f}' for x in self.__data.temperatures)
-                self.__log.send(f'Cycles: {self.__data.cycles} | Temperatures [°C]: {temperatues_str}')
-                cells_str = ' ; '.join(f'{x:.3f}' for x in self.__data.cell_voltages)
-                self.__log.send(f'Cells [V]: {cells_str}')
+            if self.__current_bundle.complete:
+                self.__current_bundle.parse(self.__data)
+                for line in str(self.__data).split('\n'):
+                    self.__log.send(line)
                 return self.__data
             else:
                 self.__log.send(f'Failed to receive battery data.')
@@ -165,7 +158,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
             if self.__device is not None:
                 await self.__device.disconnect()
             self.__current_decoder = None
-            self.__data = None
+            self.__current_bundle = None
 
     @property
     def device_types(self):
@@ -175,7 +168,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
         characteristic.enable_rx()
         while True:
             response = await characteristic.notified()
-            if self.__data is None or self.__current_decoder is None:
+            if self.__current_decoder is None:
                 continue
             self.__current_decoder.read(response)
 
