@@ -1,4 +1,4 @@
-import asyncio, ubinascii
+import asyncio, gc, ubinascii
 from collections import deque, OrderedDict
 from ubinascii import hexlify
 from machine import unique_id
@@ -12,12 +12,6 @@ from utime import time
 from uerrno import EINPROGRESS, ETIMEDOUT, ECONNRESET
 
 class MQTTException(Exception):
-    pass
-
-class MQTTTimeoutException(Exception):
-    pass
-
-class MQTTSocketClosedExecption(Exception):
     pass
 
 BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT, -110]
@@ -220,9 +214,10 @@ class MicroMqtt():
 
                     self.__on_connect()
                     break
-                except MQTTTimeoutException:
+                except MicroSocketTimeoutException:
                     pass
-                except MQTTSocketClosedExecption:
+                except MicroSocketClosedExecption:
+                    await self.disconnect()
                     self.__backend = MicroMqtt.Backend(self.__ip, self.__port, self.__cert, self.__cert_req)
                 except MQTTException:
                     log.mqtt('Connection to broker failed.')
@@ -236,6 +231,8 @@ class MicroMqtt():
                 except OSError:
                     pass
             self.__backend.close()
+            self.__backend = None
+            gc.collect()
 
         @property
         def is_connected(self):
