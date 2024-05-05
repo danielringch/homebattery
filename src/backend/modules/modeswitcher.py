@@ -28,6 +28,7 @@ class ModeSwitcher:
     
         self.__requested_mode = operationmode.idle
         self.__current_modes = (operationmode.protect, operationmode.protect, operationmode.protect)
+        self.__displayed_mode = None
 
     def run(self):
         self.__task = asyncio.create_task(self.__run())
@@ -57,19 +58,23 @@ class ModeSwitcher:
 
     async def __try_set_mode(self, mode: OperationMode):
         self.__requested_mode = mode
+        self.__displayed_mode = None # force sending the mode over MQTT even if nothing changes
         effective_modes = self.__get_effective_mode(mode)
         await self.__update(effective_modes)
 
     async def __update(self, modes):
         if modes is None:
             modes = self.__get_effective_mode(self.__requested_mode)
-        if modes == self.__current_modes:
-            return
-        self.__current_modes = modes
-        await self.__switch_charger(modes[0])
-        await self.__switch_inverter(modes[1])
-        await self.__switch_solar(modes[2])
-        display.update_mode(self.__get_displayed_mode(modes))
+        if modes != self.__current_modes:
+            self.__current_modes = modes
+            await self.__switch_charger(modes[0])
+            await self.__switch_inverter(modes[1])
+            await self.__switch_solar(modes[2])
+        displayed_mode = self.__get_displayed_mode(modes)
+        if displayed_mode != self.__displayed_mode:
+            self.__displayed_mode = displayed_mode
+            display.update_mode(self.__displayed_mode)
+            self.__mqtt.send_mode(self.__displayed_mode)
 
     def __get_effective_mode(self, mode: OperationMode):
         charger_mode = operationmode.protect if devicetype.charger in self.__locked_devices else mode
