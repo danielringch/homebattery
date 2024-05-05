@@ -30,12 +30,13 @@ class SSD1306(framebuf.FrameBuffer):
         self.i2c = i2c
         self.addr = addr
         self.temp = bytearray(2)
-        self.write_list = [b"\x40", None]  # Co=0, D/C#=1
         self.width = width
         self.height = height
         self.external_vcc = external_vcc
         self.pages = self.height // 8
-        self.buffer = bytearray(self.pages * self.width)
+        self.full_buffer = bytearray(self.pages * self.width + 1)
+        self.full_buffer[0] = 0x40 # Co=0, D/C#=1
+        self.buffer = memoryview(self.full_buffer)[1:]
         super().__init__(self.buffer, self.width, self.height, framebuf.MONO_VLSB)
         self.init_display()
 
@@ -102,13 +103,12 @@ class SSD1306(framebuf.FrameBuffer):
         self.write_cmd(SET_PAGE_ADDR)
         self.write_cmd(0)
         self.write_cmd(self.pages - 1)
-        self.write_data(self.buffer)
+        self.write_data()
 
     def write_cmd(self, cmd):
         self.temp[0] = 0x80  # Co=1, D/C#=0
         self.temp[1] = cmd
         self.i2c.writeto(self.addr, self.temp)
 
-    def write_data(self, buf):
-        self.write_list[1] = buf
-        self.i2c.writevto(self.addr, self.write_list)
+    def write_data(self):
+        self.i2c.writeto(self.addr, self.full_buffer)
