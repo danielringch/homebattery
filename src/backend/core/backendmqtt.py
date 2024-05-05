@@ -16,15 +16,7 @@ class Mqtt():
         password = config.get('password', None)
 
         self.__live_consumption_topic = config["live_consumption_topic"]
-        self.__charger_state_topic = f'{config["root"]}/charger/state'
-        self.__charger_energy_topic = f'{config["root"]}/charger/energy'
-        self.__inverter_state_topic = f'{config["root"]}/inverter/state'
-        self.__inverter_power_topic = f'{config["root"]}/inverter/power'
-        self.__solar_state_topic = f'{config["root"]}/solar/state'
-        self.__solar_energy_topic = f'{config["root"]}/solar/energy'
-        self.__inverter_energy_topic = f'{config["root"]}/inverter/energy'
-        self.__battery_capacity_topic = f'{config["root"]}/battery/capacity'
-        self.__mode_topic = f'{config["root"]}/mode'
+        self.__battery_device_root = f'{config["root"]}/bat/dev/'
         self.__locked_topic = f'{config["root"]}/locked'
 
         self.__mqtt = MicroMqtt(self.__on_mqtt_connect)
@@ -75,10 +67,20 @@ class Mqtt():
     def send_solar_energy(self, energy: int):
         self.__mqtt.publish(self.__solar_energy_topic, struct.pack('!H', int(energy)), qos=1, retain=False)
 
-    def send_battery_state(self, data: BatterySummary):
-        if data.capacity_remaining is not None:
-            payload = struct.pack('!h', round(data.capacity_remaining * 10))
-            self.__mqtt.publish(self.__battery_capacity_topic, payload, qos=1, retain=False)
+    def send_battery(self, data: BatteryData):
+        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/v', struct.pack('!H', round(data.v * 100)), qos=1, retain=False)
+        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/i', struct.pack('!h', round(data.i * 10)), qos=1, retain=False)
+        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/soc', struct.pack('!B', int(data.soc)), qos=1, retain=False)
+        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/c', struct.pack('!H', round(data.c * 10)), qos=1, retain=False)
+        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/n', struct.pack('!H', round(data.n)), qos=1, retain=False)
+        i = 0
+        for temp in data.temps:
+            self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/temp/{i}', struct.pack('!h', round(temp * 10)), qos=1, retain=False)
+            i += 1
+        i = 0
+        for cell in data.cells:
+            self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/cell/{i}', struct.pack('!H', round(cell * 1000)), qos=1, retain=False)
+            i += 1
 
     def send_locked(self, reason: str):
         payload = reason.encode('utf-8') if reason is not None else None

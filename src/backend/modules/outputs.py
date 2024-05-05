@@ -22,9 +22,12 @@ class Outputs:
         self.__solar.on_energy.add(self.__on_solar_energy)
 
     def __on_battery_data(self):
-        data = self.__battery.data
-        display.update_battery_capacity(data.capacity_remaining)
-        self.__mqtt.send_battery_state(data)
+        batteries = self.__battery.battery_data
+        total_capacity = 0
+        for battery in batteries:
+            total_capacity += battery.c
+            self.__mqtt.send_battery(battery)
+        display.update_battery_capacity(total_capacity)
 
     def __on_charger_energy(self, energy):
         self.__mqtt.send_charger_energy(energy)

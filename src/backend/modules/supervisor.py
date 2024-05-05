@@ -152,15 +152,21 @@ class Supervisor:
         def check(self, now):
             if self._lock is None:
                 return None
-            battery_data = self.__battery.data
-            if battery_data is None or battery_data.max_cell_voltage is None:
+            highest_cell = 0
+            for battery in self.__battery.battery_data:
+                if not battery.valid:
+                    continue
+                for cell in battery.cells:
+                    highest_cell = max(highest_cell, cell)
+                
+            if highest_cell == 0:
                 return None
 
             threshold = self.__threshold
             if self.__threshold_exceeded:
                 threshold -= self.__hysteresis
 
-            self.__threshold_exceeded = battery_data.max_cell_voltage > threshold
+            self.__threshold_exceeded = highest_cell > threshold
             return (self.__threshold_exceeded, self._lock)
         
     class CellLowChecker(SubChecker):
@@ -174,15 +180,21 @@ class Supervisor:
         def check(self, now):
             if self._lock is None:
                 return None
-            battery_data = self.__battery.data
-            if battery_data is None or battery_data.max_cell_voltage is None:
+            lowest_cell = 999
+            for battery in self.__battery.battery_data:
+                if not battery.valid:
+                    continue
+                for cell in battery.cells:
+                    lowest_cell = min(lowest_cell, cell)
+
+            if lowest_cell == 999:
                 return None
 
             threshold = self.__threshold
             if self.__threshold_exceeded:
                 threshold += self.__hysteresis
 
-            self.__threshold_exceeded = battery_data.max_cell_voltage < threshold
+            self.__threshold_exceeded = lowest_cell < threshold
             return (self.__threshold_exceeded, self._lock)
         
     class LiveDataOfflineChargeChecker(SubChecker):

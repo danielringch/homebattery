@@ -17,7 +17,7 @@ class Daly8S24V60A(BatteryInterface):
         self.__device = None
         self.__receive_task = None
         self.__receiving = False
-        self.__data = BatteryData()
+        self.__data = BatteryData(name)
 
     async def read_battery(self):
         try:

@@ -1,13 +1,14 @@
 import struct
 
 class BatteryData:
-    def __init__(self):
-        self.v = None
-        self.i = None
-        self.soc = None
-        self.c = None
-        self.c_full = None
-        self.n = None
+    def __init__(self, name):
+        self.name = name
+        self.v = 0
+        self.i = 0
+        self.soc = 0
+        self.c = 0
+        self.c_full = 0
+        self.n = 0
         self.temps = tuple()
         self.cells = tuple()
         self.valid = False
@@ -30,28 +31,6 @@ class BatteryData:
         temperatues_str = ' ; '.join(f'{x:.1f}' for x in self.temps)
         cells_str = ' | '.join(f'{x:.3f}' for x in self.cells)
         return f'Voltage: {self.v} V | Current: {self.i} A\nSoC: {self.soc} % | {self.c} / {self.c_full} Ah\nCycles: {self.n} | Temperatures [°C]: {temperatues_str}\nCells [V]: {cells_str}'
-
-class BatterySummary:
-    def __init__(self):
-        self.capacity_remaining = None
-        self.min_cell_voltage = None
-        self.max_cell_voltage = None
-        self.timestamp = None
-
-    def merge(self, battery: BatteryData):
-        if self.capacity_remaining is None:
-            self.capacity_remaining = 0.0
-        self.capacity_remaining += battery.c
-
-        if self.min_cell_voltage is None:
-            self.min_cell_voltage = min(battery.cells)
-        else:
-            self.min_cell_voltage = min(self.min_cell_voltage, min(battery.cells))
-
-        if self.max_cell_voltage is None:
-            self.max_cell_voltage = max(battery.cells)
-        else:
-            self.max_cell_voltage = max(self.max_cell_voltage, max(battery.cells))
 
 bool2string = {True: 'true', False: 'false', None: 'none'}
 

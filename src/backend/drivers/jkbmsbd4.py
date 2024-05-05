@@ -57,7 +57,7 @@ class JkBmsBd4(BatteryInterface):
 
         self.__device = None
         self.__receive_task = None
-        self.__data = BatteryData()
+        self.__data = BatteryData(name)
         self.__current_decoder = None
 
     async def read_battery(self):

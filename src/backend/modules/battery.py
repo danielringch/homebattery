@@ -1,9 +1,8 @@
 import asyncio, random, time
 from collections import deque
 from ..core.logging import *
-from ..core.backendmqtt import Mqtt
 from ..core.microblecentral import ble_instance
-from ..core.types import BatterySummary, CallbackCollection, CommandBundle, devicetype
+from ..core.types import CallbackCollection, CommandBundle, devicetype
 from .devices import Devices
 
 class Battery:
@@ -26,7 +25,7 @@ class Battery:
                 continue
             self.__batteries.append(self.BatteryBundle(device))
 
-        self.__data = None
+        self.__battery_data = list()
 
 
     async def run(self):
@@ -42,49 +41,40 @@ class Battery:
             ble_instance.activate()
 
             try:
-                data = BatterySummary()
                 success = True
+                self.__battery_data.clear()
                 for battery in sorted(self.__batteries, key=lambda x: x.online):
-                    success &= await self.__read_battery(battery, data)
+                    success &= await self.__read_battery(battery)
                     if not success:
                         break
             
                 if not success:
-                    log.battery('Not all batteries responsed, no combined battery data for this cycle.')
-                    self.__data = None
+                    log.battery('Not all batteries responsed.')
+                    self.__battery_data.clear()
                     self.__next_run = time.time() + random.randrange(2, 5, 1)
                 else:
-                    data.timestamp = time.time()
-                    self.__data = data
-
-                    log.battery(f'Capacity remaining: {data.capacity_remaining:.1f} Ah')
-                    log.battery(f'Minimum cell voltage: {data.min_cell_voltage:.3f} V')
-                    log.battery(f'Maximum cell voltage: {data.max_cell_voltage:.3f} V')
-
                     self.__on_battery_data.run_all()
                     self.__next_run = time.time() + 60
             finally:
                 ble_instance.deactivate()
-
-
+    
     @property
-    def data(self):
-        return self.__data
-
+    def battery_data(self):
+        return self.__battery_data
 
     @property
     def on_battery_data(self):
         return self.__on_battery_data
 
 
-    async def __read_battery(self, battery: BatteryBundle, summary: BatterySummary):
+    async def __read_battery(self, battery: BatteryBundle):
         try:
             battery_data = await battery.battery.read_battery()
             if battery_data is None:
                 battery.online = False
                 raise Exception('Battery did not response.')
             battery.online = True
-            summary.merge(battery_data)
+            self.__battery_data.append(battery_data)
             return True
         except Exception as e:
             log.battery(f'Battery query failed: {e}') 

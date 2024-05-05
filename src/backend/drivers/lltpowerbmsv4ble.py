@@ -104,7 +104,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
 
         self.__device = None
         self.__receive_task = None
-        self.__data = BatteryData()
+        self.__data = BatteryData(name)
         self.__current_bundle = None
         self.__current_decoder = None
 
