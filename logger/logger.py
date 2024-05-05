@@ -10,7 +10,7 @@ def receive_log_messages(host, port):
             while True:
                 try:
                     payload, _ = socke.recvfrom(1024)
-                    payload = payload.decode('utf-8')
+                    payload = payload.decode('utf-8', errors="replace")
                     logging.debug(payload)
                 except socket.error as e:
                     print(f"[Error: {e}]")
