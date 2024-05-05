@@ -4,7 +4,6 @@ from backend.core.logging import *
 from backend.core.display import display
 from backend.core.watchdog import Watchdog
 
-
 __version__ = "0.1.0"
 
 prefix = '[homebattery] {0}'
@@ -88,9 +87,14 @@ async def main():
     from backend.modules.outputs import Outputs
     outputs = Outputs(mqtt, supervisor, battery, charger, inverter, solar)
 
+    i = 0
     while True:
         gc.collect()
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1)
+        i += 1
+        if i >= 60:
+            i = 0
+            log.info(f'Used memory: {gc.mem_alloc()} Free memory: {gc.mem_free()}')
 
 
 if __name__ == "__main__":
