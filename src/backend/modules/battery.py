@@ -17,13 +17,15 @@ class Battery:
 
         self.__on_battery_data = CallbackCollection()
 
+        self.__battery_data = dict()
         self.__batteries = list()
         for device in devices.devices:
             if devicetype.battery not in device.device_types:
                 continue
+            device.on_battery_data.add(self.__on_device_data)
             self.__batteries.append(device)
+            self.__battery_data[device.name] = None
 
-        self.__battery_data = dict()
 
 
     async def run(self):
@@ -34,15 +36,14 @@ class Battery:
         while True:
             now = time.time()
             for device in self.__batteries:
-                data = self.__battery_data.get(device.name, None)
+                data = self.__battery_data[device.name]
                 if data is None or data.timestamp + 60 < now:
-                    new_data = await device.read_battery()
-                    self.__battery_data[device.name] = new_data
-                    if new_data is None:
-                        log.battery(f'Failed to read battery {device.name}: did not respond.')
-                    else:
-                        self.__on_battery_data.run_all(device.name)
+                    await device.read_battery()
             await asyncio.sleep(random.randrange(2, 5, 1))
+
+    def __on_device_data(self, data):
+        self.__battery_data[data.name] = data
+        self.__on_battery_data.run_all(data.name)
                     
     @property
     def battery_data(self):

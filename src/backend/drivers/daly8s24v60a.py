@@ -3,7 +3,7 @@ from micropython import const
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, ble_instance
 from ..core.logging import log
-from ..core.types import BatteryData, devicetype
+from ..core.types import BatteryData, CallbackCollection, devicetype
 
 _DALY_CELL_FORMAT_STR = const('!HHHHHHHHHHHHHHHH')
 
@@ -14,6 +14,8 @@ class Daly8S24V60A(BatteryInterface):
         self.__mac = config['mac']
 
         self.__log = log.get_custom_logger(name)
+
+        self.__on_data = CallbackCollection()
 
         self.__device = None
         self.__receive_task = None
@@ -50,11 +52,11 @@ class Daly8S24V60A(BatteryInterface):
                     break
             else:
                 self.__log.send(f'Failed to receive battery data.')
-                return None
+                return
             
             for line in str(self.__data).split('\n'):
                 self.__log.send(line)
-            return self.__data
+            self.__on_data.run_all(self.__data)
 
         except MicroBleTimeoutError as e:
             self.__log.send(str(e))
@@ -67,6 +69,10 @@ class Daly8S24V60A(BatteryInterface):
             if self.__device is not None:
                 await self.__device.disconnect()
             ble_instance.deactivate()
+
+    @property
+    def on_battery_data(self):
+        return self.__on_data
 
     @property
     def name(self):

@@ -2,7 +2,7 @@ import asyncio, bluetooth, ubinascii, struct, sys
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, ble_instance
 from ..core.logging import log
-from ..core.types import BatteryData, devicetype
+from ..core.types import BatteryData, CallbackCollection, devicetype
 
 # ressources:
 # https://blog.ja-ke.tech/2020/02/07/ltt-power-bms-chinese-protocol.html
@@ -103,6 +103,8 @@ class LltPowerBmsV4Ble(BatteryInterface):
 
         self.__log = log.get_custom_logger(name)
 
+        self.__on_data = CallbackCollection()
+
         self.__device = None
         self.__receive_task = None
         self.__data = BatteryData(name)
@@ -144,10 +146,9 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 self.__current_bundle.parse(self.__data)
                 for line in str(self.__data).split('\n'):
                     self.__log.send(line)
-                return self.__data
+                self.__on_data.run_all(self.__data)
             else:
                 self.__log.send(f'Failed to receive battery data.')
-                return None
 
         except MicroBleTimeoutError as e:
             self.__log.send(str(e))
@@ -162,6 +163,10 @@ class LltPowerBmsV4Ble(BatteryInterface):
             self.__current_decoder = None
             self.__current_bundle = None
             ble_instance.deactivate()
+
+    @property
+    def on_battery_data(self):
+        return self.__on_data
 
     @property
     def name(self):

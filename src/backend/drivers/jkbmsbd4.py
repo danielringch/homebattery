@@ -3,7 +3,7 @@ from micropython import const
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, ble_instance
 from ..core.logging import log
-from ..core.types import BatteryData, devicetype
+from ..core.types import BatteryData, CallbackCollection, devicetype
 
 # ressources:
 
@@ -56,6 +56,8 @@ class JkBmsBd4(BatteryInterface):
 
         self.__log = log.get_custom_logger(name)
 
+        self.__on_data = CallbackCollection()
+
         self.__device = None
         self.__receive_task = None
         self.__data = BatteryData(name)
@@ -93,10 +95,9 @@ class JkBmsBd4(BatteryInterface):
             if self.__data.valid:
                 for line in str(self.__data).split('\n'):
                     self.__log.send(line)
-                return self.__data
+                self.__on_data.run_all(self.__data)
             else:
                 self.__log.send(f'Failed to receive battery data.')
-                return None
 
         except MicroBleTimeoutError as e:
             self.__log.send(str(e))
@@ -110,6 +111,10 @@ class JkBmsBd4(BatteryInterface):
                 await self.__device.disconnect()
             self.__current_decoder = None
             ble_instance.deactivate()
+
+    @property
+    def on_battery_data(self):
+        return self.__on_data
 
     @property
     def name(self):
