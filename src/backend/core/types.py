@@ -1,8 +1,9 @@
 import struct, time
 
 class BatteryData:
-    def __init__(self, name):
+    def __init__(self, name, is_forwarded=False):
         self.name = name
+        self.is_forwarded = is_forwarded
         self.v = 0
         self.i = 0
         self.soc = 0

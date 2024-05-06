@@ -47,7 +47,7 @@ async def main():
     display.print('Configuring', 'modules...')
 
     from backend.modules.devices import Devices
-    devices = Devices(config)
+    devices = Devices(config, mqtt)
 
     gc.collect()
 

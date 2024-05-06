@@ -23,7 +23,7 @@ class Outputs:
 
     def __on_battery_data(self, name):
         changed_battery = self.__battery.battery_data[name]
-        if changed_battery is not None and changed_battery.valid:
+        if changed_battery is not None and changed_battery.valid and not changed_battery.is_forwarded:
             self.__mqtt.send_battery(changed_battery)
         total_capacity = 0
         for battery in self.__battery.battery_data.values():
