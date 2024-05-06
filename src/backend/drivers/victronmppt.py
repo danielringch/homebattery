@@ -28,7 +28,8 @@ class VictronMppt(SolarInterface):
         self.__control_pin = Pin(4, Pin.OUT)
         self.__control_pin.off()
 
-        self.__power = None
+        self.__power_hysteresis = max(int(config['power_hysteresis']), 1)
+        self.__power = self.__power_hysteresis * -1 # make sure hysteresis is reached in the first run
         self.__energy_value = None
         self.__energy_delta = 0
         self.__shall_on = False
@@ -107,11 +108,11 @@ class VictronMppt(SolarInterface):
             header_str = str(header, 'utf-8')
             if header_str == 'PPV':
                 power = int(str(payload, 'utf-8'))
-                value_changed = power != self.__power
-                self.__power = power
+                value_changed = abs(power - self.__power) >= self.__power_hysteresis
                 if value_changed:
                     self.__log.send(f'Power: {power} W')
                     self.__on_power_change.run_all(power)
+                    self.__power = power
             elif header_str == 'CS':
                 is_on = int(str(payload, 'utf-8')) in (3,4,5,7,247)
                 value_changed = is_on != self.__is_on
