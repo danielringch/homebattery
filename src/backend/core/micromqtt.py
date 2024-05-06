@@ -93,7 +93,7 @@ class MicroMqtt():
             while len(self.__frontend.input_buffer) > 0:
                 packet = self.__frontend.input_buffer.popleft()
                 try:
-                    self.__callbacks[packet.topic](packet.data)
+                    self.__callbacks[packet.topic](packet.topic, packet.data)
                 except KeyError:
                     pass
                 except Exception as e:

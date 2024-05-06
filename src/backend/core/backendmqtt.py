@@ -39,18 +39,29 @@ class Mqtt():
         self.__mqtt.message_callback_add(self.__live_consumption_topic, self.__on_live_consumption)
         self.__mqtt.message_callback_add(self.__mode_set_topic, self.__on_mode)
 
+        self.__subscriptions = [
+            (self.__live_consumption_topic, 0),
+            (self.__mode_set_topic, 0) #TODO change to 1 or 2
+        ]
+
         self.__live_consumption_callback = CallbackCollection()
         self.__mode_callback = CallbackCollection()
 
     def __on_mqtt_connect(self):
-        self.__mqtt.subscribe(self.__live_consumption_topic, qos=0)
-        self.__mqtt.subscribe(self.__mode_set_topic, qos=0) #TODO change to 1 or 2
+        for subscription in self.__subscriptions:
+            self.__mqtt.subscribe(topic=subscription[0], qos=subscription[1])
 
     def __del__(self):
         pass
 
     async def connect(self):
         await self.__mqtt.connect(self.__ip, self.__port, 60)
+
+    def subscribe(self, topic, qos, callback):
+        self.__mqtt.message_callback_add(topic, callback)
+        if self.__mqtt.connected:
+            self.__mqtt.subscribe(topic, qos)
+        self.__subscriptions.append((topic, qos))
 
     def send_mode(self, mode: OperationMode):
         payload = mode.name.encode('utf-8')
@@ -111,11 +122,11 @@ class Mqtt():
     def on_mode(self):
         return self.__mode_callback
 
-    def __on_live_consumption(self, payload):
+    def __on_live_consumption(self, topic, payload):
         power = struct.unpack('!H', payload)[0]
         self.__live_consumption_callback.run_all(power)
 
-    def __on_mode(self, payload):
+    def __on_mode(self, topic, payload):
         try:
             mode = operationmode.from_string(payload.decode('utf-8'))
         except:
