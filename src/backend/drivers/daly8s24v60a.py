@@ -9,6 +9,7 @@ _DALY_CELL_FORMAT_STR = const('!HHHHHHHHHHHHHHHH')
 
 class Daly8S24V60A(BatteryInterface):
     def __init__(self, name, config):
+        self.__name = name
         self.__device_types = (devicetype.battery,)
         self.__mac = config['mac']
 
@@ -21,6 +22,7 @@ class Daly8S24V60A(BatteryInterface):
 
     async def read_battery(self):
         try:
+            ble_instance.activate()
             self.__data.invalidate()
 
             if self.__device is None:
@@ -64,6 +66,11 @@ class Daly8S24V60A(BatteryInterface):
                 self.__receive_task.cancel()
             if self.__device is not None:
                 await self.__device.disconnect()
+            ble_instance.deactivate()
+
+    @property
+    def name(self):
+        return self.__name
 
     @property
     def device_types(self):

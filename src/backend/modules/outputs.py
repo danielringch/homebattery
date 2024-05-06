@@ -21,13 +21,17 @@ class Outputs:
         self.__inverter.on_energy.add(self.__on_inverter_energy)
         self.__solar.on_energy.add(self.__on_solar_energy)
 
-    def __on_battery_data(self):
-        batteries = self.__battery.battery_data
+    def __on_battery_data(self, name):
+        changed_battery = self.__battery.battery_data[name]
+        if changed_battery is not None and changed_battery.valid:
+            self.__mqtt.send_battery(changed_battery)
         total_capacity = 0
-        for battery in batteries:
+        for battery in self.__battery.battery_data.values():
+            if battery is None or not battery.valid:
+                break
             total_capacity += battery.c
-            self.__mqtt.send_battery(battery)
-        display.update_battery_capacity(total_capacity)
+        else:
+            display.update_battery_capacity(total_capacity)
 
     def __on_charger_energy(self, energy):
         self.__mqtt.send_charger_energy(energy)

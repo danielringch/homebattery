@@ -97,6 +97,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
             return memoryview(self.__data)[:-3] if self.__data is not None else None
 
     def __init__(self, name, config):
+        self.__name = name
         self.__device_types = (devicetype.battery,)
         self.__mac = config['mac']
 
@@ -110,6 +111,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
 
     async def read_battery(self):
         try:
+            ble_instance.activate()
             self.__data.invalidate()
             self.__current_bundle = self.DataBundle()
 
@@ -159,6 +161,11 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 await self.__device.disconnect()
             self.__current_decoder = None
             self.__current_bundle = None
+            ble_instance.deactivate()
+
+    @property
+    def name(self):
+        return self.__name
 
     @property
     def device_types(self):

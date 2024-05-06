@@ -1,4 +1,4 @@
-import struct
+import struct, time
 
 class BatteryData:
     def __init__(self, name):
@@ -11,7 +11,7 @@ class BatteryData:
         self.n = 0
         self.temps = tuple()
         self.cells = tuple()
-        self.valid = False
+        self.timestamp = 0
 
     def update(self, v, i, soc, c, c_full, n, temps, cells):
         self.v = v # voltage [V]
@@ -22,10 +22,14 @@ class BatteryData:
         self.n = n # cycles
         self.temps = temps # cell temperatures [°C]
         self.cells = cells # cell voltages [V]
-        self.valid = True
+        self.timestamp = time.time()
 
     def invalidate(self):
-        self.valid = False
+        self.timestamp = 0
+
+    @property
+    def valid(self):
+        return self.timestamp > 0
 
     def __str__(self) -> str:
         temperatues_str = ' ; '.join(f'{x:.1f}' for x in self.temps)

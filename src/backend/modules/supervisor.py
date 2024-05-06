@@ -129,17 +129,23 @@ class Supervisor:
         def __init__(self, config, battery):
             super().__init__(config, 'battery_offline', 30, (devicetype.charger, devicetype.solar, devicetype.inverter))
             self.__threshold = int(config[self.__name]['threshold'])
-            self.__last_data = 0
+            self.__last_data = dict()
+            self.__battery = battery
             battery.on_battery_data.add(self.__on_battery_data)
 
         def check(self, now):
             if self._lock is None:
                 return None
-            active = bool((now - self.__last_data) > self.__threshold)
+            oldest_timestamp = min(self.__last_data.values()) if len(self.__last_data) > 0 else 0
+            active = bool((now - oldest_timestamp) > self.__threshold)
             return (active, self._lock)
         
-        def __on_battery_data(self):
-            self.__last_data = time.time()
+        def __on_battery_data(self, name):
+            data = self.__battery.battery_data[name]
+            if data is None:
+                self.__last_data[name] = 0
+            else:
+                self.__last_data[name] = data.timestamp
         
     class CellHighChecker(SubChecker):
         def __init__(self, config, battery):
@@ -153,8 +159,8 @@ class Supervisor:
             if self._lock is None:
                 return None
             highest_cell = 0
-            for battery in self.__battery.battery_data:
-                if not battery.valid:
+            for battery in self.__battery.battery_data.values():
+                if battery is None or not battery.valid:
                     continue
                 for cell in battery.cells:
                     highest_cell = max(highest_cell, cell)
@@ -181,8 +187,8 @@ class Supervisor:
             if self._lock is None:
                 return None
             lowest_cell = 999
-            for battery in self.__battery.battery_data:
-                if not battery.valid:
+            for battery in self.__battery.battery_data.values():
+                if battery is None or not battery.valid:
                     continue
                 for cell in battery.cells:
                     lowest_cell = min(lowest_cell, cell)

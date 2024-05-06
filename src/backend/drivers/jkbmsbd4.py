@@ -50,6 +50,7 @@ class JkBmsBd4(BatteryInterface):
             return memoryview(self.__data) if self.__data is not None else None
 
     def __init__(self, name, config):
+        self.__name = name
         self.__device_types = (devicetype.battery,)
         self.__mac = config['mac']
 
@@ -62,6 +63,7 @@ class JkBmsBd4(BatteryInterface):
 
     async def read_battery(self):
         try:
+            ble_instance.activate()
             self.__data.invalidate()
 
             if self.__device is None:
@@ -107,6 +109,11 @@ class JkBmsBd4(BatteryInterface):
             if self.__device is not None:
                 await self.__device.disconnect()
             self.__current_decoder = None
+            ble_instance.deactivate()
+
+    @property
+    def name(self):
+        return self.__name
 
     @property
     def device_types(self):
