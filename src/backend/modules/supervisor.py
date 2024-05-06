@@ -131,6 +131,8 @@ class Supervisor:
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_data = dict()
             self.__battery = battery
+            for name in self.__battery.battery_data.keys():
+                self.__on_battery_data(name)
             battery.on_battery_data.add(self.__on_battery_data)
 
         def check(self, now):
