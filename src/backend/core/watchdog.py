@@ -7,10 +7,9 @@ class Watchdog:
             pass
 
     def __init__(self):
-        self.__pin = Pin(9, Pin.IN)
-        self.__enabled = bool(self.__pin.value())
-        log.info(f'Watchdog enabled={self.__enabled}')
-        self.__wdt = WDT(timeout=5000) if self.__enabled else self.Stub()
+        enabled = bool(Pin(9, Pin.IN).value())
+        log.info(f'Watchdog enabled={enabled}')
+        self.__wdt = WDT(timeout=5000) if enabled else self.Stub()
 
     def feed(self):
         self.__wdt.feed()
