@@ -1,10 +1,11 @@
 import asyncio, sys
 from collections import deque
-from ..core.types import CommandBundle, devicetype, OperationMode, operationmode
-from ..core.logging import log
+from ..core.types import CommandBundle, OperationMode
+from ..core.types_singletons import devicetype, operationmode
+from ..core.logging_singleton import log
 from ..core.backendmqtt import Mqtt
-from ..core.display import display
-from ..core.leds import leds
+from ..core.userinterface_singleton import display
+from ..core.userinterface_singleton import leds
 from .inverter import Inverter
 from .charger import Charger
 from .solar import Solar

@@ -1,8 +1,8 @@
 import asyncio, bluetooth, ubinascii
 
 from .microdeque import MicroDeque
-from .logging import log
-from .leds import leds
+from .logging_singleton import log
+from .userinterface_singleton import leds
 
 from micropython import const
 
@@ -418,6 +418,3 @@ class MicroBleCentral:
             log.bluetooth(f'No matching device for event.')
             return False
         return True
-    
-
-ble_instance = MicroBleCentral()

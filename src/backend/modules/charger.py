@@ -1,8 +1,8 @@
 import asyncio, sys, time
 from collections import deque
-from ..drivers.shelly import *
-from ..core.types import bool2on, CommandBundle, OperationMode, operationmode, CallbackCollection, devicetype
-from ..core.logging import *
+from ..core.types import CommandBundle, OperationMode, CallbackCollection
+from ..core.types_singletons import bool2on, operationmode, devicetype
+from ..core.logging_singleton import log
 from ..core.backendmqtt import Mqtt
 from .devices import Devices
 

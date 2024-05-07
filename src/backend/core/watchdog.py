@@ -1,5 +1,5 @@
 from machine import Pin, WDT
-from .logging import log
+from .logging_singleton import log
 
 class Watchdog:
     class Stub:

@@ -37,10 +37,6 @@ class BatteryData:
         cells_str = ' | '.join(f'{x:.3f}' for x in self.cells)
         return f'Voltage: {self.v} V | Current: {self.i} A\nSoC: {self.soc} % | {self.c} / {self.c_full} Ah\nCycles: {self.n} | Temperatures [°C]: {temperatues_str}\nCells [V]: {cells_str}'
 
-bool2string = {True: 'true', False: 'false', None: 'none'}
-
-bool2on = {True: 'on', False: 'off', None: 'unknown'}
-
 class CallbackCollection:
     def __init__(self):
         self.__callbacks = list()
@@ -111,8 +107,6 @@ class OperationModeValues:
 
     def from_string(self, str):
         return self.__dict[str]
-    
-operationmode = OperationModeValues()
 
 class DeviceType(EnumEntry):
     pass
@@ -124,8 +118,6 @@ class DeviceTypeValues:
         self.charger = DeviceType('charger', self.__dict)
         self.inverter = DeviceType('inverter', self.__dict)
         self.solar = DeviceType('solar', self.__dict)
-
-devicetype = DeviceTypeValues()
 
 class InverterStatus(EnumEntry):
     pass
@@ -140,8 +132,6 @@ class InverterStatusValues:
 
     def from_string(self, str):
         return self.__dict[str]
-    
-inverterstatus = InverterStatusValues()
 
 class PowerLut:
     def __init__(self, path):

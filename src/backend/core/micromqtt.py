@@ -4,9 +4,9 @@ from ubinascii import hexlify
 from machine import unique_id
 import ustruct as struct
 
-from .logging import *
-from .microsocket import *
-from .leds import leds
+from .logging_singleton import log
+from .microsocket import MicroSocket, MicroSocketTimeoutException, MicroSocketClosedExecption
+from .userinterface_singleton import leds
 
 from utime import time
 from uerrno import EINPROGRESS, ETIMEDOUT, ECONNRESET

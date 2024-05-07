@@ -1,8 +1,10 @@
 import asyncio, bluetooth, ubinascii, struct, sys
 from .interfaces.batteryinterface import BatteryInterface
-from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, ble_instance
-from ..core.logging import log
-from ..core.types import BatteryData, CallbackCollection, devicetype
+from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ..core.microblecentral_singleton import ble_instance
+from ..core.logging_singleton import log
+from ..core.types import BatteryData, CallbackCollection
+from ..core.types_singletons import devicetype
 
 # ressources:
 # https://blog.ja-ke.tech/2020/02/07/ltt-power-bms-chinese-protocol.html

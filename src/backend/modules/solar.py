@@ -1,10 +1,10 @@
 import asyncio, sys, time
 from collections import deque
-from ..drivers.shelly import *
 from ..core.backendmqtt import Mqtt
-from ..core.display import display
-from ..core.types import OperationMode, operationmode, CallbackCollection, CommandBundle, devicetype
-from ..core.logging import *
+from ..core.userinterface_singleton import display
+from ..core.types import OperationMode, CallbackCollection, CommandBundle
+from ..core.types_singletons import operationmode, devicetype
+from ..core.logging_singleton import log
 from .devices import Devices
 
 class Solar:

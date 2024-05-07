@@ -1,6 +1,6 @@
 from machine import Pin, I2C
 from .ssd1306 import SSD1306
-from .logging import log
+from .logging_singleton import log
 from .types import OperationMode
 
 class Display:
@@ -68,5 +68,3 @@ class Display:
         p_inv = f'P_inv: {self.__p_inv} W'
         p_grd = f'P_grd: {self.__p_grd} W'
         self.print(mode, lock, c_bat, p_sol, p_inv, p_grd)
-
-display = Display()

@@ -1,7 +1,7 @@
 import asyncio, gc, json
 
-from backend.core.logging import *
-from backend.core.display import display
+from backend.core.logging_singleton import log
+from backend.core.userinterface_singleton import display
 from backend.core.watchdog import Watchdog
 
 __version__ = "0.1.0"

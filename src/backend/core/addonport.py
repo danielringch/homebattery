@@ -41,5 +41,3 @@ class AddonPort:
     @property
     def on_rx(self):
         return self.__on_rx
-
-addon_ports = (AddonPort(1, 0), AddonPort(0, 1))

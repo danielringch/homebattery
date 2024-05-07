@@ -2,7 +2,7 @@ import network, ntptime
 from time import sleep
 
 from uerrno import ETIMEDOUT
-from .logging import log
+from .logging_singleton import log
 from .watchdog import Watchdog
 
 class Network():

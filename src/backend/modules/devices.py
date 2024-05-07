@@ -1,6 +1,6 @@
 import sys
 from micropython import const
-from ..core.logging import *
+from ..core.logging_singleton import log
 
 from ..drivers.ahoydtu import AhoyDtu
 from ..drivers.daly8s24v60a import Daly8S24V60A

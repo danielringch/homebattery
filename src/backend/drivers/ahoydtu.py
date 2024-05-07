@@ -1,10 +1,10 @@
 import asyncio, sys, time
 from .interfaces.inverterinterface import InverterInterface
 from ..core.microaiohttp import ClientSession
-from ..core.logging import *
-from ..core.leds import leds
-from ..core.types import bool2string, CallbackCollection, EnumEntry, InverterStatus, inverterstatus, PowerLut
-from ..core.types import devicetype
+from ..core.logging_singleton import log
+from ..core.userinterface_singleton import leds
+from ..core.types import CallbackCollection, EnumEntry, InverterStatus, PowerLut
+from ..core.types_singletons import bool2string, devicetype, inverterstatus
 
 class AhoyCommand(EnumEntry):
     pass

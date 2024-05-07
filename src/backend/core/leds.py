@@ -57,5 +57,3 @@ class Leds:
         self.__control.flash()
         self.__bluetooth.flash()
         self.__watchdog.flash()
-
-leds = Leds()

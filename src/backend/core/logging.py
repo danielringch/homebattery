@@ -1,6 +1,6 @@
 
 import asyncio, socket, time
-from collections import namedtuple, deque
+from collections import namedtuple
 from uio import IOBase
 from .byteringbuffer import ByteRingBuffer
 from .microsocket import BUSY_ERRORS
@@ -189,5 +189,3 @@ class TraceLogger(IOBase):
     
     def truncate(self, *_):
         pass
-
-log = Logging()

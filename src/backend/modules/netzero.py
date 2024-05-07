@@ -1,6 +1,6 @@
 import time
 from collections import namedtuple
-from ..core.logging import *
+from ..core.logging_singleton import log
 from ..core.microdeque import MicroDeque, MicroDequeOverflowError
 
 class NetZero:

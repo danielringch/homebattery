@@ -1,9 +1,10 @@
 import asyncio, sys, time
-from ..core.types import devicetype, EnumEntry
-from ..core.logging import log
+from ..core.types import EnumEntry
+from ..core.types_singletons import devicetype
+from ..core.logging_singleton import log
 from ..core.backendmqtt import Mqtt
-from ..core.display import display
-from ..core.leds import leds
+from ..core.userinterface_singleton import display
+from ..core.userinterface_singleton import leds
 from ..core.watchdog import Watchdog
 from .inverter import Inverter
 from .charger import Charger

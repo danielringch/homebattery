@@ -1,7 +1,8 @@
 import struct
 from .micromqtt import MicroMqtt
 from ssl import CERT_NONE
-from .types import *
+from .types import BatteryData, CallbackCollection, OperationMode
+from .types_singletons import operationmode
 
 
 class Mqtt():

@@ -1,8 +1,9 @@
 import asyncio, random, time
 from collections import deque
-from ..core.logging import *
-from ..core.microblecentral import ble_instance
-from ..core.types import CallbackCollection, CommandBundle, devicetype
+from ..core.logging_singleton import log
+from ..core.microblecentral_singleton import ble_instance
+from ..core.types import CallbackCollection, CommandBundle
+from ..core.types_singletons import devicetype
 from .devices import Devices
 
 class Battery:

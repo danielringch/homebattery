@@ -2,10 +2,11 @@ import asyncio
 from machine import Pin
 
 from .interfaces.solarinterface import SolarInterface
-from ..core.addonport import addon_ports
+from ..core.addonport_singleton import addon_ports
 from ..core.byteringbuffer import ByteRingBuffer
-from ..core.logging import log
-from ..core.types import bool2on, CallbackCollection, devicetype
+from ..core.logging_singleton import log
+from ..core.types import CallbackCollection
+from ..core.types_singletons import bool2on, devicetype
 
 class VictronMppt(SolarInterface):
     def __init__(self, name, config):

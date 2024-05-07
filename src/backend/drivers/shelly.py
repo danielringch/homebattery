@@ -1,9 +1,10 @@
 import asyncio, time
 from .interfaces.chargerinterface import ChargerInterface
 from ..core.microaiohttp import ClientSession
-from ..core.leds import leds
-from ..core.logging import log
-from ..core.types import CallbackCollection, devicetype
+from ..core.userinterface_singleton import leds
+from ..core.logging_singleton import log
+from ..core.types import CallbackCollection
+from ..core.types_singletons import devicetype
 
 class Shelly(ChargerInterface):
     __refresh_interval = 120

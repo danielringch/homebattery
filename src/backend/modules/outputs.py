@@ -1,5 +1,5 @@
 
-from ..core.display import display
+from ..core.userinterface_singleton import display
 from ..core.backendmqtt import Mqtt
 from .supervisor import Supervisor
 from .battery import Battery
