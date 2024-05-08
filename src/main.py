@@ -33,7 +33,7 @@ async def main():
 
     await asyncio.sleep(3.0)
 
-    with open("/config/config.json", "r") as stream:
+    with open("/config.json", "r") as stream:
         config = json.load(stream)
 
     watchdog = Watchdog()
