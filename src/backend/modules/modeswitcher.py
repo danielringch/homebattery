@@ -2,8 +2,9 @@ from asyncio import create_task, Event
 from collections import deque
 from micropython import const
 from sys import print_exception
-from ..core.types import CommandBundle, OperationMode
 from ..core.backendmqtt import Mqtt
+from ..core.singletons import Singletons
+from ..core.types import CommandBundle, OperationMode
 from .inverter import Inverter
 from .charger import Charger
 from .solar import Solar
@@ -17,17 +18,12 @@ class ModeSwitcher:
         self.__task = None
         self.__event = Event()
 
-        from ..core.types_singletons import devicetype
-        self.__devicetype = devicetype
-        from ..core.types_singletons import operationmode
-        self.__operationmode = operationmode
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(_MODESWITCHER_LOG_NAME)
-        self.__trace = log.trace
-        from ..core.userinterface_singleton import display
-        self.__display = display
-        from ..core.userinterface_singleton import leds
-        self.__leds = leds
+        self.__devicetype = Singletons.devicetype()
+        self.__operationmode = Singletons.operationmode()
+        self.__trace = Singletons.log().trace
+        self.__log = Singletons.log().create_logger(_MODESWITCHER_LOG_NAME)
+        self.__display = Singletons.display()
+        self.__leds = Singletons.leds()
 
         self.__inverter = inverter
         self.__charger = charger
@@ -38,8 +34,8 @@ class ModeSwitcher:
         self.__mqtt = mqtt
         self.__mqtt.on_mode.add(self.__on_mode)
     
-        self.__requested_mode = operationmode.idle
-        self.__current_modes = (operationmode.protect, operationmode.protect, operationmode.protect)
+        self.__requested_mode = self.__operationmode.idle
+        self.__current_modes = (self.__operationmode.protect, self.__operationmode.protect, self.__operationmode.protect)
         self.__displayed_mode = None
 
     def run(self):

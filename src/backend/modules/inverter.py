@@ -3,8 +3,9 @@ from collections import deque
 from micropython import const
 from sys import print_exception
 from time import localtime, time
-from ..core.types import OperationMode, CallbackCollection, CommandBundle
 from ..core.backendmqtt import Mqtt
+from ..core.singletons import Singletons
+from ..core.types import OperationMode, CallbackCollection, CommandBundle
 from .devices import Devices
 from .netzero import NetZero
 
@@ -15,15 +16,11 @@ class Inverter:
         self.__lock = Lock()
         self.__commands = deque((), 10)
 
-        from ..core.types_singletons import operationmode
-        self.__operationmode = operationmode
-        from ..core.types_singletons import inverterstatus
-        self.__inverterstatus = inverterstatus
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(_INVERTER_LOG_NAME)
-        self.__trace = log.trace
-        from ..core.userinterface_singleton import display
-        self.__display = display
+        self.__operationmode = Singletons.operationmode()
+        self.__inverterstatus = Singletons.inverterstatus()
+        self.__trace = Singletons.log().trace
+        self.__log = Singletons.log().create_logger(_INVERTER_LOG_NAME)
+        self.__display = Singletons.display()
 
         self.__mqtt = mqtt
         self.__mqtt.on_live_consumption.add(self.__on_live_consumption)
@@ -35,9 +32,8 @@ class Inverter:
         self.__last_power = None
         self.__inverters = []
 
-        from ..core.types_singletons import devicetype
         for device in devices.devices:
-            if devicetype.inverter not in device.device_types:
+            if Singletons.devicetype().inverter not in device.device_types:
                 continue
             self.__inverters.append(device)
             device.on_inverter_status_change.add(self.__on_inverter_status)

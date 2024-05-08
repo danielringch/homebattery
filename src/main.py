@@ -3,6 +3,20 @@ from gc import collect as gc_collect
 from gc import mem_alloc, mem_free
 from json import load as load_json
 gc_collect()
+from backend.core.addonport import AddonPort
+gc_collect()
+from backend.core.display import Display
+gc_collect()
+from backend.core.microblecentral import MicroBleCentral
+gc_collect()
+from backend.core.leds import Leds
+gc_collect()
+from backend.core.logging import Logging
+gc_collect()
+from backend.core.singletons import Singletons
+gc_collect()
+from backend.core.types import OperationModeValues, DeviceTypeValues, InverterStatusValues
+gc_collect()
 from backend.core.watchdog import Watchdog
 gc_collect()
 from backend.modules.devices import Devices
@@ -32,8 +46,18 @@ prefix = '[homebattery] {0}'
 async def main():
     gc_collect()
     mem_info(1)
-    from backend.core.logging_singleton import log
-    from backend.core.userinterface_singleton import display
+
+    Singletons.set_operationmode(OperationModeValues())
+    Singletons.set_devicetype(DeviceTypeValues())
+    Singletons.set_inverterstatus(InverterStatusValues())
+    Singletons.set_log(Logging())
+    Singletons.set_leds(Leds())
+    Singletons.set_display(Display())
+    Singletons.set_addon_ports(AddonPort(1, 0), AddonPort(0, 1))
+    Singletons.set_ble(MicroBleCentral())
+
+    log = Singletons.log()
+    display = Singletons.display()
     log.debug(f'Homebattery {__version__}')
     display.print('Homebattery', __version__)
 

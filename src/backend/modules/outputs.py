@@ -3,6 +3,7 @@ from collections import deque
 from micropython import const
 from sys import print_exception
 from ..core.backendmqtt import Mqtt
+from ..core.singletons import Singletons
 from ..core.types import CommandBundle
 from .supervisor import Supervisor
 from .battery import Battery
@@ -16,9 +17,8 @@ class Outputs:
     def __init__(self, mqtt: Mqtt, supervisor: Supervisor, battery: Battery, charger: Charger, inverter: Inverter, solar: Solar):
         self.__commands = deque((), 10)
         self.__command_event = Event()
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(_OUTPUT_LOG_NAME)
-        self.__trace = log.trace
+        self.__trace = Singletons.log().trace
+        self.__log = Singletons.log().create_logger(_OUTPUT_LOG_NAME)
         self.__mqtt = mqtt
         self.__supervisor = supervisor
         self.__battery = battery
@@ -26,8 +26,7 @@ class Outputs:
         self.__inverter = inverter
         self.__solar = solar
 
-        from ..core.userinterface_singleton import display
-        self.__display = display
+        self.__display = Singletons.display()
 
         self.__battery.on_battery_data.add(self.__on_battery_data)
         self.__charger.on_energy.add(self.__on_charger_energy)

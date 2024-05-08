@@ -7,6 +7,7 @@ from micropython import const
 from struct import pack, unpack
 
 from .microsocket import MicroSocket, MicroSocketTimeoutException, MicroSocketClosedExecption
+from .singletons import Singletons
 
 from utime import time
 from uerrno import EINPROGRESS, ETIMEDOUT, ECONNRESET
@@ -20,8 +21,7 @@ BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT, -110]
 
 class MicroMqtt():
     def __init__(self, connect_callback):
-        from .logging_singleton import log
-        self.__log = log.create_logger(_MQTT_LOG_NAME)
+        self.__log = Singletons.log().create_logger(_MQTT_LOG_NAME)
 
         self.__connect_callback = connect_callback
 
@@ -160,11 +160,8 @@ class MicroMqtt():
                 self.retained = retained
 
         def __init__(self, connect_callback):
-            from .logging_singleton import log
-            self.__log = log.create_logger(_MQTT_LOG_NAME)
-
-            from .userinterface_singleton import leds
-            self.__leds = leds
+            self.__log = Singletons.log().create_logger(_MQTT_LOG_NAME)
+            self.__leds = Singletons.leds()
 
             self.data_available_event = Event()
 

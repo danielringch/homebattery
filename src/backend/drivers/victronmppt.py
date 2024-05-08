@@ -2,20 +2,18 @@ from asyncio import create_task, Event
 from machine import Pin
 from .interfaces.solarinterface import SolarInterface
 from ..core.byteringbuffer import ByteRingBuffer
+from ..core.singletons import Singletons
 from ..core.types import CallbackCollection
 
 class VictronMppt(SolarInterface):
     def __init__(self, name, config):
-        from ..core.types_singletons import devicetype
-        self.__device_types = (devicetype.solar,)
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(name)
+        self.__device_types = (Singletons.devicetype().solar,)
+        self.__log = Singletons.log().create_logger(name)
         port = config['port']
-        from ..core.addonport_singleton import addon_ports
         if port == "ext1":
-            self.__port = addon_ports[0]
+            self.__port = Singletons.addon_port_1()
         elif port == "ext2":
-            self.__port = addon_ports[1]
+            self.__port = Singletons.addon_port_2()
         else:
            raise Exception(f'Unknown port: {port}')
         self.__port.connect(19200, 0, None, 1)
@@ -23,10 +21,6 @@ class VictronMppt(SolarInterface):
         self.__rx_buffer = ByteRingBuffer(1024)
         self.__rx_task = create_task(self.__receive())
         self.__rx_trigger = Event()
-
-        from ..core.types_singletons import bool2on
-        self.__bool2on = bool2on
-
 
         self.__control_pin = Pin(4, Pin.OUT)
         self.__control_pin.off()
@@ -121,7 +115,7 @@ class VictronMppt(SolarInterface):
                 value_changed = is_on != self.__is_on
                 self.__is_on = is_on
                 if value_changed:
-                    self.__log.info(f'Status: {self.__bool2on[is_on]}')
+                    self.__log.info(f'Status: on={is_on}')
                     self.__on_status_change.run_all(is_on)
             elif header_str == 'H20':
                 energy = int(str(payload, 'utf-8')) * 10

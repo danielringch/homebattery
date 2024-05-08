@@ -3,8 +3,7 @@ from sys import print_exception
 from time import time
 from .interfaces.inverterinterface import InverterInterface
 from ..core.microaiohttp import ClientSession
-from ..core.logging_singleton import log
-from ..core.userinterface_singleton import leds
+from ..core.singletons import Singletons
 from ..core.types import CallbackCollection, EnumEntry, InverterStatus, PowerLut
 
 
@@ -23,7 +22,7 @@ ahoycommand = AhoyCommandValues()
 
 class AhoyDtu(InverterInterface):
     def __init__(self, name, config):
-        from ..core.types_singletons import inverterstatus
+        inverterstatus = Singletons.inverterstatus()
         self.__ahoy_state_to_internal_state = {
             0: inverterstatus.fault,
             1: inverterstatus.off,
@@ -33,11 +32,12 @@ class AhoyDtu(InverterInterface):
         }
         self.__inverterstatus = inverterstatus
 
-        from ..core.types_singletons import devicetype
-        self.__device_types = (devicetype.inverter,)
-        self.__log = log.create_logger(name)
+        self.__device_types = (Singletons.devicetype().inverter,)
+        self.__log = Singletons.log().create_logger(name)
         self.__host, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
+
+        self.__leds = Singletons.leds()
 
         self.__on_status_change = CallbackCollection()
         self.__on_power_change = CallbackCollection()
@@ -285,7 +285,7 @@ class AhoyDtu(InverterInterface):
                status = response.status
                if status >= 200 and status <= 299:
                    json = await response.json()
-                   leds.notify_control()
+                   self.__leds.notify_control()
                    return json
                else:
                    self.__log.error(f'Inverter query {query} failed with code {status}, {i} retries left.')
@@ -303,7 +303,7 @@ class AhoyDtu(InverterInterface):
                 if status >= 200 and status <= 299:
                     json = await response.json()
                     if json["success"] in (True, "true"):
-                        leds.notify_control()
+                        self.__leds.notify_control()
                         return json
                 self.__log.error(f'Inverter command {query} failed with code {status}.')
             except Exception as e:

@@ -3,8 +3,9 @@ from collections import deque
 from micropython import const
 from sys import print_exception
 from time import localtime, time
-from ..core.types import CommandBundle, OperationMode, CallbackCollection
 from ..core.backendmqtt import Mqtt
+from ..core.singletons import Singletons
+from ..core.types import CommandBundle, OperationMode, CallbackCollection
 from .devices import Devices
 
 _CHARGER_LOG_NAME = const('battery')
@@ -15,21 +16,18 @@ class Charger:
         self.__commands = deque((), 10)
         self.__mqtt = mqtt
 
-        from ..core.types_singletons import operationmode
-        self.__operationmode = operationmode
+        self.__operationmode = Singletons.operationmode()
 
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(_CHARGER_LOG_NAME)
-        self.__trace = log.trace
+        self.__trace = Singletons.log().trace
+        self.__log = Singletons.log().create_logger(_CHARGER_LOG_NAME)
 
         self.__last_state = None
 
         self.__on_energy = CallbackCollection()
 
         self.__chargers = []
-        from ..core.types_singletons import devicetype
         for device in devices.devices:
-            if devicetype.charger not in device.device_types:
+            if Singletons.devicetype().charger not in device.device_types:
                 continue
             self.__chargers.append(device)
             device.on_charger_status_change.add(self.__on_charger_status)

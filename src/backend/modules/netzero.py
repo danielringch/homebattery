@@ -2,6 +2,7 @@ from collections import namedtuple
 from micropython import const
 from time import time
 from ..core.microdeque import MicroDeque, MicroDequeOverflowError
+from ..core.singletons import Singletons
 
 _NETZERO_LOG_NAME = const('inverter')
 
@@ -11,8 +12,7 @@ class NetZero:
     def __init__(self, config):
         config = config['netzero']
 
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(_NETZERO_LOG_NAME)
+        self.__log = Singletons.log().create_logger(_NETZERO_LOG_NAME)
         
         self.__time_span = int(config['evaluated_time_span'])
 

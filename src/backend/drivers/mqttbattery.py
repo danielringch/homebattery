@@ -4,6 +4,7 @@ from ubinascii import hexlify
 from time import time
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.backendmqtt import Mqtt
+from ..core.singletons import Singletons
 from ..core.types import BatteryData, CallbackCollection
 
 class MqttBattery(BatteryInterface):
@@ -89,10 +90,8 @@ class MqttBattery(BatteryInterface):
 
     def __init__(self, name, config, mqtt: Mqtt):
         self.__name = name
-        from ..core.types_singletons import devicetype
-        self.__device_types = (devicetype.battery,)
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(name)
+        self.__device_types = (Singletons.devicetype().battery,)
+        self.__log = Singletons.log().create_logger(name)
 
         self.__root = config['root_topic']
         self.__cell_count = int(config['cell_count'])

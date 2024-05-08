@@ -6,6 +6,7 @@ from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ..core.singletons import Singletons
 from ..core.types import BatteryData, CallbackCollection
 
 # ressources:
@@ -54,16 +55,13 @@ class JkBmsBd4(BatteryInterface):
 
     def __init__(self, name, config):
         self.__name = name
-        from ..core.types_singletons import devicetype
-        self.__device_types = (devicetype.battery,)
+        self.__device_types = (Singletons.devicetype().battery,)
         self.__mac = config['mac']
 
-        from ..core.microblecentral_singleton import ble_instance
-        self.__ble = ble_instance
+        self.__ble = Singletons.ble()
 
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(name)
-        self.__trace = log.trace
+        self.__trace = Singletons.log().trace
+        self.__log = Singletons.log().create_logger(name)
 
         self.__on_data = CallbackCollection()
 

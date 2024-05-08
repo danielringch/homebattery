@@ -2,6 +2,7 @@ from asyncio import Event, sleep
 from bluetooth import BLE
 from bluetooth import UUID as BT_UUID
 from .microdeque import MicroDeque
+from .singletons import Singletons
 from micropython import const
 from ubinascii import hexlify, unhexlify
 
@@ -48,10 +49,8 @@ class MicroBleConnectionClosedError(Exception):
 
 class MicroBleDevice:
     def __init__(self, central):
-        from .logging_singleton import log
-        self.__log = log.create_logger(_BLUETOOTH_LOG_NAME)
-        from .userinterface_singleton import leds
-        self.__leds = leds
+        self.__log = Singletons.log().create_logger(_BLUETOOTH_LOG_NAME)
+        self.__leds = Singletons.leds()
 
         self.__central = central
         self.__ble = central.__ble
@@ -296,10 +295,8 @@ class MicroBleDescriptor:
 
 class MicroBleCentral:
     def __init__(self):
-        from .logging_singleton import log
-        self.__log = log.create_logger(_BLUETOOTH_LOG_NAME)
-        from .userinterface_singleton import leds
-        self.__leds = leds
+        self.__log = Singletons.log().create_logger(_BLUETOOTH_LOG_NAME)
+        self.__leds = Singletons.leds()
 
         self.__ble = BLE()
         self.__current_device = None

@@ -3,14 +3,14 @@ from micropython import const
 from ntptime import settime as setntptime
 from time import sleep
 from uerrno import ETIMEDOUT
+from .singletons import Singletons
 from .watchdog import Watchdog
 
 _NETWORK_LOG_NAME = const('mqtt')
 
 class Network():
     def __init__(self, config: dict):
-        from .logging_singleton import log
-        self.__log = log.create_logger(_NETWORK_LOG_NAME)
+        self.__log = Singletons.log().create_logger(_NETWORK_LOG_NAME)
         self.__config = config["network"]
 
     def connect(self, watchdog: Watchdog):

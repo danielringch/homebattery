@@ -1,14 +1,14 @@
 from struct import pack, unpack
 from .micromqtt import MicroMqtt
 from ssl import CERT_NONE
+from .singletons import Singletons
 from .types import BatteryData, CallbackCollection, OperationMode
 
 class Mqtt():
     def __init__(self, config: dict):
         config = config["mqtt"]
 
-        from .types_singletons import operationmode
-        self.__operationmode = operationmode
+        self.__operationmode = Singletons.operationmode()
 
         self.__ip, self.__port = config['host'].split(':')
         self.__port = int(self.__port)

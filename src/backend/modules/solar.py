@@ -4,6 +4,7 @@ from micropython import const
 from sys import print_exception
 from time import localtime, time
 from ..core.backendmqtt import Mqtt
+from ..core.singletons import Singletons
 from ..core.types import OperationMode, CallbackCollection, CommandBundle
 from .devices import Devices
 
@@ -16,20 +17,16 @@ class Solar:
 
         self.__mqtt = mqtt
 
-        from ..core.userinterface_singleton import display
-        self.__display = display
-        from ..core.types_singletons import operationmode
-        self.__mode_protect = operationmode.protect
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(_SOLAR_LOG_NAME)
-        self.__trace = log.trace
+        self.__display = Singletons.display()
+        self.__mode_protect = Singletons.operationmode().protect
+        self.__trace = Singletons.log().trace
+        self.__log = Singletons.log().create_logger(_SOLAR_LOG_NAME)
 
         self.__on_energy = CallbackCollection()
 
-        from ..core.types_singletons import devicetype
         self.__devices = []
         for device in devices.devices:
-            if devicetype.solar not in device.device_types:
+            if Singletons.devicetype().solar not in device.device_types:
                 continue
             self.__devices.append(device)
             device.on_solar_status_change.add(self.__on_status_change)

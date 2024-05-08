@@ -2,6 +2,8 @@ from gc import collect as gc_collect
 from micropython import const
 from sys import print_exception
 
+from ..core.singletons import Singletons
+
 from ..drivers.ahoydtu import AhoyDtu
 from ..drivers.daly8s24v60a import Daly8S24V60A
 from ..drivers.jkbmsbd4 import JkBmsBd4
@@ -35,7 +37,7 @@ class Devices:
         config = config['devices']
         self.__devices = []
 
-        from ..core.logging_singleton import log
+        log = Singletons.log()
 
         for name, meta in config.items():
             try:

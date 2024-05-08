@@ -2,8 +2,9 @@ from asyncio import create_task, sleep
 from micropython import const
 from sys import print_exception
 from time import time
-from ..core.types import EnumEntry
 from ..core.backendmqtt import Mqtt
+from ..core.singletons import Singletons
+from ..core.types import EnumEntry
 from ..core.watchdog import Watchdog
 from .inverter import Inverter
 from .charger import Charger
@@ -26,13 +27,10 @@ class Supervisor:
     def __init__(self, config: dict, watchdog: Watchdog, mqtt: Mqtt, modeswitcher: ModeSwitcher, inverter: Inverter, charger: Charger, battery: Battery):
         config = config['supervisor']
 
-        from ..core.logging_singleton import log
-        self.__log = log.create_logger(_SUPERVISOR_LOG_NAME)
-        self.__trace = log.trace
-        from ..core.userinterface_singleton import display
-        self.__display = display
-        from ..core.userinterface_singleton import leds
-        self.__leds = leds
+        self.__trace = Singletons.log().trace
+        self.__log = Singletons.log().create_logger(_SUPERVISOR_LOG_NAME)
+        self.__display = Singletons.display()
+        self.__leds = Singletons.leds()
 
         self.__watchdog = watchdog
         self.__modeswitcher = modeswitcher
@@ -42,7 +40,7 @@ class Supervisor:
         self.__check_interval = int(config['check_interval'])
         self.__next_check = 0
 
-        from ..core.types_singletons import devicetype
+        devicetype = Singletons.devicetype()
         self.__internal_error = self.internal = Supervisor.LockedReason(
                 name='internal',
                 priority=0,
@@ -137,7 +135,7 @@ class Supervisor:
 
     class BatteryOfflineChecker(SubChecker):
         def __init__(self, config, battery):
-            from ..core.types_singletons import devicetype
+            devicetype = Singletons.devicetype()
             super().__init__(config, 'battery_offline', 30, (devicetype.charger, devicetype.solar, devicetype.inverter))
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_data = dict()
@@ -162,7 +160,7 @@ class Supervisor:
         
     class CellHighChecker(SubChecker):
         def __init__(self, config, battery):
-            from ..core.types_singletons import devicetype
+            devicetype = Singletons.devicetype()
             super().__init__(config, 'cell_high', 31, (devicetype.charger, devicetype.solar))
             self.__threshold = float(config[self.__name]['threshold'])
             self.__hysteresis = float(config[self.__name]['hysteresis'])
@@ -191,7 +189,7 @@ class Supervisor:
         
     class CellLowChecker(SubChecker):
         def __init__(self, config, battery):
-            from ..core.types_singletons import devicetype
+            devicetype = Singletons.devicetype()
             super().__init__(config, 'cell_low', 32, (devicetype.inverter,))
             self.__threshold = float(config[self.__name]['threshold'])
             self.__hysteresis = float(config[self.__name]['hysteresis'])
@@ -220,7 +218,7 @@ class Supervisor:
         
     class LiveDataOfflineChargeChecker(SubChecker):
         def __init__(self, config, mqtt):
-            from ..core.types_singletons import devicetype
+            devicetype = Singletons.devicetype()
             super().__init__(config, 'live_data_lost_charge', 11, (devicetype.charger,))
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_data = 0
@@ -237,7 +235,7 @@ class Supervisor:
 
     class LiveDataOfflineDischargeChecker(SubChecker):
         def __init__(self, config, mqtt):
-            from ..core.types_singletons import devicetype
+            devicetype = Singletons.devicetype()
             super().__init__(config, 'live_data_lost_discharge', 10, (devicetype.inverter,))
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_data = 0
@@ -254,7 +252,7 @@ class Supervisor:
 
     class MqttOfflineChecker(SubChecker):
         def __init__(self, config, mqtt):
-            from ..core.types_singletons import devicetype
+            devicetype = Singletons.devicetype()
             super().__init__(config, 'mqtt_offline', 5, (devicetype.charger, devicetype.inverter), True)
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_online = 0
@@ -271,7 +269,7 @@ class Supervisor:
     class StartupChecker(SubChecker):
         def __init__(self, config, locks):
             config = {'startup': {'enabled': True}}
-            from ..core.types_singletons import devicetype
+            devicetype = Singletons.devicetype()
             super().__init__(config, 'startup', 2, (devicetype.inverter, devicetype.solar, devicetype.charger))
             self.__mature_timestamp = time() + 60
             self.__locks = locks

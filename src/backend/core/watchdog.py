@@ -1,4 +1,5 @@
 from machine import Pin, WDT
+from .singletons import Singletons
 
 class Watchdog:
     class Stub:
@@ -6,9 +7,8 @@ class Watchdog:
             pass
 
     def __init__(self):
-        from .logging_singleton import log
         enabled = bool(Pin(8, Pin.IN).value())
-        log.info(f'Watchdog enabled={enabled}')
+        Singletons.log().info(f'Watchdog enabled={enabled}')
         self.__wdt = WDT(timeout=5000) if enabled else self.Stub()
 
     def feed(self):

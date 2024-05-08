@@ -1,15 +1,14 @@
 from machine import Pin, I2C
 from micropython import const
+from .singletons import Singletons
 from .ssd1306 import SSD1306
-
 from .types import OperationMode
 
 _DISPLAY_LOG_NAME = const('display')
 
 class Display:
     def __init__(self):
-        from .logging_singleton import log
-        self.__log = log.create_logger(_DISPLAY_LOG_NAME)
+        self.__log = Singletons.log().create_logger(_DISPLAY_LOG_NAME)
         try:
 
             i2c = I2C(id=0, sda=Pin(0), scl=Pin(1))
