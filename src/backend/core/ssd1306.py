@@ -1,8 +1,7 @@
 # MicroPython SSD1306 OLED driver, I2C interface
 
 from micropython import const
-import framebuf
-
+from framebuf import FrameBuffer, MONO_VLSB
 
 # register definitions
 SET_CONTRAST = const(0x81)
@@ -25,7 +24,7 @@ SET_CHARGE_PUMP = const(0x8D)
 
 # Subclassing FrameBuffer provides support for graphics primitives
 # http://docs.micropython.org/en/latest/pyboard/library/framebuf.html
-class SSD1306(framebuf.FrameBuffer):
+class SSD1306(FrameBuffer):
     def __init__(self, width, height, i2c, addr=0x3C, external_vcc=False):
         self.i2c = i2c
         self.addr = addr
@@ -37,7 +36,7 @@ class SSD1306(framebuf.FrameBuffer):
         self.full_buffer = bytearray(self.pages * self.width + 1)
         self.full_buffer[0] = 0x40 # Co=0, D/C#=1
         self.buffer = memoryview(self.full_buffer)[1:]
-        super().__init__(self.buffer, self.width, self.height, framebuf.MONO_VLSB)
+        super().__init__(self.buffer, self.width, self.height, MONO_VLSB)
         self.init_display()
 
     def init_display(self):

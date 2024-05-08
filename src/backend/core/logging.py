@@ -1,6 +1,7 @@
-
-import asyncio, socket, time
+from asyncio import create_task, Event, sleep
+from socket import getaddrinfo, socket, AF_INET, SOCK_DGRAM
 from collections import namedtuple
+from time import localtime
 from uio import IOBase
 from .byteringbuffer import ByteRingBuffer
 from .microsocket import BUSY_ERRORS
@@ -19,8 +20,8 @@ class Logging:
         config = config['logging']
         for sender in config['ignore']:
             self.__blacklist.add(sender)
-        self.__event = asyncio.Event()
-        self.__task = asyncio.create_task(self.__run(config))
+        self.__event = Event()
+        self.__task = create_task(self.__run(config))
         self.__event.set()
 
     def get_custom_logger(self, prefix):
@@ -71,7 +72,7 @@ class Logging:
     def __send(self, channel, message):
         if channel in self.__blacklist:
             return
-        now = time.localtime()  # Get current time
+        now = localtime()  # Get current time
         formatted_time = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}".format(
             now[0], now[1], now[2],
             now[3], now[4], now[5]
@@ -94,12 +95,12 @@ class Logging:
     
     async def __run(self, config):
         host, port = config['host'].split(':')
-        address = socket.getaddrinfo(host, int(port))[0][-1]
+        address = getaddrinfo(host, int(port))[0][-1]
         socke = None
 
         while True:
             try:
-                socke = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                socke = socket(AF_INET, SOCK_DGRAM)
                 while True:
                     await self.__event.wait()
                     self.__event.clear()
@@ -111,7 +112,7 @@ class Logging:
                             except OSError as e:
                                 if e.args[0] in BUSY_ERRORS:
                                     pass
-                        await asyncio.sleep(0.05)                    
+                        await sleep(0.05)                    
             except Exception as e:
                 print(f'External logging failed: {e}')
             finally:

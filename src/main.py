@@ -1,23 +1,28 @@
-import asyncio, gc, json
-gc.collect()
+from asyncio import create_task, get_event_loop, sleep
+from gc import collect as gc_collect
+from gc import mem_alloc, mem_free
+from json import load as load_json
+gc_collect()
 from backend.core.watchdog import Watchdog
-gc.collect()
+gc_collect()
 from backend.modules.devices import Devices
-gc.collect()
+gc_collect()
 from backend.modules.battery import Battery
-gc.collect()
+gc_collect()
 from backend.modules.charger import Charger
-gc.collect()
+gc_collect()
 from backend.modules.inverter import Inverter
-gc.collect()
+gc_collect()
 from backend.modules.solar import Solar
-gc.collect()
+gc_collect()
 from backend.modules.modeswitcher import ModeSwitcher
-gc.collect()
+gc_collect()
 from backend.modules.supervisor import Supervisor
-gc.collect()
+gc_collect()
 from backend.modules.outputs import Outputs
-gc.collect()
+gc_collect()
+
+from micropython import mem_info
 
 __version__ = "0.1.0"
 
@@ -25,16 +30,17 @@ prefix = '[homebattery] {0}'
 
 
 async def main():
-    gc.collect()
+    gc_collect()
+    mem_info(1)
     from backend.core.logging_singleton import log
     from backend.core.userinterface_singleton import display
     log.debug(f'Homebattery {__version__}')
     display.print('Homebattery', __version__)
 
-    await asyncio.sleep(3.0)
+    await sleep(3.0)
 
     with open("/config.json", "r") as stream:
-        config = json.load(stream)
+        config = load_json(stream)
 
     watchdog = Watchdog()
     
@@ -55,11 +61,11 @@ async def main():
     mqtt = Mqtt(config)
 
     watchdog.feed()
-    gc.collect()
+    gc_collect()
 
     display.print('Configuring', 'modules...')
     devices = Devices(config, mqtt)
-    gc.collect()
+    gc_collect()
     battery = Battery(config, devices)
     charger = Charger(config, devices, mqtt)
     inverter = Inverter(config, devices, mqtt)
@@ -68,35 +74,37 @@ async def main():
     supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, inverter, charger, battery)
     watchdog.feed()
 
-    gc.collect()
+    gc_collect()
+    mem_info(1)
 
     log.debug('Connecting to MQTT broker...')
     display.print('Connecting to', 'MQTT broker...')
     await mqtt.connect()
     watchdog.feed()
 
-    battery_task = asyncio.create_task(battery.run())
-    charger_task = asyncio.create_task(charger.run())
-    inverter_task = asyncio.create_task(inverter.run())
-    solar_task = asyncio.create_task(solar.run())
+    battery_task = create_task(battery.run())
+    charger_task = create_task(charger.run())
+    inverter_task = create_task(inverter.run())
+    solar_task = create_task(solar.run())
     modeswitcher.run()
     supervisor.run()
     outputs = Outputs(mqtt, supervisor, battery, charger, inverter, solar)
 
-    gc.collect()
+    gc_collect()
+    mem_info(1)
 
     i = 0
     while True:
-        gc.collect()
-        await asyncio.sleep(1)
+        gc_collect()
+        await sleep(1)
         i += 1
         if i >= 60:
             i = 0
-            log.info(f'Used memory: {gc.mem_alloc()} Free memory: {gc.mem_free()}')
+            log.info(f'Used memory: {mem_alloc()} Free memory: {mem_free()}')
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
+    loop = get_event_loop()
 
     try:
         loop.run_until_complete(main())

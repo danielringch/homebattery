@@ -1,12 +1,14 @@
-import asyncio, sys, time
+from asyncio import Lock, sleep
 from collections import deque
+from sys import print_exception
+from time import localtime, time
 from ..core.types import CommandBundle, OperationMode, CallbackCollection
 from ..core.backendmqtt import Mqtt
 from .devices import Devices
 
 class Charger:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
-        self.__lock = asyncio.Lock()
+        self.__lock = Lock()
         self.__commands = deque((), 10)
         self.__mqtt = mqtt
 
@@ -33,7 +35,7 @@ class Charger:
     async def run(self):
         while True:
             try:
-                now = time.time()
+                now = time()
                 async with self.__lock:
                     while len(self.__commands) > 0:
                         await self.__commands.popleft().run()
@@ -42,8 +44,8 @@ class Charger:
                         self.__set_next_energy_execution()
             except Exception as e:
                 self.__log.error(f'Charger cycle failed: {e}')
-                sys.print_exception(e, self.__log.trace)
-            await asyncio.sleep(0.1)
+                print_exception(e, self.__log.trace)
+            await sleep(0.1)
 
     async def is_on(self):
         async with self.__lock:
@@ -90,8 +92,8 @@ class Charger:
         self.__on_energy.run_all(round(energy))
 
     def __set_next_energy_execution(self):
-        now = time.localtime()
-        now_seconds = time.time()
+        now = localtime()
+        now_seconds = time()
         minutes = now[4]
         seconds = now[5]
         extra_seconds = (minutes % 15) * 60 + seconds

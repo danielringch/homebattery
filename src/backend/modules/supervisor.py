@@ -1,4 +1,6 @@
-import asyncio, sys, time
+from asyncio import create_task, sleep
+from sys import print_exception
+from time import time
 from ..core.types import EnumEntry
 from ..core.backendmqtt import Mqtt
 from ..core.watchdog import Watchdog
@@ -53,10 +55,10 @@ class Supervisor:
                 self.MqttOfflineChecker(config, mqtt),
                 self.StartupChecker(config, self.__locks))
 
-        self.__health_check_passed = time.time()
+        self.__health_check_passed = time()
 
     def run(self):
-        self.__task = asyncio.create_task(self.__run())
+        self.__task = create_task(self.__run())
     
     async def __run(self):
         while True:
@@ -64,17 +66,17 @@ class Supervisor:
                 await self.__tick()
             except Exception as e:
                 self.__log.error(f'Supervisor cycle failed: {e}')
-                sys.print_exception(e, self.__log.trace)
+                print_exception(e, self.__log.trace)
             
             deadline = 3 * self.__check_interval
-            now = time.time()
+            now = time()
             if self.__health_check_passed + deadline > now:
                 self.__watchdog.feed()
                 self.__leds.notify_watchdog()
-            await asyncio.sleep(0.5)
+            await sleep(0.5)
 
     async def __tick(self):
-        now = time.time()
+        now = time()
         if now < self.__next_check:
             return
         self.__next_check = now + self.__check_interval
@@ -227,7 +229,7 @@ class Supervisor:
             return (active, self._lock)
         
         def __on_live_consumption(self, _):
-            self.__last_data = time.time()
+            self.__last_data = time()
 
     class LiveDataOfflineDischargeChecker(SubChecker):
         def __init__(self, config, mqtt):
@@ -244,7 +246,7 @@ class Supervisor:
             return (active, self._lock)
         
         def __on_live_consumption(self, _):
-            self.__last_data = time.time()
+            self.__last_data = time()
 
     class MqttOfflineChecker(SubChecker):
         def __init__(self, config, mqtt):
@@ -258,7 +260,7 @@ class Supervisor:
             if self._lock is None:
                 return None
             if self.__mqtt.connected:
-                self.__last_online = time.time()
+                self.__last_online = time()
             active = bool((now - self.__last_online) > self.__threshold)
             return (active, self._lock)
 
@@ -267,7 +269,7 @@ class Supervisor:
             config = {'startup': {'enabled': True}}
             from ..core.types_singletons import devicetype
             super().__init__(config, 'startup', 2, (devicetype.inverter, devicetype.solar, devicetype.charger))
-            self.__mature_timestamp = time.time() + 60
+            self.__mature_timestamp = time() + 60
             self.__locks = locks
 
         def check(self, now):

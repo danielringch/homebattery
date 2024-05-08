@@ -1,4 +1,5 @@
-import asyncio, time
+from asyncio import create_task, Event, sleep, TimeoutError, wait_for
+from time import time
 from .interfaces.chargerinterface import ChargerInterface
 from ..core.microaiohttp import ClientSession
 from ..core.types import CallbackCollection
@@ -22,8 +23,8 @@ class Shelly(ChargerInterface):
         self.__shall_on = False
         self.__is_on = None
         self.__last_on_command = 0
-        self.__sync_trigger = asyncio.Event()
-        self.__sync_task = asyncio.create_task(self.__sync())
+        self.__sync_trigger = Event()
+        self.__sync_task = create_task(self.__sync())
 
         self.__on_status_change = CallbackCollection()
 
@@ -70,7 +71,7 @@ class Shelly(ChargerInterface):
                     self.__on_status_change.run_all(self.__is_on)
 
                 is_synced = self.__is_on == self.__shall_on
-                now = time.time()
+                now = time()
                 if not is_synced or\
                         (self.__shall_on and (now - self.__last_on_command) >= (self.__refresh_interval - 5)):
                     self.__log.send(f'Sending switch request, on={self.__shall_on}')
@@ -79,8 +80,8 @@ class Shelly(ChargerInterface):
                         self.__last_on_command = now
             try:
                 timeout = self.__refresh_interval if is_synced else 2
-                await asyncio.wait_for(self.__sync_trigger.wait(), timeout=timeout)
-            except asyncio.TimeoutError:
+                await wait_for(self.__sync_trigger.wait(), timeout=timeout)
+            except TimeoutError:
                 pass
             self.__sync_trigger.clear()
 
@@ -104,6 +105,6 @@ class Shelly(ChargerInterface):
                 #        return None
             except Exception as e:
                 self.__log.send(f'Charger query {query} for {self.__host} failed: {str(e)}, {i} retries left.')
-            await asyncio.sleep(1)
+            await sleep(1)
         return None
         

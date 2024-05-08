@@ -1,4 +1,4 @@
-import asyncio
+from asyncio import create_task, sleep
 from machine import Pin, UART
 
 from .microdeque import MicroDeque
@@ -21,7 +21,7 @@ class AddonPort:
     def connect(self, baud, bits, parity, stop):
         self.__uart.init(baudrate=baud, bits=bits, parity=parity, stop=stop)
         self.__connected = True
-        self.__rx_task = asyncio.create_task(self.__receive())
+        self.__rx_task = create_task(self.__receive())
 
     def send(self, buffer):
         print(buffer)
@@ -36,7 +36,7 @@ class AddonPort:
                     self.on_rx.run_all(self.__rx_buffer, length)
                 else:
                     break
-            await asyncio.sleep(0.1)
+            await sleep(0.1)
 
     @property
     def on_rx(self):

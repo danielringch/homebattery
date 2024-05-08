@@ -1,5 +1,6 @@
-import gc,sys
+from gc import collect as gc_collect
 from micropython import const
+from sys import print_exception
 
 from ..drivers.ahoydtu import AhoyDtu
 from ..drivers.daly8s24v60a import Daly8S24V60A
@@ -39,7 +40,7 @@ class Devices:
                 driver_name = meta['driver']
                 driver = drivers[driver_name]
                 log.debug(f'Loading device {name} with driver {driver.__name__}.')
-                gc.collect()
+                gc_collect()
                 if driver_name == _MQTT_BATTERY:
                     instance = driver(name, meta, mqtt) 
                 else:
@@ -47,7 +48,7 @@ class Devices:
                 self.__devices.append(instance)
             except Exception as e:
                 log.error(f'Failed to initialize device {name}: {e}')
-                sys.print_exception(e, log.trace)
+                print_exception(e, log.trace)
 
     @property
     def devices(self):

@@ -1,4 +1,5 @@
-import network, ntptime
+from network import WLAN, STA_IF
+from ntptime import settime as setntptime
 from time import sleep
 from uerrno import ETIMEDOUT
 from .watchdog import Watchdog
@@ -11,7 +12,7 @@ class Network():
 
     def connect(self, watchdog: Watchdog):
         watchdog.feed()
-        wlan = network.WLAN(network.STA_IF)
+        wlan = WLAN(STA_IF)
         wlan.active(True)
         wlan.config(pm=0xA11140)
         wlan.connect(self.__config['ssid'], self.__config['password'])
@@ -33,7 +34,7 @@ class Network():
             try:
                 if countdown > 0:
                     watchdog.feed()
-                ntptime.settime()
+                setntptime()
                 break
             except OSError as e:
                 if e.args[0] != ETIMEDOUT:

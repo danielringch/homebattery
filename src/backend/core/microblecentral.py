@@ -1,6 +1,9 @@
-import asyncio, bluetooth, ubinascii
+from asyncio import Event, sleep
+from bluetooth import BLE
+from bluetooth import UUID as BT_UUID
 from .microdeque import MicroDeque
 from micropython import const
+from ubinascii import hexlify, unhexlify
 
 _IRQ_PERIPHERAL_CONNECT = const(7)
 _IRQ_PERIPHERAL_DISCONNECT = const(8)
@@ -57,16 +60,16 @@ class MicroBleDevice:
 
         self.__services = []
 
-        self.__service_event = asyncio.Event()
-        self.__characteristics_event = asyncio.Event()
-        self.__descriptors_event = asyncio.Event()
-        self.__notified_event = asyncio.Event()
-        self.__read_event = asyncio.Event()
-        self.__write_event = asyncio.Event()
+        self.__service_event = Event()
+        self.__characteristics_event = Event()
+        self.__descriptors_event = Event()
+        self.__notified_event = Event()
+        self.__read_event = Event()
+        self.__write_event = Event()
 
     async def connect(self, mac, address_type, timeout = 5000):
         self.__printable_address = mac
-        self.__address = ubinascii.unhexlify(mac.replace(':', ''))
+        self.__address = unhexlify(mac.replace(':', ''))
         self.__address_type = address_type
 
         await self.reconnect(timeout)
@@ -85,7 +88,7 @@ class MicroBleDevice:
             for _ in range (timeout // 100):
                 if self.__handle is not None:
                     break
-                await asyncio.sleep(0.1)
+                await sleep(0.1)
             else:
                 self.__ble.gap_connect(None)
                 raise MicroBleTimeoutError('connect')
@@ -95,7 +98,7 @@ class MicroBleDevice:
             for _ in range (timeout // 100):
                 if self.__mtu is not None:
                     break
-                await asyncio.sleep(0.1)
+                await sleep(0.1)
             else:
                 raise MicroBleTimeoutError('mtu exchange')
         except AttributeError:
@@ -116,7 +119,7 @@ class MicroBleDevice:
             for _ in range (timeout // 100):
                 if self.__central.__current_device is None and self.__handle is None:
                     return
-                await asyncio.sleep(0.1)
+                await sleep(0.1)
         finally:
             # Even if device did not respond, there is nothing we can do, so mark as disconnected
             self.__log.bluetooth(f'Disconnected from {self.__printable_address}.')
@@ -131,7 +134,7 @@ class MicroBleDevice:
         self.__service_event.clear()
         self.__ble.gattc_discover_services(self.__handle, uuid)
         for _ in range (timeout // 100):
-            await asyncio.sleep(0.1)
+            await sleep(0.1)
             if self.__service_event.is_set():
                 result = self.__get_service_by_uuid(uuid)
                 if result is not None:
@@ -170,7 +173,7 @@ class MicroBleDevice:
         if not is_request:
             return
         for _ in range (timeout // 100):
-            await asyncio.sleep(0.1)
+            await sleep(0.1)
             if self.__write_event.is_set():
                 break
         else:
@@ -183,7 +186,7 @@ class MicroBleDevice:
         self.__leds.notify_bluetooth()
         self.__ble.gattc_read(self.__handle, target_handle)
         for _ in range (timeout // 100):
-            await asyncio.sleep(0.1)
+            await sleep(0.1)
             if self.__read_event.is_set():
                 break
         else:
@@ -208,7 +211,7 @@ class MicroBleService:
         self.__device.__characteristics_event.clear()
         self.__device.__ble.gattc_discover_characteristics(self.__device.__handle, self.start_handle, self.end_handle, uuid)
         for _ in range (timeout // 100):
-            await asyncio.sleep(0.1)
+            await sleep(0.1)
             if self.__device.__characteristics_event.is_set():
                 result = self.__get_characteristic_by_uuid(uuid)
                 if result is not None:
@@ -249,7 +252,7 @@ class MicroBleCharacteristic:
 
     async def notified(self):
         while True:
-            await asyncio.sleep(0.1)
+            await sleep(0.1)
             if self.__input_queue is not None and not self.__input_queue.empty():
                 data = self.__input_queue.popleft()
                 if len(self.__input_queue) > 0:
@@ -265,7 +268,7 @@ class MicroBleCharacteristic:
         self.__device.__descriptors_event.clear()
         self.__device.__ble.gattc_discover_descriptors(self.__device.__handle, self.value_handle, self.end_handle)
         for _ in range (timeout // 100):
-            await asyncio.sleep(0.1)
+            await sleep(0.1)
             if self.__device.__descriptors_event.is_set():
                 if self.__descriptor is not None:
                     return self.__descriptor
@@ -296,7 +299,7 @@ class MicroBleCentral:
         from .userinterface_singleton import leds
         self.__leds = leds
 
-        self.__ble = bluetooth.BLE()
+        self.__ble = BLE()
         self.__current_device = None
 
     
@@ -314,7 +317,7 @@ class MicroBleCentral:
         try:
             if event == _IRQ_PERIPHERAL_CONNECT:
                 conn_handle, addr_type, addr = data
-                printable_address = ubinascii.hexlify(addr, ':').decode('utf-8')
+                printable_address = hexlify(addr, ':').decode('utf-8')
                 self.__log.bluetooth(f'Connect event, handle={conn_handle}, type={addr_type}, addr={printable_address} .')
                 if self.__current_device is None or \
                         addr_type != self.__current_device.__address_type or \
@@ -341,7 +344,7 @@ class MicroBleCentral:
                 self.__log.bluetooth(f'Service event, connection={conn_handle}, start={start_handle}, end={end_handle}, uuid={uuid} .')
                 if not self.__check_connection_handle(conn_handle):
                     return
-                uuid = bluetooth.UUID(uuid) # uuid is only passed as memoryview
+                uuid = BT_UUID(uuid) # uuid is only passed as memoryview
                 self.__current_device.__services.append(MicroBleService(self.__current_device, uuid, start_handle, end_handle))
             elif event == _IRQ_GATTC_SERVICE_DONE:
                 self.__log.bluetooth('Service done event.')
@@ -353,7 +356,7 @@ class MicroBleCentral:
                 self.__log.bluetooth(f'Characteristic event, connection={conn_handle}, end={end_handle}, value={value_handle}, uuid={uuid} .')
                 if not self.__check_connection_handle(conn_handle):
                     return
-                uuid = bluetooth.UUID(uuid) # uuid is only passed as memoryview
+                uuid = BT_UUID(uuid) # uuid is only passed as memoryview
                 service = self.__current_device.__get_service_by_handle(value_handle)
                 if service is None:
                     return
@@ -366,7 +369,7 @@ class MicroBleCentral:
             elif event == _IRQ_GATTC_DESCRIPTOR_RESULT:
                 conn_handle, dsc_handle, uuid = data
                 self.__log.bluetooth(f'Descriptor event, connection={conn_handle}, value={dsc_handle}, uuid={uuid} .')
-                if not self.__check_connection_handle(conn_handle) or uuid != bluetooth.UUID(0x2902):
+                if not self.__check_connection_handle(conn_handle) or uuid != BT_UUID(0x2902):
                     return
                 characteristic = self.__current_device.__get_characteristic_by_handle(dsc_handle)
                 if characteristic is None:

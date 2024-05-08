@@ -1,5 +1,9 @@
-import asyncio, bluetooth, ubinascii, struct, sys
+from asyncio import create_task, sleep
+from bluetooth import UUID as BT_UUID
 from micropython import const
+from ubinascii import unhexlify
+from struct import unpack
+from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
 from ..core.types import BatteryData, CallbackCollection
@@ -38,21 +42,21 @@ class Daly8S24V60A(BatteryInterface):
             else:
                 await self.__device.reconnect(timeout=10000)
             
-            service = await self.__device.service(bluetooth.UUID(0xfff0))
-            tx_characteristic = await service.characteristic(bluetooth.UUID(0xfff2))
-            rx_characteristic = await service.characteristic(bluetooth.UUID(0xfff1))
+            service = await self.__device.service(BT_UUID(0xfff0))
+            tx_characteristic = await service.characteristic(BT_UUID(0xfff2))
+            rx_characteristic = await service.characteristic(BT_UUID(0xfff1))
             rx_descriptor = await rx_characteristic.descriptor()
 
-            self.__receive_task = asyncio.create_task(self.__receive(rx_characteristic))
+            self.__receive_task = create_task(self.__receive(rx_characteristic))
 
             await tx_characteristic.write(b'')
-            await rx_descriptor.write(ubinascii.unhexlify('01'), is_request=True)
+            await rx_descriptor.write(unhexlify('01'), is_request=True)
 
             self.__receiving = True
-            await tx_characteristic.write(ubinascii.unhexlify('d2030000003ed7b9'))
+            await tx_characteristic.write(unhexlify('d2030000003ed7b9'))
 
             for _ in range(50):
-                await asyncio.sleep(0.1)
+                await sleep(0.1)
                 if self.__data.valid:
                     break
             else:
@@ -67,7 +71,7 @@ class Daly8S24V60A(BatteryInterface):
             self.__log.send(str(e))
         except Exception as e:
             self.__log.send(f'BLE error: {e}')
-            sys.print_exception(e, self.__trace)
+            print_exception(e, self.__trace)
         finally:
             if self.__receive_task is not None:
                 self.__receive_task.cancel()
@@ -104,18 +108,18 @@ class Daly8S24V60A(BatteryInterface):
             self.__log.send(f'Dropping unknown bluetooth packet, mac={self.__mac}, data={response} .')
 
     def __parse(self, data):
-        temp_1 = struct.unpack('!B', data[94:95])[0] - 40
-        temp_2 = struct.unpack('!B', data[96:97])[0] - 40
+        temp_1 = unpack('!B', data[94:95])[0] - 40
+        temp_2 = unpack('!B', data[96:97])[0] - 40
         temps = (temp_1, temp_2)
-        cells = tuple(x / 1000 for x in struct.unpack(_DALY_CELL_FORMAT_STR, memoryview(data)[3:35]) if x > 0)
+        cells = tuple(x / 1000 for x in unpack(_DALY_CELL_FORMAT_STR, memoryview(data)[3:35]) if x > 0)
 
         self.__data.update(
-                v=struct.unpack('!H', data[83:85])[0] / 10,
-                i=(struct.unpack('!H', data[85:87])[0] - 30000) / 10,
-                soc=struct.unpack('!H', data[87:89])[0] / 10.0,
-                c=struct.unpack('!H', data[99:101])[0] / 10.0,
+                v=unpack('!H', data[83:85])[0] / 10,
+                i=(unpack('!H', data[85:87])[0] - 30000) / 10,
+                soc=unpack('!H', data[87:89])[0] / 10.0,
+                c=unpack('!H', data[99:101])[0] / 10.0,
                 c_full=0,
-                n=struct.unpack('!H', data[105:107])[0],
+                n=unpack('!H', data[105:107])[0],
                 temps=temps,
                 cells=cells
         )

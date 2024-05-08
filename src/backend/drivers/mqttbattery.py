@@ -1,15 +1,17 @@
-import asyncio, ubinascii, struct, sys, time
+from asyncio import create_task, Event
+from struct import unpack
+from ubinascii import hexlify
+from time import time
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.backendmqtt import Mqtt
 from ..core.types import BatteryData, CallbackCollection
-
 
 class MqttBattery(BatteryInterface):
     class Parser():
         def __init__(self, name, log, cell_count, temp_count):
             self.__log = log
             self.data = BatteryData(name, is_forwarded=True)
-            self.data_event = asyncio.Event()
+            self.data_event = Event()
             self.temps = list(None for _ in range(temp_count))
             self.cells = list(None for _ in range(cell_count))
             self.__clear()
@@ -25,7 +27,7 @@ class MqttBattery(BatteryInterface):
                     and None not in self.cells
 
         def parse(self, topic, payload):
-            now = time.time()
+            now = time()
             if self.timestamp + 10 < now:
                 self.__clear()
 
@@ -33,26 +35,26 @@ class MqttBattery(BatteryInterface):
                 parts = topic.split('/')
                 topic = parts[-1]
                 if topic == 'v':
-                    self.v=struct.unpack('!H', payload)[0] / 100
+                    self.v=unpack('!H', payload)[0] / 100
                 elif topic == 'i':
-                    self.i=struct.unpack('!h', payload)[0] / 10
+                    self.i=unpack('!h', payload)[0] / 10
                 elif topic == 'soc':
-                    self.soc=struct.unpack('!B', payload)[0]
+                    self.soc=unpack('!B', payload)[0]
                 elif topic == 'c':
-                    self.c=struct.unpack('!H', payload)[0] / 10
+                    self.c=unpack('!H', payload)[0] / 10
                 elif topic == 'n':
-                    self.n=struct.unpack('!H', payload)[0]
+                    self.n=unpack('!H', payload)[0]
                 else:
                     topic = parts[-2]
                     i = int(parts[-1])
                     if topic == 'temp':
-                        self.temps[i] = struct.unpack('!h', payload)[0] / 10
+                        self.temps[i] = unpack('!h', payload)[0] / 10
                     elif topic == 'cell':
-                        self.cells[i] = struct.unpack('!H', payload)[0] / 1000
+                        self.cells[i] = unpack('!H', payload)[0] / 1000
                     else:
                         raise Exception()
             except:
-                self.__log.send(f'Invalid battery data: topic={topic}, payload={ubinascii.hexlify(payload, " ")}')
+                self.__log.send(f'Invalid battery data: topic={topic}, payload={hexlify(payload, " ")}')
                 return
             
             if self.timestamp == 0:
@@ -111,7 +113,7 @@ class MqttBattery(BatteryInterface):
 
         self.__on_data = CallbackCollection()
 
-        self.__receive_task = asyncio.create_task(self.__receive())
+        self.__receive_task = create_task(self.__receive())
 
     async def read_battery(self):
         pass

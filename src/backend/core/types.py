@@ -1,4 +1,6 @@
-import struct, time
+
+from struct import pack_into, unpack_from
+from time import time
 
 class BatteryData:
     def __init__(self, name, is_forwarded=False):
@@ -23,7 +25,7 @@ class BatteryData:
         self.n = n # cycles
         self.temps = temps # cell temperatures [°C]
         self.cells = cells # cell voltages [V]
-        self.timestamp = time.time()
+        self.timestamp = time()
 
     def invalidate(self):
         self.timestamp = 0
@@ -156,12 +158,12 @@ class PowerLut:
                 self.__min_percent = min(self.__min_percent, percent)
                 self.__min_power = min(self.__min_power, power)
                 self.__max_power = max(self.__max_power, power)
-                struct.pack_into('@HB', self.__lut, lut_index, power, percent)
+                pack_into('@HB', self.__lut, lut_index, power, percent)
                 lut_index += 3
 
     def get_power(self, percent):
         for i in range(self.__lut_length):
-            power_entry, percent_entry = struct.unpack_from('@HB', self.__lut, 3 * i)
+            power_entry, percent_entry = unpack_from('@HB', self.__lut, 3 * i)
             # if percent is smaller than supported, this returns the smallest power possible
             if percent <= percent_entry:
                 return power_entry, percent_entry
@@ -170,10 +172,10 @@ class PowerLut:
             return power_entry, percent_entry
                 
     def get_percent(self, power):
-        previous_power, previous_percent = struct.unpack_from('@HB', self.__lut, 0)
+        previous_power, previous_percent = unpack_from('@HB', self.__lut, 0)
         power = max(self.__min_power, min(self.__max_power, power))
         for i in range(self.__lut_length):
-            power_entry, percent_entry = struct.unpack_from('@HB', self.__lut, 3 * i)
+            power_entry, percent_entry = unpack_from('@HB', self.__lut, 3 * i)
             if power_entry > power:
                 return previous_percent, previous_power
             previous_percent = percent_entry

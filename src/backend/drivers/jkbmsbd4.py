@@ -1,5 +1,9 @@
-import asyncio, bluetooth, ubinascii, struct, sys
+from asyncio import create_task, sleep
+from bluetooth import UUID as BT_UUID
 from micropython import const
+from ubinascii import unhexlify
+from struct import unpack
+from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
 from ..core.types import BatteryData, CallbackCollection
@@ -79,21 +83,21 @@ class JkBmsBd4(BatteryInterface):
             else:
                 await self.__device.reconnect(timeout=10000)
 
-            service = await self.__device.service(bluetooth.UUID(0xffe0))
-            characteristic = await service.characteristic(bluetooth.UUID(0xffe1))
+            service = await self.__device.service(BT_UUID(0xffe0))
+            characteristic = await service.characteristic(BT_UUID(0xffe1))
             descriptor = await characteristic.descriptor()
 
-            self.__receive_task = asyncio.create_task(self.__receive(characteristic))
+            self.__receive_task = create_task(self.__receive(characteristic))
 
-            await descriptor.write(ubinascii.unhexlify('0100'))
-            await asyncio.sleep(0.2)
+            await descriptor.write(unhexlify('0100'))
+            await sleep(0.2)
             
-            await characteristic.write(ubinascii.unhexlify('aa5590eb9700a397a25553bef1fcf9796b521483'))
+            await characteristic.write(unhexlify('aa5590eb9700a397a25553bef1fcf9796b521483'))
 
-            await asyncio.sleep(1.0)
+            await sleep(1.0)
 
             success = await self.__send(characteristic,
-                                         ubinascii.unhexlify('aa5590eb960013e9e22d518e1f56085727a705a1'))
+                                         unhexlify('aa5590eb960013e9e22d518e1f56085727a705a1'))
             if success:
                 self.__parse(self.__current_decoder.data)
 
@@ -108,7 +112,7 @@ class JkBmsBd4(BatteryInterface):
             self.__log.send(str(e))
         except Exception as e:
             self.__log.send(f'BLE error: {e}')
-            sys.print_exception(e, self.__trace)
+            print_exception(e, self.__trace)
         finally:
             if self.__receive_task is not None:
                 self.__receive_task.cancel()
@@ -142,23 +146,23 @@ class JkBmsBd4(BatteryInterface):
             self.__current_decoder = self.MesssageDecoder(self.__log)
             await characteristic.write(data)
             for _ in range(100):
-                await asyncio.sleep(0.1)
+                await sleep(0.1)
                 if self.__current_decoder.success == True:
                     return True
             self.__log.send(f'Attempt {i} for command failed.')
         return False
     
     def __parse(self, data):
-        temps = tuple(x / 10 for x in struct.unpack('<HH', data[156:160]))
-        cells = tuple(x / 1000 for x in struct.unpack(_JK_CELL_FORMAT_STR, data[0:64]) if x > 0)
+        temps = tuple(x / 10 for x in unpack('<HH', data[156:160]))
+        cells = tuple(x / 1000 for x in unpack(_JK_CELL_FORMAT_STR, data[0:64]) if x > 0)
 
         self.__data.update(
-            v=struct.unpack('<I', data[144:148])[0] / 1000,
-            i=struct.unpack('<i', data[152:156])[0] / 1000,
-            soc=struct.unpack('!B', data[167:168])[0],
-            c=struct.unpack('<I', data[168:172])[0] / 1000,
-            c_full=struct.unpack('<I', data[172:176])[0] / 1000,
-            n=struct.unpack('<I', data[176:180])[0],
+            v=unpack('<I', data[144:148])[0] / 1000,
+            i=unpack('<i', data[152:156])[0] / 1000,
+            soc=unpack('!B', data[167:168])[0],
+            c=unpack('<I', data[168:172])[0] / 1000,
+            c_full=unpack('<I', data[172:176])[0] / 1000,
+            n=unpack('<I', data[176:180])[0],
             temps=temps,
             cells=cells
         )

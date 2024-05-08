@@ -1,5 +1,6 @@
-import asyncio, socket
-from utime import ticks_ms, ticks_diff, time
+from asyncio import Lock, sleep
+from socket import getaddrinfo, socket
+from utime import ticks_ms, ticks_diff
 from uerrno import EAGAIN, EINPROGRESS, ETIMEDOUT, ECONNRESET, ECONNABORTED
 
 BUSY_ERRORS = [EAGAIN, EINPROGRESS, ETIMEDOUT, -110]
@@ -18,17 +19,17 @@ class MicroSocketClosedExecption(Exception):
 
 class MicroSocket:
         def __init__(self, ip, port, cert, cert_req):
-            address = socket.getaddrinfo(ip, port)[0][-1]
+            address = getaddrinfo(ip, port)[0][-1]
             cert = cert
             cert_req = cert_req
 
             self.__timeout = 5000
 
-            self.__socket = socket.socket()
+            self.__socket = socket()
             self.__socket.settimeout(1)
 
-            self.__send_lock = asyncio.Lock()
-            self.__receive_lock = asyncio.Lock()
+            self.__send_lock = Lock()
+            self.__receive_lock = Lock()
 
             self.__connected = True
             try:
@@ -68,7 +69,7 @@ class MicroSocket:
                             received_bytes_count += chunk_size
                     except OSError as e:
                         self.__handle_socket_exception(e, 'receive')
-                    await asyncio.sleep(0.05)
+                    await sleep(0.05)
                 end = ticks_ms()
 
                 if received_bytes_count >= length:
@@ -90,7 +91,7 @@ class MicroSocket:
                         data = self.__socket.readline()
                     except OSError as e:
                         self.__handle_socket_exception(e, 'receive')
-                    await asyncio.sleep(0.05)
+                    await sleep(0.05)
                 end = ticks_ms()
 
                 if data:
@@ -120,7 +121,7 @@ class MicroSocket:
                         data = data[chunk_size:]
                     except OSError as e:
                         self.__handle_socket_exception(e, 'send')
-                    await asyncio.sleep(0.05)
+                    await sleep(0.05)
                 end = ticks_ms()
 
                 if data:

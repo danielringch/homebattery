@@ -1,5 +1,6 @@
-import asyncio, sys
+from asyncio import create_task, Event
 from collections import deque
+from sys import print_exception
 from ..core.types import CommandBundle, OperationMode
 from ..core.backendmqtt import Mqtt
 from .inverter import Inverter
@@ -11,7 +12,7 @@ class ModeSwitcher:
         #config = config['modeswitcher']
         self.__commands = deque((), 10)
         self.__task = None
-        self.__event = asyncio.Event()
+        self.__event = Event()
 
         from ..core.types_singletons import devicetype
         self.__devicetype = devicetype
@@ -38,7 +39,7 @@ class ModeSwitcher:
         self.__displayed_mode = None
 
     def run(self):
-        self.__task = asyncio.create_task(self.__run())
+        self.__task = create_task(self.__run())
 
     async def __run(self):
         while True:
@@ -50,7 +51,7 @@ class ModeSwitcher:
                     await self.__commands.popleft().run()
             except Exception as e:
                 self.__log.error(f'ModeSwitcher cycle failed: {e}')
-                sys.print_exception(e, self.__log.trace)
+                print_exception(e, self.__log.trace)
 
     def update_locked_devices(self, devices: set):
         if devices == self.__locked_devices:

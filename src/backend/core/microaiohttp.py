@@ -1,4 +1,4 @@
-import asyncio, json, ubinascii
+from ubinascii import b2a_base64
 
 from .microsocket import MicroSocket, MicroSocketClosedExecption, MicroSocketException, MicroSocketTimeoutException
 
@@ -32,7 +32,7 @@ class HttpResponse:
     
 class BasicAuth:
     def __init__(self, user, password):
-        credentials = ubinascii.b2a_base64(f'{user}:{password}'.encode('ascii'), newline=False).decode('ascii')
+        credentials = b2a_base64(f'{user}:{password}'.encode('ascii'), newline=False).decode('ascii')
         self.__header = f'Authorization: Basic {credentials}\r\n'.encode('iso-8859-1')
 
     @property

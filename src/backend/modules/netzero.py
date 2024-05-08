@@ -1,5 +1,5 @@
-import time
 from collections import namedtuple
+from time import time
 from ..core.microdeque import MicroDeque, MicroDequeOverflowError
 
 class NetZero:
@@ -20,7 +20,7 @@ class NetZero:
         self.__step_up = int(config['power_change_upwards'])
         self.__step_down = -int(config['power_change_downwards'])
         self.__mature_interval = int(config['maturity_time_span'])
-        self.__data_deadline = time.time()
+        self.__data_deadline = time()
 
         self.__delta = 0
 
@@ -31,7 +31,7 @@ class NetZero:
     def clear(self):
         self.__delta = 0
         self.__power_data.clear()
-        self.__data_deadline = time.time()
+        self.__data_deadline = time()
 
     @property
     def delta(self):

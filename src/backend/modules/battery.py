@@ -1,5 +1,7 @@
-import asyncio, random, time
+from asyncio import sleep
 from collections import deque
+from random import randrange
+from time import time
 from ..core.types import CallbackCollection, CommandBundle
 from .devices import Devices
 
@@ -34,12 +36,12 @@ class Battery:
             return
 
         while True:
-            now = time.time()
+            now = time()
             for device in self.__batteries:
                 data = self.__battery_data[device.name]
                 if data is None or data.timestamp + 60 < now:
                     await device.read_battery()
-            await asyncio.sleep(random.randrange(2, 5, 1))
+            await sleep(randrange(2, 5, 1))
 
     def __on_device_data(self, data):
         self.__battery_data[data.name] = data

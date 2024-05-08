@@ -1,4 +1,6 @@
-import asyncio, sys, time
+from asyncio import Event, create_task, sleep
+from sys import print_exception
+from time import time
 from .interfaces.inverterinterface import InverterInterface
 from ..core.microaiohttp import ClientSession
 from ..core.logging_singleton import log
@@ -40,13 +42,13 @@ class AhoyDtu(InverterInterface):
         self.__on_status_change = CallbackCollection()
         self.__on_power_change = CallbackCollection()
 
-        self.__tx_event = asyncio.Event()
-        self.__last_tx = time.time()
-        self.__last_rx = time.time()
+        self.__tx_event = Event()
+        self.__last_tx = time()
+        self.__last_rx = time()
 
-        self.__last_tick = time.time()
+        self.__last_tick = time()
 
-        self.__service_task = asyncio.create_task(self.__tick())
+        self.__service_task = create_task(self.__tick())
 
         self.__name = name
         self.__id = config['id']
@@ -152,7 +154,7 @@ class AhoyDtu(InverterInterface):
     async def __tick(self):
         while True:
             try:
-                now = time.time()
+                now = time()
                 seconds = now - self.__last_tick
                 self.__last_tick = now
                 if seconds > 0:
@@ -162,8 +164,8 @@ class AhoyDtu(InverterInterface):
                     await self.__sync_from_inverters()
             except Exception as e:
                 log.error(f'Ahoydtu cycle failed: {e}')
-                sys.print_exception(e, log.trace)
-            await asyncio.sleep(1.0)
+                print_exception(e, log.trace)
+            await sleep(1.0)
 
     def __update(self, status, power_percent):
         last_status = self.__current_status
@@ -194,7 +196,7 @@ class AhoyDtu(InverterInterface):
         if self.__is_status_synced and self.__is_power_synced:
             return None
 
-        now = time.time()
+        now = time()
         delta = now - self.__last_tx
         wait_time = self.__get_wait_time()
         if delta < wait_time:
@@ -255,7 +257,7 @@ class AhoyDtu(InverterInterface):
             return
         with self.__create_session() as session:
             await self.__post(session, 'ctrl', '{'+request+'}')
-            self.__last_tx = time.time()
+            self.__last_tx = time()
             self.__tx_event.clear()
             return True
 
@@ -268,7 +270,7 @@ class AhoyDtu(InverterInterface):
             self.__update(status, limit)
             if False in (self.__is_status_synced, self.__is_power_synced):
                 self.__tx_event.set()
-            self.__last_rx = time.time()
+            self.__last_rx = time()
         except Exception as e:
             self.__log.send(f'No status available.')
             self.__update(None, None)
@@ -289,7 +291,7 @@ class AhoyDtu(InverterInterface):
                    self.__log.send(f'Inverter query {query} failed with code {status}, {i} retries left.')
            except Exception as e:
                self.__log.send(f'Inverter query {query} failed: {str(e)}, {i} retries left.')
-           await asyncio.sleep(1)
+           await sleep(1)
         return None
     
     async def __post(self, session, query, payload):
@@ -306,5 +308,5 @@ class AhoyDtu(InverterInterface):
                 self.__log.send(f'Inverter command {query} failed with code {status}.')
             except Exception as e:
                 self.__log.send(f'Inverter command {query} failed: {str(e)}, {i} retries left.')
-            await asyncio.sleep(1)
+            await sleep(1)
         return None

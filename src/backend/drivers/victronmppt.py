@@ -1,4 +1,4 @@
-import asyncio
+from asyncio import create_task, Event
 from machine import Pin
 from .interfaces.solarinterface import SolarInterface
 from ..core.byteringbuffer import ByteRingBuffer
@@ -21,8 +21,8 @@ class VictronMppt(SolarInterface):
         self.__port.connect(19200, 0, None, 1)
         self.__port.on_rx.add(self.__on_rx)
         self.__rx_buffer = ByteRingBuffer(1024)
-        self.__rx_task = asyncio.create_task(self.__receive())
-        self.__rx_trigger = asyncio.Event()
+        self.__rx_task = create_task(self.__receive())
+        self.__rx_trigger = Event()
 
         from ..core.types_singletons import bool2on
         self.__bool2on = bool2on
