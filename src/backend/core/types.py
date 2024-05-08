@@ -135,30 +135,24 @@ class InverterStatusValues:
 
 class PowerLut:
     def __init__(self, path):
-        self.__lut = None
         self.__lut_length = 0
         self.__min_percent = 100
         self.__min_power = 65535
         self.__max_power = 0
         with open(path, 'r') as file:
             for line in file:
-                line = line.strip().strip('{},')
-                if not line:
-                    continue
-                self.__lut_length += 1
+                valid, _ = self.__read_line(line)
+                if valid is not None:
+                    self.__lut_length += 1
             file.seek(0)
 
             self.__lut = bytearray(3 * self.__lut_length)
             lut_index = 0
 
             for line in file:
-                line = line.strip().strip('{},')
-                if not line:
+                percent, power = self.__read_line(line)
+                if percent is None or power is None:
                     continue
-
-                key, value = line.split(':')
-                percent = int(key.strip(' "'))
-                power = int(value.strip())
                 self.__min_percent = min(self.__min_percent, percent)
                 self.__min_power = min(self.__min_power, power)
                 self.__max_power = max(self.__max_power, power)
@@ -186,6 +180,13 @@ class PowerLut:
             previous_power = power_entry
         else:
             return previous_percent, previous_power
+        
+    def __read_line(self, line):
+        try:
+            percent, power = line.split(';')
+            return int(percent.strip()), int(power.strip())
+        except:
+            return None, None
                 
     @property
     def min_percent(self):
