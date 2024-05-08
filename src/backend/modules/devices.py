@@ -1,4 +1,4 @@
-import sys
+import gc,sys
 from micropython import const
 
 from ..drivers.ahoydtu import AhoyDtu
@@ -39,6 +39,7 @@ class Devices:
                 driver_name = meta['driver']
                 driver = drivers[driver_name]
                 log.debug(f'Loading device {name} with driver {driver.__name__}.')
+                gc.collect()
                 if driver_name == _MQTT_BATTERY:
                     instance = driver(name, meta, mqtt) 
                 else:

@@ -59,6 +59,7 @@ async def main():
 
     display.print('Configuring', 'modules...')
     devices = Devices(config, mqtt)
+    gc.collect()
     battery = Battery(config, devices)
     charger = Charger(config, devices, mqtt)
     inverter = Inverter(config, devices, mqtt)
