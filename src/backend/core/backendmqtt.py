@@ -65,35 +65,35 @@ class Mqtt():
             self.__mqtt.subscribe(topic, qos)
         self.__subscriptions.append((topic, qos))
 
-    def send_mode(self, mode: OperationMode):
+    async def send_mode(self, mode: OperationMode):
         payload = mode.name.encode('utf-8')
         self.__mqtt.publish(self.__mode_actual_topic, payload, qos=1, retain=False)
 
-    def send_charger_state(self, on):
+    async def send_charger_state(self, on):
         payload = struct.pack('!B', on) if on is not None else None
         self.__mqtt.publish(self.__charger_state_topic, payload, qos=1, retain=False)
 
-    def send_charger_energy(self, energy):
+    async def send_charger_energy(self, energy):
         self.__mqtt.publish(self.__charger_energy_topic, struct.pack('!H', int(energy)), qos=1, retain=False)
 
-    def send_inverter_state(self, on: bool):
+    async def send_inverter_state(self, on: bool):
         payload = struct.pack('!B', on) if on is not None else None
         self.__mqtt.publish(self.__inverter_state_topic, payload, qos=1, retain=False)
 
-    def send_inverter_power(self, power: int):
+    async def send_inverter_power(self, power: int):
         self.__mqtt.publish(self.__inverter_power_topic, struct.pack('!H', int(power)), qos=1, retain=False)
 
-    def send_inverter_energy(self, energy: int):
+    async def send_inverter_energy(self, energy: int):
         self.__mqtt.publish(self.__inverter_energy_topic, struct.pack('!H', int(energy)), qos=1, retain=False)
 
-    def send_solar_state(self, on: bool):
+    async def send_solar_state(self, on: bool):
         payload = struct.pack('!B', on) if on is not None else None
         self.__mqtt.publish(self.__solar_state_topic, payload, qos=1, retain=False)
 
-    def send_solar_energy(self, energy: int):
+    async def send_solar_energy(self, energy: int):
         self.__mqtt.publish(self.__solar_energy_topic, struct.pack('!H', int(energy)), qos=1, retain=False)
 
-    def send_battery(self, data: BatteryData):
+    async def send_battery(self, data: BatteryData):
         self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/v', struct.pack('!H', round(data.v * 100)), qos=1, retain=False)
         self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/i', struct.pack('!h', round(data.i * 10)), qos=1, retain=False)
         self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/soc', struct.pack('!B', int(data.soc)), qos=1, retain=False)
@@ -108,7 +108,7 @@ class Mqtt():
             self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/cell/{i}', struct.pack('!H', round(cell * 1000)), qos=1, retain=False)
             i += 1
 
-    def send_locked(self, reason: str):
+    async def send_locked(self, reason: str):
         payload = reason.encode('utf-8') if reason is not None else None
         self.__mqtt.publish(self.__locked_topic, payload, qos=1, retain=False)
 

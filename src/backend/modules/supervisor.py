@@ -61,7 +61,7 @@ class Supervisor:
     async def __run(self):
         while True:
             try:
-                self.__tick()
+                await self.__tick()
             except Exception as e:
                 self.__log.error(f'Supervisor cycle failed: {e}')
                 sys.print_exception(e, self.__log.trace)
@@ -73,7 +73,7 @@ class Supervisor:
                 self.__leds.notify_watchdog()
             await asyncio.sleep(0.5)
 
-    def __tick(self):
+    async def __tick(self):
         now = time.time()
         if now < self.__next_check:
             return
@@ -104,7 +104,7 @@ class Supervisor:
         top_priority_lock = sorted(self.__locks)[0] if len(self.__locks) else None
 
         if previous_locked != top_priority_lock:
-            self.__mqtt.send_locked(top_priority_lock.name if top_priority_lock is not None else None)
+            await self.__mqtt.send_locked(top_priority_lock.name if top_priority_lock is not None else None)
             self.__display.update_lock(top_priority_lock.name if top_priority_lock is not None else None)
         self.__modeswitcher.update_locked_devices(locked_devices)
 

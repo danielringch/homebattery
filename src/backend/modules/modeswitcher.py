@@ -81,7 +81,7 @@ class ModeSwitcher:
         if displayed_mode != self.__displayed_mode:
             self.__displayed_mode = displayed_mode
             self.__display.update_mode(self.__displayed_mode)
-            self.__mqtt.send_mode(self.__displayed_mode)
+            await self.__mqtt.send_mode(self.__displayed_mode)
 
     def __get_effective_mode(self, mode: OperationMode):
         charger_mode = self.__operationmode.protect if self.__devicetype.charger in self.__locked_devices else mode

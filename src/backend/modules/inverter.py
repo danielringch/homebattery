@@ -80,7 +80,7 @@ class Inverter:
             if status != self.__inverterstatus.on:
                 self.__display.update_inverter_power(0)
                 self.__netzero.clear()
-            self.__mqtt.send_inverter_state(status == self.__inverterstatus.on)
+            await self.__mqtt.send_inverter_state(status == self.__inverterstatus.on)
             self.__last_status = status
         return status
 
@@ -95,7 +95,7 @@ class Inverter:
                 # Operation mode requests must be answered, but since we are
                 # already in target state, __get_status() will not send anything, so
                 # we need to do it manually here.
-                self.__mqtt.send_inverter_state(actual_status == self.__inverterstatus.on)
+                await self.__mqtt.send_inverter_state(actual_status == self.__inverterstatus.on)
 
     @property
     def on_energy(self):
@@ -130,7 +130,7 @@ class Inverter:
         if power != self.__last_power:
             self.__netzero.clear()
             self.__display.update_inverter_power(power)
-            self.__mqtt.send_inverter_power(power)
+            await self.__mqtt.send_inverter_power(power)
             self.__last_power = power
         return power
     

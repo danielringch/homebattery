@@ -54,7 +54,7 @@ class Charger:
             shall_on = mode == self.__operationmode.charge
             if shall_on == self.__last_state:
                 # mode request must be answered
-                self.__mqtt.send_charger_state(self.__last_state)
+                await self.__mqtt.send_charger_state(self.__last_state)
             for charger in self.__chargers:
                 await charger.switch_charger(shall_on)
 
@@ -77,7 +77,7 @@ class Charger:
                 mode = None
                 break
         if self.__last_state != on:
-            self.__mqtt.send_charger_state(on)
+            await self.__mqtt.send_charger_state(on)
             self.__last_state = on
         return on
 

@@ -61,7 +61,7 @@ class Solar:
                 for device in self.__devices:
                     await device.switch_solar(on)
             else:
-                self.__mqtt.send_solar_state(is_on)
+                await self.__mqtt.send_solar_state(is_on)
 
     @property
     def on_energy(self):
@@ -76,7 +76,7 @@ class Solar:
             combined_status = True
 
         if combined_status != self.__last_status:
-            self.__mqtt.send_solar_state(combined_status)
+            await self.__mqtt.send_solar_state(combined_status)
             self.__last_status = combined_status
 
     async def __get_power(self):
