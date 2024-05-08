@@ -9,7 +9,7 @@ class VictronMppt(SolarInterface):
         from ..core.types_singletons import devicetype
         self.__device_types = (devicetype.solar,)
         from ..core.logging_singleton import log
-        self.__log = log.get_custom_logger(name)
+        self.__log = log.create_logger(name)
         port = config['port']
         from ..core.addonport_singleton import addon_ports
         if port == "ext1":
@@ -63,7 +63,7 @@ class VictronMppt(SolarInterface):
     async def get_solar_energy(self):
         energy = self.__energy_delta
         self.__energy_delta = 0
-        self.__log.send(f'{energy} Wh fed after last check')
+        self.__log.info(f'{energy} Wh fed after last check')
         return energy
     
     @property
@@ -75,7 +75,7 @@ class VictronMppt(SolarInterface):
             self.__rx_buffer.extend(data, length)
             self.__rx_trigger.set()
         else:
-            self.__log.send('Input buffer overflow.')
+            self.__log.error('Input buffer overflow.')
 
     async def __receive(self):
         buffer = bytearray(42)
@@ -113,7 +113,7 @@ class VictronMppt(SolarInterface):
                 power = int(str(payload, 'utf-8'))
                 value_changed = abs(power - self.__power) >= self.__power_hysteresis
                 if value_changed:
-                    self.__log.send(f'Power: {power} W')
+                    self.__log.info(f'Power: {power} W')
                     self.__on_power_change.run_all(power)
                     self.__power = power
             elif header_str == 'CS':
@@ -121,7 +121,7 @@ class VictronMppt(SolarInterface):
                 value_changed = is_on != self.__is_on
                 self.__is_on = is_on
                 if value_changed:
-                    self.__log.send(f'Status: {self.__bool2on[is_on]}')
+                    self.__log.info(f'Status: {self.__bool2on[is_on]}')
                     self.__on_status_change.run_all(is_on)
             elif header_str == 'H20':
                 energy = int(str(payload, 'utf-8')) * 10
@@ -133,4 +133,4 @@ class VictronMppt(SolarInterface):
                     self.__energy_delta += energy - self.__energy_value
                 self.__energy_value = energy
         except:
-            self.__log.send(f'Invalid packet received: {bytes(header)} {bytes(payload) if payload is not None else None}')
+            self.__log.error(f'Invalid packet received: {bytes(header)} {bytes(payload) if payload is not None else None}')

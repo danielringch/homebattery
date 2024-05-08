@@ -22,7 +22,7 @@ class Daly8S24V60A(BatteryInterface):
 
         from ..core.logging_singleton import log
         self.__trace = log.trace
-        self.__log = log.get_custom_logger(name)
+        self.__log = log.create_logger(name)
 
         self.__on_data = CallbackCollection()
 
@@ -60,17 +60,17 @@ class Daly8S24V60A(BatteryInterface):
                 if self.__data.valid:
                     break
             else:
-                self.__log.send(f'Failed to receive battery data.')
+                self.__log.error(f'Failed to receive battery data.')
                 return
             
             for line in str(self.__data).split('\n'):
-                self.__log.send(line)
+                self.__log.info(line)
             self.__on_data.run_all(self.__data)
 
         except MicroBleTimeoutError as e:
-            self.__log.send(str(e))
+            self.__log.error(str(e))
         except Exception as e:
-            self.__log.send(f'BLE error: {e}')
+            self.__log.error(f'BLE error: {e}')
             print_exception(e, self.__trace)
         finally:
             if self.__receive_task is not None:
@@ -98,14 +98,14 @@ class Daly8S24V60A(BatteryInterface):
             if not self.__receiving:
                 continue
             if len(response) < 128:
-                self.__log.send(f'Dropping too short bluetooth packet, mac={self.__mac}, len={len(response)}.')
+                self.__log.error(f'Dropping too short bluetooth packet, mac={self.__mac}, len={len(response)}.')
                 continue
             if response[0] == 0xd2 and response[1] == 0x03 and response[2] == 0x7c:
                 self.__parse(response)
                 self.__receiving = False
                 continue
                     
-            self.__log.send(f'Dropping unknown bluetooth packet, mac={self.__mac}, data={response} .')
+            self.__log.error(f'Dropping unknown bluetooth packet, mac={self.__mac}, data={response} .')
 
     def __parse(self, data):
         temp_1 = unpack('!B', data[94:95])[0] - 40

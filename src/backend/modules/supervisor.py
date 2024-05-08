@@ -1,4 +1,5 @@
 from asyncio import create_task, sleep
+from micropython import const
 from sys import print_exception
 from time import time
 from ..core.types import EnumEntry
@@ -8,6 +9,8 @@ from .inverter import Inverter
 from .charger import Charger
 from .battery import Battery
 from .modeswitcher import ModeSwitcher
+
+_SUPERVISOR_LOG_NAME = const('supervisor')
 
 class Supervisor:
     class LockedReason(EnumEntry):
@@ -24,7 +27,8 @@ class Supervisor:
         config = config['supervisor']
 
         from ..core.logging_singleton import log
-        self.__log = log
+        self.__log = log.create_logger(_SUPERVISOR_LOG_NAME)
+        self.__trace = log.trace
         from ..core.userinterface_singleton import display
         self.__display = display
         from ..core.userinterface_singleton import leds
@@ -66,7 +70,7 @@ class Supervisor:
                 await self.__tick()
             except Exception as e:
                 self.__log.error(f'Supervisor cycle failed: {e}')
-                print_exception(e, self.__log.trace)
+                print_exception(e, self.__trace)
             
             deadline = 3 * self.__check_interval
             now = time()
@@ -95,12 +99,12 @@ class Supervisor:
             self.__clear_lock(self.__internal_error)
 
         except Exception as e:
-            self.__log.supervisor(f'Cycle failed: {e}')
+            self.__log.error(f'Cycle failed: {e}')
             self.__locks.add(self.__internal_error)
 
         locked_devices = set()
         for lock in self.__locks:
-            self.__log.supervisor(f'System lock: {lock.name}')
+            self.__log.info(f'System lock: {lock.name}')
             locked_devices.update(lock.locked_devices)
 
         top_priority_lock = sorted(self.__locks)[0] if len(self.__locks) else None

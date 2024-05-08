@@ -3,6 +3,7 @@ from collections import deque, OrderedDict
 from gc import collect as gc_collect
 from ubinascii import hexlify
 from machine import unique_id
+from micropython import const
 from struct import pack, unpack
 
 from .microsocket import MicroSocket, MicroSocketTimeoutException, MicroSocketClosedExecption
@@ -13,12 +14,14 @@ from uerrno import EINPROGRESS, ETIMEDOUT, ECONNRESET
 class MQTTException(Exception):
     pass
 
+_MQTT_LOG_NAME = const('mqtt')
+
 BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT, -110]
 
 class MicroMqtt():
     def __init__(self, connect_callback):
         from .logging_singleton import log
-        self.__log = log
+        self.__log = log.create_logger(_MQTT_LOG_NAME)
 
         self.__connect_callback = connect_callback
 
@@ -71,8 +74,8 @@ class MicroMqtt():
                 try:
                     await self.__frontend.flush_output_buffer()
                 except Exception as e:
-                    self.__log.mqtt(f'Send loop error: {e}')
-                    self.__log.mqtt(f'Send loop crashed, disconnecting...')
+                    self.__log.error(f'Send loop error: {e}')
+                    self.__log.error(f'Send loop crashed, disconnecting...')
                     await self.__frontend.disconnect()
                     return
             await sleep(0.1)
@@ -82,8 +85,8 @@ class MicroMqtt():
             try:
                 await self.__frontend.receive_data()
             except Exception as e:
-                self.__log.mqtt(f'Receive loop error: {e}')
-                self.__log.mqtt(f'Receive loop crashed, disconnecting...')
+                self.__log.error(f'Receive loop error: {e}')
+                self.__log.error(f'Receive loop crashed, disconnecting...')
                 await self.__frontend.disconnect()
                 return
             await sleep(0.1)
@@ -99,22 +102,22 @@ class MicroMqtt():
                 except KeyError:
                     pass
                 except Exception as e:
-                    self.__log.mqtt(f'Callback failed: {e}')
+                    self.__log.error(f'Callback failed: {e}')
 
     async def __supervisor_loop(self):
         while True:
             while True:
                 if not self.__frontend.is_connected:
-                    self.__log.mqtt(f'Disconnect detected: socket is closed.')
+                    self.__log.error(f'Disconnect detected: socket is closed.')
                     break
                 if (self.__frontend.last_rx + 60) < time():
-                    self.__self.__log.mqtt(f'Disconnect detected: connection lost.')
+                    self.__log.error(f'Disconnect detected: connection lost.')
                     break
                 if (min(self.__frontend.last_rx, self.__frontend.last_tx) + 30) < time():
                     try:
                         await self.__frontend.ping()
                     except Exception as e:
-                        self.__log.mqtt(f'Disconnect detected: ping failed: {e}.')
+                        self.__log.error(f'Disconnect detected: ping failed: {e}.')
                         break
                 await sleep(3)
             self.__send_task.cancel()
@@ -122,9 +125,9 @@ class MicroMqtt():
             self.__packet_task.cancel()
             async with self.__lock:
                 await self.__frontend.disconnect()
-                self.__log.mqtt('Disconnected by supervisor.')
+                self.__log.info('Disconnected by supervisor.')
             await self.__frontend.connect()
-            self.__log.mqtt('Connected by supervisor.')
+            self.__log.info('Connected by supervisor.')
             await sleep(20)
 
     class Frontend:
@@ -158,7 +161,7 @@ class MicroMqtt():
 
         def __init__(self, connect_callback):
             from .logging_singleton import log
-            self.__log = log
+            self.__log = log.create_logger(_MQTT_LOG_NAME)
 
             from .userinterface_singleton import leds
             self.__leds = leds
@@ -205,7 +208,7 @@ class MicroMqtt():
             self.__password = password
 
         async def connect(self):
-            self.__log.mqtt("Connecting to broker.")
+            self.__log.info("Connecting to broker.")
             self.__backend = MicroMqtt.Backend(self.__ip, self.__port, self.__cert, self.__cert_req)
             if not self.__backend.is_connected:
                 return
@@ -218,7 +221,7 @@ class MicroMqtt():
                         await sleep(1)
                         continue
 
-                    self.__log.mqtt('Connected to broker.')
+                    self.__log.info('Connected to broker.')
 
                     self.__on_connect()
                     break
@@ -228,7 +231,7 @@ class MicroMqtt():
                     await self.disconnect()
                     self.__backend = MicroMqtt.Backend(self.__ip, self.__port, self.__cert, self.__cert_req)
                 except MQTTException:
-                    self.__log.mqtt('Connection to broker failed.')
+                    self.__log.info('Connection to broker failed.')
 
         async def disconnect(self):
             if not self.__backend:
@@ -315,7 +318,7 @@ class MicroMqtt():
                     await self.__receive_packet(code)
                     self.__leds.notify_mqtt()
                 else:
-                    self.__log.mqtt(f'Unkown MQTT code: {code}.')
+                    self.__log.error(f'Unkown MQTT code: {code}.')
 
         async def __send_connect_message(self, keep_alive, user, password):
             assert self.__backend is not None
@@ -363,7 +366,7 @@ class MicroMqtt():
             async with self.__send_lock:
                 await self.__backend.send(paket_type + size + pid + properties + topic + options)
                 packet.mark_sent()
-                self.__log.mqtt(f'Outgoing subscription, pid={packet.pid}, qos={packet.qos}: {packet.topic}')
+                self.__log.info(f'Outgoing subscription, pid={packet.pid}, qos={packet.qos}: {packet.topic}')
                 self.last_tx = time()
 
         async def __send_publish_message(self, packet):
@@ -384,7 +387,7 @@ class MicroMqtt():
             async with self.__send_lock:
                 await self.__backend.send(paket_type + size + topic + pid + properties + data)
                 packet.mark_sent()
-                self.__log.mqtt(f'Outgoing message, pid={packet.pid}, qos={packet.qos}, topic={packet.topic}: {self.bytes_to_hex(data)}')
+                self.__log.info(f'Outgoing message, pid={packet.pid}, qos={packet.qos}, topic={packet.topic}: {self.bytes_to_hex(data)}')
                 self.last_tx = time()
 
         async def __receive_connect_ack(self):
@@ -394,17 +397,17 @@ class MicroMqtt():
                 code, remaining_length = await self.__backend.receive(2)
                 if code != 0x20:
                     self.__backend.empty_receive_queue()
-                    self.__log.mqtt(f'Bad CONACK packet: wrong header: {code}.')
+                    self.__log.error(f'Bad CONACK packet: wrong header: {code}.')
                     return False
             
                 response = await self.__backend.receive(remaining_length)
             
             if response[0] != 0:
-                self.__log.mqtt('Bad CONACK packet: no clean session.')
+                self.__log.error('Bad CONACK packet: no clean session.')
                 return False
             
             if response[1] != 0:
-                self.__log.mqtt(f'Connection failed with code {response[3]}')
+                self.__log.error(f'Connection failed with code {response[3]}')
                 return False
 
             self.last_rx = time()
@@ -415,9 +418,9 @@ class MicroMqtt():
 
             length = await self.__backend.receive_variable_integer()
             if length != 0:
-                self.__log.mqtt(f'Bad PINGRESP packet: unexpected length: {length}.')
+                self.__log.error(f'Bad PINGRESP packet: unexpected length: {length}.')
                 return
-            self.__log.mqtt('Incoming PINGRESP.')
+            self.__log.info('Incoming PINGRESP.')
             self.last_rx = time()
 
         async def __receive_subscribe_ack(self):
@@ -427,19 +430,19 @@ class MicroMqtt():
             response = await self.__backend.receive(length)
 
             if len(response) < 4:
-                self.__log.mqtt(f'Bad SUBACK packet: too short.')
+                self.__log.error(f'Bad SUBACK packet: too short.')
                 return
 
             pid = unpack('!H', response[:2])[0]
             if response[2] != 0:
-                self.__log.mqtt(f'Bad SUBACK packet: unexpected variable header length: {response[2]}.')
+                self.__log.error(f'Bad SUBACK packet: unexpected variable header length: {response[2]}.')
                 return
             reason = response[3]
             if reason > 2:
-                self.__log.mqtt(f'SUBACK failed with code {reason}')
+                self.__log.error(f'SUBACK failed with code {reason}')
                 return
             
-            self.__log.mqtt(f'Incoming SUBACK, pid={pid}, qos=unkown.')
+            self.__log.info(f'Incoming SUBACK, pid={pid}, qos=unkown.')
             async with self.__lock:
                 self.__subscribe_buffer.pop(pid, None)
             self.last_rx = time()
@@ -451,7 +454,7 @@ class MicroMqtt():
             length = await self.__backend.receive_variable_integer()
             response = await self.__backend.receive(length)
             if len(response) < 2:
-                self.__log.mqtt(f'Bad PUBACK packet: too short, length={length}, packet={response}')
+                self.__log.error(f'Bad PUBACK packet: too short, length={length}, packet={response}')
                 return
             pid = response[0] << 8 | response[1]
             reason = response[2] if len(response) > 2 else b'\x00'
@@ -460,9 +463,9 @@ class MicroMqtt():
                 self.__publish_buffer.pop(pid, None)
 
             if reason != b'\x00' and reason != b'\x10':
-                self.__log.mqtt(f'Incoming PUBACK failed, pid={pid}, reason={reason}.')
+                self.__log.error(f'Incoming PUBACK failed, pid={pid}, reason={reason}.')
             else:
-                self.__log.mqtt(f'Incoming PUBACK, pid={pid}.')            
+                self.__log.info(f'Incoming PUBACK, pid={pid}.')            
             self.last_rx = time()
 
         async def __receive_packet(self, code):
@@ -482,7 +485,7 @@ class MicroMqtt():
             try:
                 self.__check_qos(qos)
             except:
-                self.__log.mqtt(f'Invalid qos at topic {topic}, code {code}.')
+                self.__log.error(f'Invalid qos at topic {topic}, code {code}.')
                 raise
             if qos > 0:
                 pid = unpack('!H', response[offset:offset+2])[0]
@@ -503,7 +506,7 @@ class MicroMqtt():
                     self.last_tx = time()
 
             self.input_buffer.append(self.InputMessage(topic, payload, False))
-            self.__log.mqtt(f'Incoming message pid={pid}, qos={qos}, topic={topic}: {self.bytes_to_hex(payload)}')
+            self.__log.info(f'Incoming message pid={pid}, qos={qos}, topic={topic}: {self.bytes_to_hex(payload)}')
             self.last_rx = time()
             self.data_available_event.set()
 

@@ -35,7 +35,7 @@ class AhoyDtu(InverterInterface):
 
         from ..core.types_singletons import devicetype
         self.__device_types = (devicetype.inverter,)
-        self.__log = log.get_custom_logger(name)
+        self.__log = log.create_logger(name)
         self.__host, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
 
@@ -83,7 +83,7 @@ class AhoyDtu(InverterInterface):
         self.__shall_status = self.__inverterstatus.on if on else self.__inverterstatus.off
         if old_value != self.__shall_status:
             self.__shall_percent = self.__power_lut.min_percent
-            self.__log.send(f'New target state: {self.__shall_status}')
+            self.__log.info(f'New target state: {self.__shall_status}')
             self.__tx_event.set()
 
     def get_inverter_status(self):
@@ -105,7 +105,7 @@ class AhoyDtu(InverterInterface):
         old_percent = self.__shall_percent
         self.__shall_percent, shall_power = self.__power_lut.get_percent(power)
         if old_percent != self.__shall_percent:
-            self.__log.send(f'New power target: {self.__shall_percent}% / {shall_power}W.')
+            self.__log.info(f'New power target: {self.__shall_percent}% / {shall_power}W.')
             self.__tx_event.set()
         return shall_power
         
@@ -144,7 +144,7 @@ class AhoyDtu(InverterInterface):
     def get_inverter_energy(self):
         energy = self.__energy / 3600
         self.__energy = 0
-        self.__log.send(f'{energy:.1f} Wh fed since last check.')
+        self.__log.info(f'{energy:.1f} Wh fed since last check.')
         return energy
         
 ###################
@@ -185,7 +185,7 @@ class AhoyDtu(InverterInterface):
             self.__current_power, self.__current_percent = self.__power_lut.get_power(power_percent)
         status_str = self.__current_status if self.__is_status_synced else f'{self.__current_status}->{self.__shall_status}'
         power_str = self.__current_percent if self.__is_power_synced else f'{self.__current_percent}->{self.__shall_percent}'
-        self.__log.send(f'State={status_str} Power={power_str} %')
+        self.__log.info(f'State={status_str} Power={power_str} %')
 
         if last_status != self.__current_status:
             self.__on_status_change.run_all(self.__current_status)
@@ -206,27 +206,27 @@ class AhoyDtu(InverterInterface):
         if not self.__is_status_synced and self.__shall_status != self.__inverterstatus.on:
             self.__last_command_type = ahoycommand.turn_off
             self.__last_status_command_type = ahoycommand.turn_off
-            self.__log.send('Sending switch off command.')
+            self.__log.info('Sending switch off command.')
             return f'"id":{self.__id},"cmd":"power","val":0'
         
         #prio 2: reset (a power change will not survive reset, so reset first)
         if not self.__is_status_synced and self.__shall_status == self.__inverterstatus.on and self.__last_status_command_type  == ahoycommand.turn_on:
             self.__last_command_type = ahoycommand.reset
             self.__last_status_command_type = ahoycommand.reset
-            self.__log.send('Sending reset command.')
+            self.__log.info('Sending reset command.')
             return f'"id":{self.__id},"cmd":"restart"'
         
         #prio 3: change power
         if not self.__is_power_synced:
             self.__last_command_type = ahoycommand.change_power
-            self.__log.send('Sending power change request.')
+            self.__log.info('Sending power change request.')
             return f'"id":{self.__id},"cmd":"limit_nonpersistent_relative","val":{self.__shall_percent}'
         
         #prio 4: switch on
         if not self.__is_status_synced and self.__shall_status == self.__inverterstatus.on:
             self.__last_command_type = ahoycommand.turn_on
             self.__last_status_command_type = ahoycommand.turn_on
-            self.__log.send('Sending switch on command.')
+            self.__log.info('Sending switch on command.')
             return f'"id":{self.__id},"cmd":"power","val":1'
         
         return None
@@ -272,7 +272,7 @@ class AhoyDtu(InverterInterface):
                 self.__tx_event.set()
             self.__last_rx = time()
         except Exception as e:
-            self.__log.send(f'No status available.')
+            self.__log.error(f'No status available.')
             self.__update(None, None)
     
     def __create_session(self):
@@ -288,9 +288,9 @@ class AhoyDtu(InverterInterface):
                    leds.notify_control()
                    return json
                else:
-                   self.__log.send(f'Inverter query {query} failed with code {status}, {i} retries left.')
+                   self.__log.error(f'Inverter query {query} failed with code {status}, {i} retries left.')
            except Exception as e:
-               self.__log.send(f'Inverter query {query} failed: {str(e)}, {i} retries left.')
+               self.__log.error(f'Inverter query {query} failed: {str(e)}, {i} retries left.')
            await sleep(1)
         return None
     
@@ -305,8 +305,8 @@ class AhoyDtu(InverterInterface):
                     if json["success"] in (True, "true"):
                         leds.notify_control()
                         return json
-                self.__log.send(f'Inverter command {query} failed with code {status}.')
+                self.__log.error(f'Inverter command {query} failed with code {status}.')
             except Exception as e:
-                self.__log.send(f'Inverter command {query} failed: {str(e)}, {i} retries left.')
+                self.__log.error(f'Inverter command {query} failed: {str(e)}, {i} retries left.')
             await sleep(1)
         return None

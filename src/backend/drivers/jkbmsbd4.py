@@ -40,7 +40,7 @@ class JkBmsBd4(BatteryInterface):
                 self.__success = None
             else:
                 if False: #TODO: crc
-                    self.__log.send('Dropping packet: wrong checksum.')
+                    self.__log.error('Dropping packet: wrong checksum.')
                     return
                 self.__success = True
 
@@ -62,7 +62,7 @@ class JkBmsBd4(BatteryInterface):
         self.__ble = ble_instance
 
         from ..core.logging_singleton import log
-        self.__log = log.get_custom_logger(name)
+        self.__log = log.create_logger(name)
         self.__trace = log.trace
 
         self.__on_data = CallbackCollection()
@@ -103,15 +103,15 @@ class JkBmsBd4(BatteryInterface):
 
             if self.__data.valid:
                 for line in str(self.__data).split('\n'):
-                    self.__log.send(line)
+                    self.__log.info(line)
                 self.__on_data.run_all(self.__data)
             else:
-                self.__log.send(f'Failed to receive battery data.')
+                self.__log.error(f'Failed to receive battery data.')
 
         except MicroBleTimeoutError as e:
-            self.__log.send(str(e))
+            self.__log.error(str(e))
         except Exception as e:
-            self.__log.send(f'BLE error: {e}')
+            self.__log.error(f'BLE error: {e}')
             print_exception(e, self.__trace)
         finally:
             if self.__receive_task is not None:
@@ -149,7 +149,7 @@ class JkBmsBd4(BatteryInterface):
                 await sleep(0.1)
                 if self.__current_decoder.success == True:
                     return True
-            self.__log.send(f'Attempt {i} for command failed.')
+            self.__log.error(f'Attempt {i} for command failed.')
         return False
     
     def __parse(self, data):

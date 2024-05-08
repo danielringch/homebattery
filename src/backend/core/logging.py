@@ -24,50 +24,23 @@ class Logging:
         self.__task = create_task(self.__run(config))
         self.__event.set()
 
+    def create_logger(self, sender: str):
+        return CustomLogger(self, sender)
+
     def get_custom_logger(self, prefix):
         return Customlogging(self, prefix)
 
-    def alert(self, message):
-        self.__send('alert', message)
-
     def debug(self, message):
         self.__send('debug', message)
-
-    def display(self, message):
-        self.__send('display', message)
 
     def error(self, message):
         self.__send('error', message)
 
     def info(self, message):
-        self.__send('info', message)
+        self.__send('info', message)      
 
-    def inverter(self, message):
-        self.__send('inverter', message)      
-
-    def accounting(self, message):
-        self.__send('accounting', message)
-
-    def verbose(self, message):
-        self.__send('verbose', message)
-
-    def battery(self, message):
-        self.__send('battery', message)
-
-    def bluetooth(self, message):
-        self.__send('bluetooth', message)
-
-    def modeswitch(self, message):
-        self.__send('modeswitch', message)
-
-    def mqtt(self, message):
-        self.__send('mqtt', message)
-
-    def netzero(self, message):
-        self.__send('netzero', message)
-
-    def supervisor(self, message):
-        self.__send('supervisor', message)
+    def send(self, sender, message):
+        self.__send(sender, message)
 
     def __send(self, channel, message):
         if channel in self.__blacklist:
@@ -127,6 +100,17 @@ class Customlogging:
 
     def send(self, message):
         self.__logger.__send(self.__prefix, message)
+
+class CustomLogger:
+    def __init__(self, logger: Logging, sender: str):
+        self.__logger = logger
+        self.__sender = sender
+
+    def info(self, message):
+        self.__logger.__send(self.__sender, message)
+
+    def error(self, message):
+        self.__logger.__send(f'error] [{self.__sender}', message)
 
 class TraceLogger(IOBase):
     def __init__(self, logger: Logging, prefix: str):

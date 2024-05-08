@@ -1,9 +1,12 @@
 from asyncio import sleep
 from collections import deque
+from micropython import const
 from random import randrange
 from time import time
 from ..core.types import CallbackCollection, CommandBundle
 from .devices import Devices
+
+_BATTERY_LOG_NAME = const('battery')
 
 class Battery:
     class BatteryBundle:
@@ -32,7 +35,7 @@ class Battery:
     async def run(self):
         if len(self.__batteries) == 0:
             from ..core.logging_singleton import log
-            log.battery('No batteries found.')
+            log.send(_BATTERY_LOG_NAME, 'No batteries found.')
             return
 
         while True:

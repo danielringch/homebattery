@@ -1,10 +1,13 @@
 from asyncio import Lock, sleep
 from collections import deque
+from micropython import const
 from sys import print_exception
 from time import localtime, time
 from ..core.backendmqtt import Mqtt
 from ..core.types import OperationMode, CallbackCollection, CommandBundle
 from .devices import Devices
+
+_SOLAR_LOG_NAME = const('inverter')
 
 class Solar:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
@@ -18,7 +21,8 @@ class Solar:
         from ..core.types_singletons import operationmode
         self.__mode_protect = operationmode.protect
         from ..core.logging_singleton import log
-        self.__log = log
+        self.__log = log.create_logger(_SOLAR_LOG_NAME)
+        self.__trace = log.trace
 
         self.__on_energy = CallbackCollection()
 
@@ -48,7 +52,7 @@ class Solar:
                         self.__set_next_energy_execution()
             except Exception as e:
                 self.__log.error(f'Solar cycle failed: {e}')
-                print_exception(e, self.__log.trace)
+                print_exception(e, self.__trace)
             await sleep(0.1)
 
     async def is_on(self):

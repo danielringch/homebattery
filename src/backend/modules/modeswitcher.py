@@ -1,11 +1,14 @@
 from asyncio import create_task, Event
 from collections import deque
+from micropython import const
 from sys import print_exception
 from ..core.types import CommandBundle, OperationMode
 from ..core.backendmqtt import Mqtt
 from .inverter import Inverter
 from .charger import Charger
 from .solar import Solar
+
+_MODESWITCHER_LOG_NAME = const('inverter')
 
 class ModeSwitcher:
     def __init__(self, config: dict, mqtt: Mqtt, inverter: Inverter, charger: Charger, solar: Solar):
@@ -19,7 +22,8 @@ class ModeSwitcher:
         from ..core.types_singletons import operationmode
         self.__operationmode = operationmode
         from ..core.logging_singleton import log
-        self.__log = log
+        self.__log = log.create_logger(_MODESWITCHER_LOG_NAME)
+        self.__trace = log.trace
         from ..core.userinterface_singleton import display
         self.__display = display
         from ..core.userinterface_singleton import leds
@@ -51,7 +55,7 @@ class ModeSwitcher:
                     await self.__commands.popleft().run()
             except Exception as e:
                 self.__log.error(f'ModeSwitcher cycle failed: {e}')
-                print_exception(e, self.__log.trace)
+                print_exception(e, self.__trace)
 
     def update_locked_devices(self, devices: set):
         if devices == self.__locked_devices:
@@ -102,15 +106,15 @@ class ModeSwitcher:
         return self.__operationmode.protect
 
     async def __switch_charger(self, mode: OperationMode):
-        self.__log.modeswitch(f'Switching charger to mode {mode}.')
+        self.__log.info(f'Switching charger to mode {mode}.')
         await self.__charger.set_mode(mode)
 
     async def __switch_solar(self, mode: OperationMode):
-        self.__log.modeswitch(f'Switching solar to mode {mode}.')
+        self.__log.info(f'Switching solar to mode {mode}.')
         await self.__solar.set_mode(mode)
             
     async def __switch_inverter(self, mode: OperationMode):
-        self.__log.modeswitch(f'Switching inverter to mode {mode}.')
+        self.__log.info(f'Switching inverter to mode {mode}.')
         await self.__inverter.set_mode(mode)
 
     def __on_mode(self, mode):

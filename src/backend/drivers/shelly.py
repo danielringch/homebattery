@@ -12,7 +12,7 @@ class Shelly(ChargerInterface):
         from ..core.types_singletons import devicetype
         self.__device_types = (devicetype.charger,)
         from ..core.logging_singleton import log
-        self.__log = log.get_custom_logger(name)
+        self.__log = log.create_logger(name)
         self.__host, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
         self.__relay_id = int(config['relay_id'])
@@ -52,7 +52,7 @@ class Shelly(ChargerInterface):
             if energy is None:
                 return None
             _ = await self.__get(session, self.__energy_reset_request)
-            self.__log.send(f'{energy:.1f} Wh consumed since last check.')
+            self.__log.info(f'{energy:.1f} Wh consumed since last check.')
             return energy
 
     @property
@@ -66,7 +66,7 @@ class Shelly(ChargerInterface):
                 json = await self.__get(session, self.__state_request)
                 was_on = self.__is_on
                 self.__is_on = json['ison'] if json is not None else None
-                self.__log.send(f'State: on={self.__is_on}, synced={is_synced}')
+                self.__log.info(f'State: on={self.__is_on}, synced={is_synced}')
                 if self.__is_on != was_on:
                     self.__on_status_change.run_all(self.__is_on)
 
@@ -74,7 +74,7 @@ class Shelly(ChargerInterface):
                 now = time()
                 if not is_synced or\
                         (self.__shall_on and (now - self.__last_on_command) >= (self.__refresh_interval - 5)):
-                    self.__log.send(f'Sending switch request, on={self.__shall_on}')
+                    self.__log.info(f'Sending switch request, on={self.__shall_on}')
                     await self.__get(session, self.__on_request if self.__shall_on else self.__off_request)
                     if self.__shall_on:
                         self.__last_on_command = now
@@ -98,13 +98,13 @@ class Shelly(ChargerInterface):
                     self.__leds.notify_control()
                     return json
                 else:
-                    self.__log.send(f'Charger query {query} for {self.__host} failed with code {status}, {i} retries left.')
+                    self.__log.error(f'Charger query {query} for {self.__host} failed with code {status}, {i} retries left.')
                 #    except aiohttp.ContentTypeError as e:
                 #        # other content type usually means request is not supported, so no retry
                 #        log.error(f'Charger query {query} for {self.__host} failed: {str(e)}')
                 #        return None
             except Exception as e:
-                self.__log.send(f'Charger query {query} for {self.__host} failed: {str(e)}, {i} retries left.')
+                self.__log.error(f'Charger query {query} for {self.__host} failed: {str(e)}, {i} retries left.')
             await sleep(1)
         return None
         

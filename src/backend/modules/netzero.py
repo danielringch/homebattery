@@ -1,6 +1,9 @@
 from collections import namedtuple
+from micropython import const
 from time import time
 from ..core.microdeque import MicroDeque, MicroDequeOverflowError
+
+_NETZERO_LOG_NAME = const('inverter')
 
 class NetZero:
     PowerElement = namedtuple("PowerElement", "timestamp power")
@@ -9,7 +12,7 @@ class NetZero:
         config = config['netzero']
 
         from ..core.logging_singleton import log
-        self.__log = log
+        self.__log = log.create_logger(_NETZERO_LOG_NAME)
         
         self.__time_span = int(config['evaluated_time_span'])
 
@@ -39,7 +42,7 @@ class NetZero:
 
     def __update_data(self, timestamp, consumption):
         if timestamp < self.__data_deadline:
-            self.__log.netzero('Omitting data consumption data, too old.')
+            self.__log.info('Omitting data consumption data, too old.')
         self.__data_deadline = timestamp
         element = self.PowerElement(timestamp, consumption)
         try:
@@ -54,17 +57,17 @@ class NetZero:
         oldest_element = self.__power_data[0]
         current_element = self.__power_data[-1]
         if sum(1 for i in self.__power_data if i.power < 1) > 1:
-            self.__log.netzero('Overproduction.')
+            self.__log.info('Overproduction.')
             return self.__step_down
         if (len(self.__power_data) < 5) or (current_element.timestamp - oldest_element.timestamp < self.__mature_interval):
-            self.__log.netzero(f'Not enough data.')
+            self.__log.info(f'Not enough data.')
             return 0
         values = [x.power for x in self.__power_data]
         values.sort()
         start_index = len(values) // 5
         upper_values = values[start_index:]
         min_power = min(upper_values)
-        self.__log.netzero(f'Minimum power: {min_power}W | {len(values)} data points.')
+        self.__log.info(f'Minimum power: {min_power}W | {len(values)} data points.')
         if min_power < self.__offset:
             value = -(self.__offset - min_power)
             return value

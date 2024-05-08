@@ -65,13 +65,13 @@ class LltPowerBmsV4Ble(BatteryInterface):
             self.__success = False
             if self.__data is None:
                 if len(blob) < 5: # at least one byte payload
-                    self.__log.send('Dropping unknown packet: too short.')
+                    self.__log.error('Dropping unknown packet: too short.')
                     return
                 if blob[0] != 0xdd:
-                    self.__log.send('Dropping unknown packet: wrong start byte.')
+                    self.__log.error('Dropping unknown packet: wrong start byte.')
                     return
                 if blob[2] != 0:
-                    self.__log.send('Dropping packet: error indication.')
+                    self.__log.error('Dropping packet: error indication.')
                     return
                 self.__command = unpack('!B', blob[1:2])[0]
                 self.__length = unpack('!B', blob[3:4])[0] + 3 # 2 bytes checksum + 1 byte end byte
@@ -83,7 +83,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 self.__success = None
             else:
                 if self.__data[-1] != 0x77:
-                    self.__log.send('Dropping packet: wrong end byte.')
+                    self.__log.error('Dropping packet: wrong end byte.')
                     return
                 self.__success = True
 
@@ -109,7 +109,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
         self.__ble = ble_instance
 
         from ..core.logging_singleton import log
-        self.__log = log.get_custom_logger(name)
+        self.__log = log.create_logger(name)
         self.__trace = log.trace
 
         self.__on_data = CallbackCollection()
@@ -152,15 +152,15 @@ class LltPowerBmsV4Ble(BatteryInterface):
             if self.__current_bundle.complete:
                 self.__current_bundle.parse(self.__data)
                 for line in str(self.__data).split('\n'):
-                    self.__log.send(line)
+                    self.__log.info(line)
                 self.__on_data.run_all(self.__data)
             else:
-                self.__log.send(f'Failed to receive battery data.')
+                self.__log.error(f'Failed to receive battery data.')
 
         except MicroBleTimeoutError as e:
-            self.__log.send(str(e))
+            self.__log.error(str(e))
         except Exception as e:
-            self.__log.send(f'BLE error: {e}')
+            self.__log.error(f'BLE error: {e}')
             print_exception(e, self.__trace)
         finally:
             if self.__receive_task is not None:
@@ -199,5 +199,5 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 await sleep(0.1)
                 if self.__current_decoder.success == True:
                     return True
-            self.__log.send(f'Attempt {i} for command {data} failed.')
+            self.__log.error(f'Attempt {i} for command {data} failed.')
         return False

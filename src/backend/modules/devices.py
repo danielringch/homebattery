@@ -10,6 +10,8 @@ from ..drivers.mqttbattery import MqttBattery
 from ..drivers.shelly import Shelly
 from ..drivers.victronmppt import VictronMppt
 
+_DEVICES_LOG_NAME = const('devices')
+
 _AHOY_DTU = const('ahoydtu')
 _DALY_8S_24V_60A = const('daly8S24V60A')
 _JK_BMS_BD4 = const('jkBmsBd4')
@@ -39,7 +41,7 @@ class Devices:
             try:
                 driver_name = meta['driver']
                 driver = drivers[driver_name]
-                log.debug(f'Loading device {name} with driver {driver.__name__}.')
+                log.send(_DEVICES_LOG_NAME, f'Loading device {name} with driver {driver.__name__}.')
                 gc_collect()
                 if driver_name == _MQTT_BATTERY:
                     instance = driver(name, meta, mqtt) 

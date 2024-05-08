@@ -54,7 +54,7 @@ class MqttBattery(BatteryInterface):
                     else:
                         raise Exception()
             except:
-                self.__log.send(f'Invalid battery data: topic={topic}, payload={hexlify(payload, " ")}')
+                self.__log.error(f'Invalid battery data: topic={topic}, payload={hexlify(payload, " ")}')
                 return
             
             if self.timestamp == 0:
@@ -92,7 +92,7 @@ class MqttBattery(BatteryInterface):
         from ..core.types_singletons import devicetype
         self.__device_types = (devicetype.battery,)
         from ..core.logging_singleton import log
-        self.__log = log.get_custom_logger(name)
+        self.__log = log.create_logger(name)
 
         self.__root = config['root_topic']
         self.__cell_count = int(config['cell_count'])
@@ -124,7 +124,7 @@ class MqttBattery(BatteryInterface):
             self.__parser.data_event.clear()
 
             for line in str(self.__parser.data).split('\n'):
-                self.__log.send(line)
+                self.__log.info(line)
             self.__on_data.run_all(self.__parser.data)
 
     @property

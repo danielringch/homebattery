@@ -1,11 +1,14 @@
 from asyncio import Lock, sleep
 from collections import deque
+from micropython import const
 from sys import print_exception
 from time import localtime, time
 from ..core.types import OperationMode, CallbackCollection, CommandBundle
 from ..core.backendmqtt import Mqtt
 from .devices import Devices
 from .netzero import NetZero
+
+_INVERTER_LOG_NAME = const('inverter')
 
 class Inverter:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
@@ -17,7 +20,8 @@ class Inverter:
         from ..core.types_singletons import inverterstatus
         self.__inverterstatus = inverterstatus
         from ..core.logging_singleton import log
-        self.__log = log
+        self.__log = log.create_logger(_INVERTER_LOG_NAME)
+        self.__trace = log.trace
         from ..core.userinterface_singleton import display
         self.__display = display
 
@@ -55,7 +59,7 @@ class Inverter:
                         self.__set_next_energy_execution()
             except Exception as e:
                 self.__log.error(f'Inverter cycle failed: {e}')
-                print_exception(e, self.__log.trace)
+                print_exception(e, self.__trace)
             await sleep(0.1)
 
     async def get_status(self):

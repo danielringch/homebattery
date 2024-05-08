@@ -1,10 +1,13 @@
 from asyncio import Lock, sleep
 from collections import deque
+from micropython import const
 from sys import print_exception
 from time import localtime, time
 from ..core.types import CommandBundle, OperationMode, CallbackCollection
 from ..core.backendmqtt import Mqtt
 from .devices import Devices
+
+_CHARGER_LOG_NAME = const('battery')
 
 class Charger:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
@@ -16,7 +19,8 @@ class Charger:
         self.__operationmode = operationmode
 
         from ..core.logging_singleton import log
-        self.__log = log
+        self.__log = log.create_logger(_CHARGER_LOG_NAME)
+        self.__trace = log.trace
 
         self.__last_state = None
 
@@ -44,7 +48,7 @@ class Charger:
                         self.__set_next_energy_execution()
             except Exception as e:
                 self.__log.error(f'Charger cycle failed: {e}')
-                print_exception(e, self.__log.trace)
+                print_exception(e, self.__trace)
             await sleep(0.1)
 
     async def is_on(self):
