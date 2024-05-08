@@ -1,10 +1,7 @@
 import asyncio, sys, time
 from collections import deque
 from ..core.backendmqtt import Mqtt
-from ..core.userinterface_singleton import display
 from ..core.types import OperationMode, CallbackCollection, CommandBundle
-from ..core.types_singletons import operationmode, devicetype
-from ..core.logging_singleton import log
 from .devices import Devices
 
 class Solar:
@@ -14,8 +11,16 @@ class Solar:
 
         self.__mqtt = mqtt
 
+        from ..core.userinterface_singleton import display
+        self.__display = display
+        from ..core.types_singletons import operationmode
+        self.__mode_protect = operationmode.protect
+        from ..core.logging_singleton import log
+        self.__log = log
+
         self.__on_energy = CallbackCollection()
 
+        from ..core.types_singletons import devicetype
         self.__devices = []
         for device in devices.devices:
             if devicetype.solar not in device.device_types:
@@ -40,8 +45,8 @@ class Solar:
                         await self.__get_energy()
                         self.__set_next_energy_execution()
             except Exception as e:
-                log.error(f'Solar cycle failed: {e}')
-                sys.print_exception(e, log.trace)
+                self.__log.error(f'Solar cycle failed: {e}')
+                sys.print_exception(e, self.__log.trace)
             await asyncio.sleep(0.1)
 
     async def is_on(self):
@@ -50,7 +55,7 @@ class Solar:
 
     async def set_mode(self, mode: OperationMode):
         async with self.__lock:
-            on = mode != operationmode.protect
+            on = mode != self.__mode_protect
             is_on = self.__get_status()
             if is_on != on:
                 for device in self.__devices:
@@ -78,7 +83,7 @@ class Solar:
         power = sum(x.get_solar_power() for x in self.__devices, 0)
 
         if power != self.__last_power:
-            display.update_solar_power(power)
+            self.__display.update_solar_power(power)
             self.__last_power = power
 
     async def __get_energy(self):

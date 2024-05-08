@@ -1,9 +1,6 @@
 import asyncio, random, time
 from collections import deque
-from ..core.logging_singleton import log
-from ..core.microblecentral_singleton import ble_instance
 from ..core.types import CallbackCollection, CommandBundle
-from ..core.types_singletons import devicetype
 from .devices import Devices
 
 class Battery:
@@ -20,6 +17,7 @@ class Battery:
 
         self.__battery_data = dict()
         self.__batteries = list()
+        from ..core.types_singletons import devicetype
         for device in devices.devices:
             if devicetype.battery not in device.device_types:
                 continue
@@ -31,6 +29,7 @@ class Battery:
 
     async def run(self):
         if len(self.__batteries) == 0:
+            from ..core.logging_singleton import log
             log.battery('No batteries found.')
             return
 

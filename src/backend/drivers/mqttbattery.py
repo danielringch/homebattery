@@ -1,9 +1,7 @@
 import asyncio, ubinascii, struct, sys, time
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.backendmqtt import Mqtt
-from ..core.logging_singleton import log
 from ..core.types import BatteryData, CallbackCollection
-from ..core.types_singletons import devicetype
 
 
 class MqttBattery(BatteryInterface):
@@ -89,7 +87,9 @@ class MqttBattery(BatteryInterface):
 
     def __init__(self, name, config, mqtt: Mqtt):
         self.__name = name
+        from ..core.types_singletons import devicetype
         self.__device_types = (devicetype.battery,)
+        from ..core.logging_singleton import log
         self.__log = log.get_custom_logger(name)
 
         self.__root = config['root_topic']

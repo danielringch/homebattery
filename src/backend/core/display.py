@@ -1,11 +1,14 @@
 from machine import Pin, I2C
 from .ssd1306 import SSD1306
-from .logging_singleton import log
+
 from .types import OperationMode
 
 class Display:
     def __init__(self):
+        from .logging_singleton import log
+        self.__log = log
         try:
+
             i2c = I2C(id=0, sda=Pin(0), scl=Pin(1))
             self.__display = SSD1306(128, 64, i2c)
 
@@ -13,7 +16,7 @@ class Display:
 
             self.__display.show()
         except OSError as e:
-            log.display('No display detected.')
+            self.__log.display('No display detected.')
             self.__display = None
 
         self.__mode = None
@@ -58,7 +61,7 @@ class Display:
         try:
             self.__display.show()
         except OSError as e:
-            log.display(f'Update failed: {e}')
+            self.__log.display(f'Update failed: {e}')
 
     def __refresh(self):
         mode = f'Mode: {self.__mode.name if self.__mode else "unknown"}'

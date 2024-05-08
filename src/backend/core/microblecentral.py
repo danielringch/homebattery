@@ -1,9 +1,5 @@
 import asyncio, bluetooth, ubinascii
-
 from .microdeque import MicroDeque
-from .logging_singleton import log
-from .userinterface_singleton import leds
-
 from micropython import const
 
 _IRQ_PERIPHERAL_CONNECT = const(7)
@@ -47,6 +43,11 @@ class MicroBleConnectionClosedError(Exception):
 
 class MicroBleDevice:
     def __init__(self, central):
+        from .logging_singleton import log
+        self.__log = log
+        from .userinterface_singleton import leds
+        self.__leds = leds
+
         self.__central = central
         self.__ble = central.__ble
         self.__mtu = None
@@ -78,9 +79,9 @@ class MicroBleDevice:
             self.__handle = None
             self.__mtu = None
             self.__central.__current_device = self
-            log.bluetooth(f'Connecting to {self.__printable_address}.')
+            self.__log.bluetooth(f'Connecting to {self.__printable_address}.')
             self.__ble.gap_connect(self.__address_type, self.__address)
-            leds.notify_bluetooth()
+            self.__leds.notify_bluetooth()
             for _ in range (timeout // 100):
                 if self.__handle is not None:
                     break
@@ -90,7 +91,7 @@ class MicroBleDevice:
                 raise MicroBleTimeoutError('connect')
 
             self.__ble.gattc_exchange_mtu(self.__handle)
-            leds.notify_bluetooth()
+            self.__leds.notify_bluetooth()
             for _ in range (timeout // 100):
                 if self.__mtu is not None:
                     break
@@ -111,14 +112,14 @@ class MicroBleDevice:
             if self.__handle is None:
                 return
             self.__ble.gap_disconnect(self.__handle)
-            leds.notify_bluetooth()
+            self.__leds.notify_bluetooth()
             for _ in range (timeout // 100):
                 if self.__central.__current_device is None and self.__handle is None:
                     return
                 await asyncio.sleep(0.1)
         finally:
             # Even if device did not respond, there is nothing we can do, so mark as disconnected
-            log.bluetooth(f'Disconnected from {self.__printable_address}.')
+            self.__log.bluetooth(f'Disconnected from {self.__printable_address}.')
             self.__central.__current_device = None
             self.__handle = None
 
@@ -164,7 +165,7 @@ class MicroBleDevice:
 
     async def __write(self, target_handle, data, is_request, timeout):
         self.__write_event.clear()
-        leds.notify_bluetooth()
+        self.__leds.notify_bluetooth()
         self.__ble.gattc_write(self.__handle, target_handle, data, 1 if is_request else 0)
         if not is_request:
             return
@@ -179,7 +180,7 @@ class MicroBleDevice:
 
     async def __read(self, target_handle, timeout):
         self.__read_event.clear()
-        leds.notify_bluetooth()
+        self.__leds.notify_bluetooth()
         self.__ble.gattc_read(self.__handle, target_handle)
         for _ in range (timeout // 100):
             await asyncio.sleep(0.1)
@@ -290,6 +291,11 @@ class MicroBleDescriptor:
 
 class MicroBleCentral:
     def __init__(self):
+        from .logging_singleton import log
+        self.__log = log
+        from .userinterface_singleton import leds
+        self.__leds = leds
+
         self.__ble = bluetooth.BLE()
         self.__current_device = None
 
@@ -304,47 +310,47 @@ class MicroBleCentral:
         
             
     def __on_irq(self, event, data):
-        leds.notify_bluetooth()
+        self.__leds.notify_bluetooth()
         try:
             if event == _IRQ_PERIPHERAL_CONNECT:
                 conn_handle, addr_type, addr = data
                 printable_address = ubinascii.hexlify(addr, ':').decode('utf-8')
-                log.bluetooth(f'Connect event, handle={conn_handle}, type={addr_type}, addr={printable_address} .')
+                self.__log.bluetooth(f'Connect event, handle={conn_handle}, type={addr_type}, addr={printable_address} .')
                 if self.__current_device is None or \
                         addr_type != self.__current_device.__address_type or \
                         addr != self.__current_device.__address:
-                    log.bluetooth(f'No matching device for event.')
+                    self.__log.bluetooth(f'No matching device for event.')
                     self.__ble.gap_disconnect(conn_handle)
                     return
                 self.__current_device.__handle = conn_handle
             elif event == _IRQ_PERIPHERAL_DISCONNECT:
                 conn_handle, _, _ = data
-                log.bluetooth(f'Disconnect event, handle={conn_handle} .')
+                self.__log.bluetooth(f'Disconnect event, handle={conn_handle} .')
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__handle = None
                 self.__current_device = None
             elif event == _IRQ_MTU_EXCHANGED:
                 conn_handle, mtu = data
-                log.bluetooth(f'Mtu exchanged event, handle={conn_handle}, mtu={mtu} .')
+                self.__log.bluetooth(f'Mtu exchanged event, handle={conn_handle}, mtu={mtu} .')
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__mtu = mtu
             elif event == _IRQ_GATTC_SERVICE_RESULT:
                 conn_handle, start_handle, end_handle, uuid = data
-                log.bluetooth(f'Service event, connection={conn_handle}, start={start_handle}, end={end_handle}, uuid={uuid} .')
+                self.__log.bluetooth(f'Service event, connection={conn_handle}, start={start_handle}, end={end_handle}, uuid={uuid} .')
                 if not self.__check_connection_handle(conn_handle):
                     return
                 uuid = bluetooth.UUID(uuid) # uuid is only passed as memoryview
                 self.__current_device.__services.append(MicroBleService(self.__current_device, uuid, start_handle, end_handle))
             elif event == _IRQ_GATTC_SERVICE_DONE:
-                log.bluetooth('Service done event.')
+                self.__log.bluetooth('Service done event.')
                 if self.__current_device is None:
                     return
                 self.__current_device.__service_event.set()
             elif event == _IRQ_GATTC_CHARACTERISTIC_RESULT:
                 conn_handle, end_handle, value_handle, properties, uuid = data
-                log.bluetooth(f'Characteristic event, connection={conn_handle}, end={end_handle}, value={value_handle}, uuid={uuid} .')
+                self.__log.bluetooth(f'Characteristic event, connection={conn_handle}, end={end_handle}, value={value_handle}, uuid={uuid} .')
                 if not self.__check_connection_handle(conn_handle):
                     return
                 uuid = bluetooth.UUID(uuid) # uuid is only passed as memoryview
@@ -353,13 +359,13 @@ class MicroBleCentral:
                     return
                 service.__characteristics.append(MicroBleCharacteristic(self.__current_device, uuid, value_handle, end_handle))
             elif event == _IRQ_GATTC_CHARACTERISTIC_DONE:
-                log.bluetooth('Characteristic done event.')
+                self.__log.bluetooth('Characteristic done event.')
                 if self.__current_device is None:
                     return
                 self.__current_device.__characteristics_event.set()
             elif event == _IRQ_GATTC_DESCRIPTOR_RESULT:
                 conn_handle, dsc_handle, uuid = data
-                log.bluetooth(f'Descriptor event, connection={conn_handle}, value={dsc_handle}, uuid={uuid} .')
+                self.__log.bluetooth(f'Descriptor event, connection={conn_handle}, value={dsc_handle}, uuid={uuid} .')
                 if not self.__check_connection_handle(conn_handle) or uuid != bluetooth.UUID(0x2902):
                     return
                 characteristic = self.__current_device.__get_characteristic_by_handle(dsc_handle)
@@ -368,13 +374,13 @@ class MicroBleCentral:
                 characteristic.__descriptor = MicroBleDescriptor(self.__current_device, dsc_handle)
             elif event == _IRQ_GATTC_DESCRIPTOR_DONE:
                 conn_handle, status = data
-                log.bluetooth('Descriptor done event, connection={conn_handle}, status={status}.')
+                self.__log.bluetooth('Descriptor done event, connection={conn_handle}, status={status}.')
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__descriptors_event.set()
             elif event == _IRQ_GATTC_READ_RESULT:
                 conn_handle, value_handle, char_data = data
-                log.bluetooth(f'Read result event, connection={conn_handle}, characteristic={value_handle}, len={len(char_data)}')
+                self.__log.bluetooth(f'Read result event, connection={conn_handle}, characteristic={value_handle}, len={len(char_data)}')
                 if not self.__check_connection_handle(conn_handle):
                     return
                 characteristic = self.__current_device.__get_characteristic_by_handle(value_handle)
@@ -383,19 +389,19 @@ class MicroBleCentral:
                 characteristic.__enqueue(bytes(char_data))
             elif event == _IRQ_GATTC_READ_DONE:
                 conn_handle, value_handle, status = data
-                log.bluetooth(f'Read done event, connection={conn_handle}, characteristic={value_handle}, status={status}')
+                self.__log.bluetooth(f'Read done event, connection={conn_handle}, characteristic={value_handle}, status={status}')
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__read_event.set()
             elif event == _IRQ_GATTC_WRITE_DONE:
                 conn_handle, value_handle, status = data
-                log.bluetooth(f'Write done event, connection={conn_handle}, characteristic={value_handle}, status={status}')
+                self.__log.bluetooth(f'Write done event, connection={conn_handle}, characteristic={value_handle}, status={status}')
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__write_event.set()
             elif event == _IRQ_GATTC_NOTIFY:
                 conn_handle, value_handle, notify_data = data
-                log.bluetooth(f'Notify event, connection={conn_handle}, characteristic={value_handle}, len={len(notify_data)}')
+                self.__log.bluetooth(f'Notify event, connection={conn_handle}, characteristic={value_handle}, len={len(notify_data)}')
                 if not self.__check_connection_handle(conn_handle):
                     return
                 characteristic = self.__current_device.__get_characteristic_by_handle(value_handle)
@@ -406,15 +412,15 @@ class MicroBleCentral:
             elif event == _IRQ_CONNECTION_UPDATE:
                 # The remote device has updated connection parameters.
                 conn_handle, conn_interval, conn_latency, supervision_timeout, status = data
-                log.bluetooth(f'Connection update event, connection={conn_handle}, interval={conn_interval}, latency={conn_latency}, supervision_timeout={supervision_timeout}, status={status}')
+                self.__log.bluetooth(f'Connection update event, connection={conn_handle}, interval={conn_interval}, latency={conn_latency}, supervision_timeout={supervision_timeout}, status={status}')
             else:
-                log.bluetooth(f'Unknown event: {event}.')
+                self.__log.bluetooth(f'Unknown event: {event}.')
         except Exception as e:
-            log.bluetooth(f'Error in IRQ callback: {e}')
+            self.__log.bluetooth(f'Error in IRQ callback: {e}')
 
 
     def __check_connection_handle(self, handle):
         if self.__current_device is None or handle != self.__current_device.__handle:
-            log.bluetooth(f'No matching device for event.')
+            self.__log.bluetooth(f'No matching device for event.')
             return False
         return True

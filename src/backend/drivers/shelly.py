@@ -1,21 +1,23 @@
 import asyncio, time
 from .interfaces.chargerinterface import ChargerInterface
 from ..core.microaiohttp import ClientSession
-from ..core.userinterface_singleton import leds
-from ..core.logging_singleton import log
 from ..core.types import CallbackCollection
-from ..core.types_singletons import devicetype
 
 class Shelly(ChargerInterface):
     __refresh_interval = 120
 
     def __init__(self, name, config):
         super(Shelly, self).__init__()
+        from ..core.types_singletons import devicetype
         self.__device_types = (devicetype.charger,)
+        from ..core.logging_singleton import log
         self.__log = log.get_custom_logger(name)
         self.__host, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
         self.__relay_id = int(config['relay_id'])
+
+        from ..core.userinterface_singleton import leds
+        self.__leds = leds
 
         self.__shall_on = False
         self.__is_on = None
@@ -92,7 +94,7 @@ class Shelly(ChargerInterface):
                 status = response.status
                 if (status >= 200 and status <= 299):
                     json = await response.json()
-                    leds.notify_control()
+                    self.__leds.notify_control()
                     return json
                 else:
                     self.__log.send(f'Charger query {query} for {self.__host} failed with code {status}, {i} retries left.')

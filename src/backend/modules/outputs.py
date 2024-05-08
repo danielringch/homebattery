@@ -1,5 +1,3 @@
-
-from ..core.userinterface_singleton import display
 from ..core.backendmqtt import Mqtt
 from .supervisor import Supervisor
 from .battery import Battery
@@ -16,6 +14,9 @@ class Outputs:
         self.__inverter = inverter
         self.__solar = solar
 
+        from ..core.userinterface_singleton import display
+        self.__display = display
+
         self.__battery.on_battery_data.add(self.__on_battery_data)
         self.__charger.on_energy.add(self.__on_charger_energy)
         self.__inverter.on_energy.add(self.__on_inverter_energy)
@@ -31,7 +32,7 @@ class Outputs:
                 break
             total_capacity += battery.c
         else:
-            display.update_battery_capacity(total_capacity)
+            self.__display.update_battery_capacity(total_capacity)
 
     def __on_charger_energy(self, energy):
         self.__mqtt.send_charger_energy(energy)

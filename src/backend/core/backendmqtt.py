@@ -2,12 +2,13 @@ import struct
 from .micromqtt import MicroMqtt
 from ssl import CERT_NONE
 from .types import BatteryData, CallbackCollection, OperationMode
-from .types_singletons import operationmode
-
 
 class Mqtt():
     def __init__(self, config: dict):
         config = config["mqtt"]
+
+        from .types_singletons import operationmode
+        self.__operationmode = operationmode
 
         self.__ip, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
@@ -129,8 +130,8 @@ class Mqtt():
 
     def __on_mode(self, topic, payload):
         try:
-            mode = operationmode.from_string(payload.decode('utf-8'))
+            mode = self.__operationmode.from_string(payload.decode('utf-8'))
         except:
-            mode = operationmode.protect
+            mode = self.__operationmode.protect
         self.__mode_callback.run_all(mode)
 

@@ -1,15 +1,10 @@
 import asyncio, sys
 from collections import deque
 from ..core.types import CommandBundle, OperationMode
-from ..core.types_singletons import devicetype, operationmode
-from ..core.logging_singleton import log
 from ..core.backendmqtt import Mqtt
-from ..core.userinterface_singleton import display
-from ..core.userinterface_singleton import leds
 from .inverter import Inverter
 from .charger import Charger
 from .solar import Solar
-
 
 class ModeSwitcher:
     def __init__(self, config: dict, mqtt: Mqtt, inverter: Inverter, charger: Charger, solar: Solar):
@@ -17,6 +12,17 @@ class ModeSwitcher:
         self.__commands = deque((), 10)
         self.__task = None
         self.__event = asyncio.Event()
+
+        from ..core.types_singletons import devicetype
+        self.__devicetype = devicetype
+        from ..core.types_singletons import operationmode
+        self.__operationmode = operationmode
+        from ..core.logging_singleton import log
+        self.__log = log
+        from ..core.userinterface_singleton import display
+        self.__display = display
+        from ..core.userinterface_singleton import leds
+        self.__leds = leds
 
         self.__inverter = inverter
         self.__charger = charger
@@ -43,17 +49,17 @@ class ModeSwitcher:
                 while len(self.__commands) > 0:
                     await self.__commands.popleft().run()
             except Exception as e:
-                log.error(f'ModeSwitcher cycle failed: {e}')
-                sys.print_exception(e, log.trace)
+                self.__log.error(f'ModeSwitcher cycle failed: {e}')
+                sys.print_exception(e, self.__log.trace)
 
     def update_locked_devices(self, devices: set):
         if devices == self.__locked_devices:
             return
         self.__locked_devices.clear()
         self.__locked_devices.update(devices)
-        leds.switch_charger_locked(devicetype.charger in self.__locked_devices)
-        leds.switch_inverter_locked(devicetype.inverter in self.__locked_devices)
-        leds.switch_solar_locked(devicetype.solar in self.__locked_devices)
+        self.__leds.switch_charger_locked(self.__devicetype.charger in self.__locked_devices)
+        self.__leds.switch_inverter_locked(self.__devicetype.inverter in self.__locked_devices)
+        self.__leds.switch_solar_locked(self.__devicetype.solar in self.__locked_devices)
         self.__commands.append(CommandBundle(self.__update, (None,)))
         self.__event.set()
 
@@ -74,36 +80,36 @@ class ModeSwitcher:
         displayed_mode = self.__get_displayed_mode(modes)
         if displayed_mode != self.__displayed_mode:
             self.__displayed_mode = displayed_mode
-            display.update_mode(self.__displayed_mode)
+            self.__display.update_mode(self.__displayed_mode)
             self.__mqtt.send_mode(self.__displayed_mode)
 
     def __get_effective_mode(self, mode: OperationMode):
-        charger_mode = operationmode.protect if devicetype.charger in self.__locked_devices else mode
-        inverter_mode = operationmode.protect if devicetype.inverter in self.__locked_devices else mode
-        solar_mode = operationmode.protect if devicetype.solar in self.__locked_devices else mode
+        charger_mode = self.__operationmode.protect if self.__devicetype.charger in self.__locked_devices else mode
+        inverter_mode = self.__operationmode.protect if self.__devicetype.inverter in self.__locked_devices else mode
+        solar_mode = self.__operationmode.protect if self.__devicetype.solar in self.__locked_devices else mode
 
         return charger_mode, inverter_mode, solar_mode
     
     def __get_displayed_mode(self, modes):
         charger_mode, inverter_mode, solar_mode = modes
-        if inverter_mode == operationmode.discharge:
-            return operationmode.discharge
-        if charger_mode == operationmode.charge:
-            return operationmode.charge
-        if solar_mode == operationmode.idle:
-            return operationmode.idle
-        return operationmode.protect
+        if inverter_mode == self.__operationmode.discharge:
+            return self.__operationmode.discharge
+        if charger_mode == self.__operationmode.charge:
+            return self.__operationmode.charge
+        if solar_mode == self.__operationmode.idle:
+            return self.__operationmode.idle
+        return self.__operationmode.protect
 
     async def __switch_charger(self, mode: OperationMode):
-        log.modeswitch(f'Switching charger to mode {mode}.')
+        self.__log.modeswitch(f'Switching charger to mode {mode}.')
         await self.__charger.set_mode(mode)
 
     async def __switch_solar(self, mode: OperationMode):
-        log.modeswitch(f'Switching solar to mode {mode}.')
+        self.__log.modeswitch(f'Switching solar to mode {mode}.')
         await self.__solar.set_mode(mode)
             
     async def __switch_inverter(self, mode: OperationMode):
-        log.modeswitch(f'Switching inverter to mode {mode}.')
+        self.__log.modeswitch(f'Switching inverter to mode {mode}.')
         await self.__inverter.set_mode(mode)
 
     def __on_mode(self, mode):

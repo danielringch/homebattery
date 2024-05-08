@@ -1,8 +1,23 @@
 import asyncio, gc, json
-
-from backend.core.logging_singleton import log
-from backend.core.userinterface_singleton import display
+gc.collect()
 from backend.core.watchdog import Watchdog
+gc.collect()
+from backend.modules.devices import Devices
+gc.collect()
+from backend.modules.battery import Battery
+gc.collect()
+from backend.modules.charger import Charger
+gc.collect()
+from backend.modules.inverter import Inverter
+gc.collect()
+from backend.modules.solar import Solar
+gc.collect()
+from backend.modules.modeswitcher import ModeSwitcher
+gc.collect()
+from backend.modules.supervisor import Supervisor
+gc.collect()
+from backend.modules.outputs import Outputs
+gc.collect()
 
 __version__ = "0.1.0"
 
@@ -10,6 +25,9 @@ prefix = '[homebattery] {0}'
 
 
 async def main():
+    gc.collect()
+    from backend.core.logging_singleton import log
+    from backend.core.userinterface_singleton import display
     log.debug(f'Homebattery {__version__}')
     display.print('Homebattery', __version__)
 
@@ -35,44 +53,25 @@ async def main():
     log.debug('Configuring MQTT...')
     display.print('Configuring', 'MQTT...')
     mqtt = Mqtt(config)
- 
-    watchdog.feed()
-    log.debug('Connecting to MQTT broker...')
-    display.print('Connecting to', 'MQTT broker...')
-    await mqtt.connect()
 
     watchdog.feed()
     gc.collect()
 
     display.print('Configuring', 'modules...')
-
-    from backend.modules.devices import Devices
     devices = Devices(config, mqtt)
-
-    gc.collect()
-
-    from backend.modules.battery import Battery
     battery = Battery(config, devices)
-
-    gc.collect()
-
-    from backend.modules.charger import Charger
     charger = Charger(config, devices, mqtt)
-
-    gc.collect()
-
-    from backend.modules.inverter import Inverter
     inverter = Inverter(config, devices, mqtt)
-
-    gc.collect()
-
-    from backend.modules.solar import Solar
     solar = Solar(config, devices, mqtt)
-
-    from backend.modules.modeswitcher import ModeSwitcher
-    from backend.modules.supervisor import Supervisor
     modeswitcher = ModeSwitcher(config, mqtt, inverter, charger, solar)
     supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, inverter, charger, battery)
+    watchdog.feed()
+
+    gc.collect()
+
+    log.debug('Connecting to MQTT broker...')
+    display.print('Connecting to', 'MQTT broker...')
+    await mqtt.connect()
     watchdog.feed()
 
     battery_task = asyncio.create_task(battery.run())
@@ -81,11 +80,9 @@ async def main():
     solar_task = asyncio.create_task(solar.run())
     modeswitcher.run()
     supervisor.run()
+    outputs = Outputs(mqtt, supervisor, battery, charger, inverter, solar)
 
     gc.collect()
-
-    from backend.modules.outputs import Outputs
-    outputs = Outputs(mqtt, supervisor, battery, charger, inverter, solar)
 
     i = 0
     while True:

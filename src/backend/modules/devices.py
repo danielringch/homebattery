@@ -1,6 +1,5 @@
 import sys
 from micropython import const
-from ..core.logging_singleton import log
 
 from ..drivers.ahoydtu import AhoyDtu
 from ..drivers.daly8s24v60a import Daly8S24V60A
@@ -32,6 +31,8 @@ class Devices:
     def __init__(self, config, mqtt):
         config = config['devices']
         self.__devices = []
+
+        from ..core.logging_singleton import log
 
         for name, meta in config.items():
             try:

@@ -1,16 +1,11 @@
 import asyncio, sys, time
 from ..core.types import EnumEntry
-from ..core.types_singletons import devicetype
-from ..core.logging_singleton import log
 from ..core.backendmqtt import Mqtt
-from ..core.userinterface_singleton import display
-from ..core.userinterface_singleton import leds
 from ..core.watchdog import Watchdog
 from .inverter import Inverter
 from .charger import Charger
 from .battery import Battery
 from .modeswitcher import ModeSwitcher
-
 
 class Supervisor:
     class LockedReason(EnumEntry):
@@ -26,6 +21,13 @@ class Supervisor:
     def __init__(self, config: dict, watchdog: Watchdog, mqtt: Mqtt, modeswitcher: ModeSwitcher, inverter: Inverter, charger: Charger, battery: Battery):
         config = config['supervisor']
 
+        from ..core.logging_singleton import log
+        self.__log = log
+        from ..core.userinterface_singleton import display
+        self.__display = display
+        from ..core.userinterface_singleton import leds
+        self.__leds = leds
+
         self.__watchdog = watchdog
         self.__modeswitcher = modeswitcher
 
@@ -34,6 +36,7 @@ class Supervisor:
         self.__check_interval = int(config['check_interval'])
         self.__next_check = 0
 
+        from ..core.types_singletons import devicetype
         self.__internal_error = self.internal = Supervisor.LockedReason(
                 name='internal',
                 priority=0,
@@ -60,14 +63,14 @@ class Supervisor:
             try:
                 self.__tick()
             except Exception as e:
-                log.error(f'Supervisor cycle failed: {e}')
-                sys.print_exception(e, log.trace)
+                self.__log.error(f'Supervisor cycle failed: {e}')
+                sys.print_exception(e, self.__log.trace)
             
             deadline = 3 * self.__check_interval
             now = time.time()
             if self.__health_check_passed + deadline > now:
                 self.__watchdog.feed()
-                leds.notify_watchdog()
+                self.__leds.notify_watchdog()
             await asyncio.sleep(0.5)
 
     def __tick(self):
@@ -90,19 +93,19 @@ class Supervisor:
             self.__clear_lock(self.__internal_error)
 
         except Exception as e:
-            log.supervisor(f'Cycle failed: {e}')
+            self.__log.supervisor(f'Cycle failed: {e}')
             self.__locks.add(self.__internal_error)
 
         locked_devices = set()
         for lock in self.__locks:
-            log.supervisor(f'System lock: {lock.name}')
+            self.__log.supervisor(f'System lock: {lock.name}')
             locked_devices.update(lock.locked_devices)
 
         top_priority_lock = sorted(self.__locks)[0] if len(self.__locks) else None
 
         if previous_locked != top_priority_lock:
             self.__mqtt.send_locked(top_priority_lock.name if top_priority_lock is not None else None)
-            display.update_lock(top_priority_lock.name if top_priority_lock is not None else None)
+            self.__display.update_lock(top_priority_lock.name if top_priority_lock is not None else None)
         self.__modeswitcher.update_locked_devices(locked_devices)
 
         if not any(x.fatal for x in self.__locks):
@@ -128,6 +131,7 @@ class Supervisor:
 
     class BatteryOfflineChecker(SubChecker):
         def __init__(self, config, battery):
+            from ..core.types_singletons import devicetype
             super().__init__(config, 'battery_offline', 30, (devicetype.charger, devicetype.solar, devicetype.inverter))
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_data = dict()
@@ -152,6 +156,7 @@ class Supervisor:
         
     class CellHighChecker(SubChecker):
         def __init__(self, config, battery):
+            from ..core.types_singletons import devicetype
             super().__init__(config, 'cell_high', 31, (devicetype.charger, devicetype.solar))
             self.__threshold = float(config[self.__name]['threshold'])
             self.__hysteresis = float(config[self.__name]['hysteresis'])
@@ -180,6 +185,7 @@ class Supervisor:
         
     class CellLowChecker(SubChecker):
         def __init__(self, config, battery):
+            from ..core.types_singletons import devicetype
             super().__init__(config, 'cell_low', 32, (devicetype.inverter,))
             self.__threshold = float(config[self.__name]['threshold'])
             self.__hysteresis = float(config[self.__name]['hysteresis'])
@@ -208,6 +214,7 @@ class Supervisor:
         
     class LiveDataOfflineChargeChecker(SubChecker):
         def __init__(self, config, mqtt):
+            from ..core.types_singletons import devicetype
             super().__init__(config, 'live_data_lost_charge', 11, (devicetype.charger,))
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_data = 0
@@ -224,6 +231,7 @@ class Supervisor:
 
     class LiveDataOfflineDischargeChecker(SubChecker):
         def __init__(self, config, mqtt):
+            from ..core.types_singletons import devicetype
             super().__init__(config, 'live_data_lost_discharge', 10, (devicetype.inverter,))
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_data = 0
@@ -240,6 +248,7 @@ class Supervisor:
 
     class MqttOfflineChecker(SubChecker):
         def __init__(self, config, mqtt):
+            from ..core.types_singletons import devicetype
             super().__init__(config, 'mqtt_offline', 5, (devicetype.charger, devicetype.inverter), True)
             self.__threshold = int(config[self.__name]['threshold'])
             self.__last_online = 0
@@ -256,6 +265,7 @@ class Supervisor:
     class StartupChecker(SubChecker):
         def __init__(self, config, locks):
             config = {'startup': {'enabled': True}}
+            from ..core.types_singletons import devicetype
             super().__init__(config, 'startup', 2, (devicetype.inverter, devicetype.solar, devicetype.charger))
             self.__mature_timestamp = time.time() + 60
             self.__locks = locks

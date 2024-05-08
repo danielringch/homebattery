@@ -1,18 +1,17 @@
 import asyncio
 from machine import Pin
-
 from .interfaces.solarinterface import SolarInterface
-from ..core.addonport_singleton import addon_ports
 from ..core.byteringbuffer import ByteRingBuffer
-from ..core.logging_singleton import log
 from ..core.types import CallbackCollection
-from ..core.types_singletons import bool2on, devicetype
 
 class VictronMppt(SolarInterface):
     def __init__(self, name, config):
+        from ..core.types_singletons import devicetype
         self.__device_types = (devicetype.solar,)
+        from ..core.logging_singleton import log
         self.__log = log.get_custom_logger(name)
         port = config['port']
+        from ..core.addonport_singleton import addon_ports
         if port == "ext1":
             self.__port = addon_ports[0]
         elif port == "ext2":
@@ -24,6 +23,9 @@ class VictronMppt(SolarInterface):
         self.__rx_buffer = ByteRingBuffer(1024)
         self.__rx_task = asyncio.create_task(self.__receive())
         self.__rx_trigger = asyncio.Event()
+
+        from ..core.types_singletons import bool2on
+        self.__bool2on = bool2on
 
 
         self.__control_pin = Pin(4, Pin.OUT)
@@ -119,7 +121,7 @@ class VictronMppt(SolarInterface):
                 value_changed = is_on != self.__is_on
                 self.__is_on = is_on
                 if value_changed:
-                    self.__log.send(f'Status: {bool2on[is_on]}')
+                    self.__log.send(f'Status: {self.__bool2on[is_on]}')
                     self.__on_status_change.run_all(is_on)
             elif header_str == 'H20':
                 energy = int(str(payload, 'utf-8')) * 10

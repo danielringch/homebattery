@@ -4,7 +4,7 @@ from ..core.microaiohttp import ClientSession
 from ..core.logging_singleton import log
 from ..core.userinterface_singleton import leds
 from ..core.types import CallbackCollection, EnumEntry, InverterStatus, PowerLut
-from ..core.types_singletons import bool2string, devicetype, inverterstatus
+
 
 class AhoyCommand(EnumEntry):
     pass
@@ -20,15 +20,18 @@ class AhoyCommandValues:
 ahoycommand = AhoyCommandValues()
 
 class AhoyDtu(InverterInterface):
-    __ahoy_state_to_internal_state = {
-        0: inverterstatus.fault,
-        1: inverterstatus.off,
-        2: inverterstatus.on,
-        3: inverterstatus.off,
-        4: inverterstatus.fault
-    }
-
     def __init__(self, name, config):
+        from ..core.types_singletons import inverterstatus
+        self.__ahoy_state_to_internal_state = {
+            0: inverterstatus.fault,
+            1: inverterstatus.off,
+            2: inverterstatus.on,
+            3: inverterstatus.off,
+            4: inverterstatus.fault
+        }
+        self.__inverterstatus = inverterstatus
+
+        from ..core.types_singletons import devicetype
         self.__device_types = (devicetype.inverter,)
         self.__log = log.get_custom_logger(name)
         self.__host, self.__port = config['host'].split(':')
@@ -48,8 +51,8 @@ class AhoyDtu(InverterInterface):
         self.__name = name
         self.__id = config['id']
         self.__power_lut = PowerLut(config['power_lut'])
-        self.__shall_status = inverterstatus.off
-        self.__current_status = inverterstatus.syncing
+        self.__shall_status = self.__inverterstatus.off
+        self.__current_status = self.__inverterstatus.syncing
         self.__shall_percent = self.__power_lut.min_percent
         self.__current_percent = None
         self.__current_power = None
@@ -75,7 +78,7 @@ class AhoyDtu(InverterInterface):
     
     async def switch_inverter(self, on: bool):
         old_value = self.__shall_status
-        self.__shall_status = inverterstatus.on if on else inverterstatus.off
+        self.__shall_status = self.__inverterstatus.on if on else self.__inverterstatus.off
         if old_value != self.__shall_status:
             self.__shall_percent = self.__power_lut.min_percent
             self.__log.send(f'New target state: {self.__shall_status}')
@@ -105,7 +108,7 @@ class AhoyDtu(InverterInterface):
         return shall_power
         
     def get_inverter_power(self):
-        if  self.__current_status != inverterstatus.on:
+        if  self.__current_status != self.__inverterstatus.on:
             return 0
         if not self.__is_power_synced:
             return None
@@ -132,7 +135,7 @@ class AhoyDtu(InverterInterface):
 ###################
 
     def __add_energy(self, seconds):
-        if self.__current_status != inverterstatus.on or self.__current_power is None:
+        if self.__current_status != self.__inverterstatus.on or self.__current_power is None:
             return
         self.__energy += self.__current_power * seconds
 
@@ -164,11 +167,11 @@ class AhoyDtu(InverterInterface):
 
     def __update(self, status, power_percent):
         last_status = self.__current_status
-        if status != inverterstatus.on \
-            and self.__shall_status == inverterstatus.on \
-            and self.__current_status == inverterstatus.on:
+        if status != self.__inverterstatus.on \
+            and self.__shall_status == self.__inverterstatus.on \
+            and self.__current_status == self.__inverterstatus.on:
             # inverter deactivated itself
-            self.__current_status = inverterstatus.fault
+            self.__current_status = self.__inverterstatus.fault
         else:
             self.__current_status = status
 
@@ -198,14 +201,14 @@ class AhoyDtu(InverterInterface):
             return None
 
         #prio 1: switch off
-        if not self.__is_status_synced and self.__shall_status != inverterstatus.on:
+        if not self.__is_status_synced and self.__shall_status != self.__inverterstatus.on:
             self.__last_command_type = ahoycommand.turn_off
             self.__last_status_command_type = ahoycommand.turn_off
             self.__log.send('Sending switch off command.')
             return f'"id":{self.__id},"cmd":"power","val":0'
         
         #prio 2: reset (a power change will not survive reset, so reset first)
-        if not self.__is_status_synced and self.__shall_status == inverterstatus.on and self.__last_status_command_type  == ahoycommand.turn_on:
+        if not self.__is_status_synced and self.__shall_status == self.__inverterstatus.on and self.__last_status_command_type  == ahoycommand.turn_on:
             self.__last_command_type = ahoycommand.reset
             self.__last_status_command_type = ahoycommand.reset
             self.__log.send('Sending reset command.')
@@ -218,7 +221,7 @@ class AhoyDtu(InverterInterface):
             return f'"id":{self.__id},"cmd":"limit_nonpersistent_relative","val":{self.__shall_percent}'
         
         #prio 4: switch on
-        if not self.__is_status_synced and self.__shall_status == inverterstatus.on:
+        if not self.__is_status_synced and self.__shall_status == self.__inverterstatus.on:
             self.__last_command_type = ahoycommand.turn_on
             self.__last_status_command_type = ahoycommand.turn_on
             self.__log.send('Sending switch on command.')
@@ -260,7 +263,7 @@ class AhoyDtu(InverterInterface):
         with self.__create_session() as session:
             json = await self.__get(session, f'inverter/id/{self.__id}')
         try:
-            status = self.__ahoy_state_to_internal_state.get(int(json['status']), inverterstatus.fault)
+            status = self.__ahoy_state_to_internal_state.get(int(json['status']), self.__inverterstatus.fault)
             limit = int(json['power_limit_read'])
             self.__update(status, limit)
             if False in (self.__is_status_synced, self.__is_power_synced):

@@ -1,6 +1,5 @@
 import time
 from collections import namedtuple
-from ..core.logging_singleton import log
 from ..core.microdeque import MicroDeque, MicroDequeOverflowError
 
 class NetZero:
@@ -8,6 +7,9 @@ class NetZero:
 
     def __init__(self, config):
         config = config['netzero']
+
+        from ..core.logging_singleton import log
+        self.__log = log
         
         self.__time_span = int(config['evaluated_time_span'])
 
@@ -37,7 +39,7 @@ class NetZero:
 
     def __update_data(self, timestamp, consumption):
         if timestamp < self.__data_deadline:
-            log.netzero('Omitting data consumption data, too old.')
+            self.__log.netzero('Omitting data consumption data, too old.')
         self.__data_deadline = timestamp
         element = self.PowerElement(timestamp, consumption)
         try:
@@ -52,17 +54,17 @@ class NetZero:
         oldest_element = self.__power_data[0]
         current_element = self.__power_data[-1]
         if sum(1 for i in self.__power_data if i.power < 1) > 1:
-            log.netzero('Overproduction.')
+            self.__log.netzero('Overproduction.')
             return self.__step_down
         if (len(self.__power_data) < 5) or (current_element.timestamp - oldest_element.timestamp < self.__mature_interval):
-            log.netzero(f'Not enough data.')
+            self.__log.netzero(f'Not enough data.')
             return 0
         values = [x.power for x in self.__power_data]
         values.sort()
         start_index = len(values) // 5
         upper_values = values[start_index:]
         min_power = min(upper_values)
-        log.netzero(f'Minimum power: {min_power}W | {len(values)} data points.')
+        self.__log.netzero(f'Minimum power: {min_power}W | {len(values)} data points.')
         if min_power < self.__offset:
             value = -(self.__offset - min_power)
             return value

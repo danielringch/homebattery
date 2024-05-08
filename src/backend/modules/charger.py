@@ -1,8 +1,6 @@
 import asyncio, sys, time
 from collections import deque
 from ..core.types import CommandBundle, OperationMode, CallbackCollection
-from ..core.types_singletons import bool2on, operationmode, devicetype
-from ..core.logging_singleton import log
 from ..core.backendmqtt import Mqtt
 from .devices import Devices
 
@@ -12,11 +10,18 @@ class Charger:
         self.__commands = deque((), 10)
         self.__mqtt = mqtt
 
+        from ..core.types_singletons import operationmode
+        self.__operationmode = operationmode
+
+        from ..core.logging_singleton import log
+        self.__log = log
+
         self.__last_state = None
 
         self.__on_energy = CallbackCollection()
 
         self.__chargers = []
+        from ..core.types_singletons import devicetype
         for device in devices.devices:
             if devicetype.charger not in device.device_types:
                 continue
@@ -36,8 +41,8 @@ class Charger:
                         await self.__get_energy()
                         self.__set_next_energy_execution()
             except Exception as e:
-                log.error(f'Charger cycle failed: {e}')
-                sys.print_exception(e, log.trace)
+                self.__log.error(f'Charger cycle failed: {e}')
+                sys.print_exception(e, self.__log.trace)
             await asyncio.sleep(0.1)
 
     async def is_on(self):
@@ -46,7 +51,7 @@ class Charger:
 
     async def set_mode(self, mode: OperationMode):
         async with self.__lock:
-            shall_on = mode == operationmode.charge
+            shall_on = mode == self.__operationmode.charge
             if shall_on == self.__last_state:
                 # mode request must be answered
                 self.__mqtt.send_charger_state(self.__last_state)

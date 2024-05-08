@@ -2,10 +2,7 @@ import asyncio, bluetooth, ubinascii, struct, sys
 from micropython import const
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
-from ..core.microblecentral_singleton import ble_instance
-from ..core.logging_singleton import log
 from ..core.types import BatteryData, CallbackCollection
-from ..core.types_singletons import devicetype
 
 # ressources:
 
@@ -53,10 +50,16 @@ class JkBmsBd4(BatteryInterface):
 
     def __init__(self, name, config):
         self.__name = name
+        from ..core.types_singletons import devicetype
         self.__device_types = (devicetype.battery,)
         self.__mac = config['mac']
 
+        from ..core.microblecentral_singleton import ble_instance
+        self.__ble = ble_instance
+
+        from ..core.logging_singleton import log
         self.__log = log.get_custom_logger(name)
+        self.__trace = log.trace
 
         self.__on_data = CallbackCollection()
 
@@ -67,11 +70,11 @@ class JkBmsBd4(BatteryInterface):
 
     async def read_battery(self):
         try:
-            ble_instance.activate()
+            self.__ble.activate()
             self.__data.invalidate()
 
             if self.__device is None:
-                self.__device = MicroBleDevice(ble_instance)
+                self.__device = MicroBleDevice(self.__ble)
                 await self.__device.connect(self.__mac, 0, timeout=10000)
             else:
                 await self.__device.reconnect(timeout=10000)
@@ -105,14 +108,14 @@ class JkBmsBd4(BatteryInterface):
             self.__log.send(str(e))
         except Exception as e:
             self.__log.send(f'BLE error: {e}')
-            sys.print_exception(e, log.trace)
+            sys.print_exception(e, self.__trace)
         finally:
             if self.__receive_task is not None:
                 self.__receive_task.cancel()
             if self.__device is not None:
                 await self.__device.disconnect()
             self.__current_decoder = None
-            ble_instance.deactivate()
+            self.__ble.deactivate()
 
     @property
     def on_battery_data(self):
