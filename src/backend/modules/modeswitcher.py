@@ -18,7 +18,6 @@ class ModeSwitcher:
         self.__task = None
         self.__event = Event()
 
-        self.__trace = Singletons.log.trace
         self.__log = Singletons.log.create_logger(_MODESWITCHER_LOG_NAME)
         self.__display = Singletons.display
         self.__leds = Singletons.leds
@@ -49,7 +48,8 @@ class ModeSwitcher:
                     await self.__commands.popleft().run()
             except Exception as e:
                 self.__log.error(f'ModeSwitcher cycle failed: {e}')
-                print_exception(e, self.__trace)
+                from ..core.singletons import Singletons
+                print_exception(e, Singletons.log.trace)
 
     def update_locked_devices(self, devices: set):
         if devices == self.__locked_devices:

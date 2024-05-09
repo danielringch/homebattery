@@ -18,7 +18,6 @@ class Solar:
         self.__mqtt = mqtt
 
         self.__display = Singletons.display
-        self.__trace = Singletons.log.trace
         self.__log = Singletons.log.create_logger(_SOLAR_LOG_NAME)
 
         self.__on_energy = CallbackCollection()
@@ -46,7 +45,8 @@ class Solar:
                         self.__set_next_energy_execution()
             except Exception as e:
                 self.__log.error(f'Solar cycle failed: {e}')
-                print_exception(e, self.__trace)
+                from ..core.singletons import Singletons
+                print_exception(e, Singletons.log.trace)
             await sleep(0.1)
 
     async def is_on(self):

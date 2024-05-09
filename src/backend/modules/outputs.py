@@ -17,7 +17,6 @@ class Outputs:
         from ..core.singletons import Singletons
         self.__commands = deque((), 10)
         self.__command_event = Event()
-        self.__trace = Singletons.log.trace
         self.__log = Singletons.log.create_logger(_OUTPUT_LOG_NAME)
         self.__mqtt = mqtt
         self.__supervisor = supervisor
@@ -44,7 +43,8 @@ class Outputs:
                     await self.__commands.popleft().run()
             except Exception as e:
                 self.__log.error(f'Charger cycle failed: {e}')
-                print_exception(e, self.__trace)
+                from ..core.singletons import Singletons
+                print_exception(e, Singletons.log.trace)
 
     async def __send_battery_data(self, name):
         changed_battery = self.__battery.battery_data[name]

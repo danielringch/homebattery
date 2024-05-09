@@ -16,7 +16,6 @@ class Charger:
         self.__commands = deque((), 10)
         self.__mqtt = mqtt
 
-        self.__trace = Singletons.log.trace
         self.__log = Singletons.log.create_logger(_CHARGER_LOG_NAME)
 
         self.__last_state = None
@@ -42,7 +41,8 @@ class Charger:
                         self.__set_next_energy_execution()
             except Exception as e:
                 self.__log.error(f'Charger cycle failed: {e}')
-                print_exception(e, self.__trace)
+                from ..core.singletons import Singletons
+                print_exception(e, Singletons.log.trace)
             await sleep(0.1)
 
     async def is_on(self):

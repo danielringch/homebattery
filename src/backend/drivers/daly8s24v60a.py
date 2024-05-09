@@ -19,7 +19,6 @@ class Daly8S24V60A(BatteryInterface):
         self.__mac = config['mac']
 
         self.__ble = Singletons.ble
-        self.__trace = Singletons.log.trace
         self.__log = Singletons.log.create_logger(name)
 
         self.__on_data = CallbackCollection()
@@ -69,7 +68,8 @@ class Daly8S24V60A(BatteryInterface):
             self.__log.error(str(e))
         except Exception as e:
             self.__log.error(f'BLE error: {e}')
-            print_exception(e, self.__trace)
+            from ..core.singletons import Singletons
+            print_exception(e, Singletons.log.trace)
         finally:
             if self.__receive_task is not None:
                 self.__receive_task.cancel()

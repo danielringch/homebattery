@@ -27,7 +27,6 @@ class Supervisor:
         from ..core.singletons import Singletons
         config = config['supervisor']
 
-        self.__trace = Singletons.log.trace
         self.__log = Singletons.log.create_logger(_SUPERVISOR_LOG_NAME)
         self.__display = Singletons.display
         self.__leds = Singletons.leds
@@ -67,7 +66,8 @@ class Supervisor:
                 await self.__tick()
             except Exception as e:
                 self.__log.error(f'Supervisor cycle failed: {e}')
-                print_exception(e, self.__trace)
+                from ..core.singletons import Singletons
+                print_exception(e, Singletons.log.trace)
             
             deadline = 3 * self.__check_interval
             now = time()
