@@ -21,16 +21,11 @@ class Battery:
         self.__on_battery_data = CallbackCollection()
 
         self.__battery_data = dict()
-        self.__batteries = list()
         from ..core.types import TYPE_BATTERY
-        for device in devices.devices:
-            if TYPE_BATTERY not in device.device_types:
-                continue
-            device.on_battery_data.add(self.__on_device_data)
-            self.__batteries.append(device)
-            self.__battery_data[device.name] = None
-
-
+        self.__batteries = devices.get_by_type(TYPE_BATTERY)
+        for battery in self.__batteries:
+            self.__battery_data[battery.name] = None
+            battery.on_battery_data.add(self.__on_device_data)
 
     async def run(self):
         from ..core.singletons import Singletons

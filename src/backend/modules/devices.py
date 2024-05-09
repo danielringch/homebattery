@@ -53,6 +53,9 @@ class Devices:
                 log.error(f'Failed to initialize device {name}: {e}')
                 print_exception(e, log.trace)
 
+    def get_by_type(self, type: str):
+        return tuple(x for x in self.__devices if type in x.device_types)
+
     @property
     def devices(self):
         return self.__devices

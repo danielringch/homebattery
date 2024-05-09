@@ -23,13 +23,10 @@ class Charger:
 
         self.__on_energy = CallbackCollection()
 
-        self.__chargers = []
-        for device in devices.devices:
-            from ..core.types import TYPE_CHARGER
-            if TYPE_CHARGER not in device.device_types:
-                continue
-            self.__chargers.append(device)
-            device.on_charger_status_change.add(self.__on_charger_status)
+        from ..core.types import TYPE_CHARGER
+        self.__chargers = devices.get_by_type(TYPE_CHARGER)
+        for device in self.__chargers:
+            device.on_charger_status_change.add(self.__on_charger_status)            
 
         self.__set_next_energy_execution()
 

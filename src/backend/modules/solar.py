@@ -23,12 +23,9 @@ class Solar:
 
         self.__on_energy = CallbackCollection()
 
-        self.__devices = []
-        for device in devices.devices:
-            from ..core.types import TYPE_SOLAR
-            if TYPE_SOLAR not in device.device_types:
-                continue
-            self.__devices.append(device)
+        from ..core.types import TYPE_SOLAR
+        self.__devices = devices.get_by_type(TYPE_SOLAR)
+        for device in self.__devices:
             device.on_solar_status_change.add(self.__on_status_change)
             device.on_solar_power_change.add(self.__on_power_change)
 

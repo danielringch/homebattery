@@ -28,13 +28,10 @@ class Inverter:
 
         self.__last_status = None
         self.__last_power = None
-        self.__inverters = []
 
-        for device in devices.devices:
-            from ..core.types import TYPE_INVERTER
-            if TYPE_INVERTER not in device.device_types:
-                continue
-            self.__inverters.append(device)
+        from ..core.types import TYPE_INVERTER
+        self.__inverters = devices.get_by_type(TYPE_INVERTER)
+        for device in self.__inverters:
             device.on_inverter_status_change.add(self.__on_inverter_status)
             device.on_inverter_power_change.add(self.__on_inverter_power)
 
