@@ -1,3 +1,4 @@
+from asyncio import sleep
 from struct import pack, unpack
 from .micromqtt import MicroMqtt
 from ssl import CERT_NONE
@@ -46,9 +47,9 @@ class Mqtt():
         self.__live_consumption_callback = CallbackCollection()
         self.__mode_callback = CallbackCollection()
 
-    def __on_mqtt_connect(self):
+    async def __on_mqtt_connect(self):
         for subscription in self.__subscriptions:
-            self.__mqtt.subscribe(topic=subscription[0], qos=subscription[1])
+            await self.__mqtt.subscribe(topic=subscription[0], qos=subscription[1])
 
     def __del__(self):
         pass
@@ -56,57 +57,57 @@ class Mqtt():
     async def connect(self):
         await self.__mqtt.connect(self.__ip, self.__port, 60)
 
-    def subscribe(self, topic, qos, callback):
+    async def subscribe(self, topic, qos, callback):
         self.__mqtt.message_callback_add(topic, callback)
-        if self.__mqtt.connected:
-            self.__mqtt.subscribe(topic, qos)
-        self.__subscriptions.append((topic, qos))
+        while not self.__mqtt.connected:
+            await sleep(1)
+        await self.__mqtt.subscribe(topic, qos)
 
     async def send_mode(self, mode: str):
-        self.__mqtt.publish(self.__mode_actual_topic, mode.encode('utf-8'), qos=1, retain=False)
+        await self.__mqtt.publish(self.__mode_actual_topic, mode.encode('utf-8'), qos=1, retain=False)
 
     async def send_charger_state(self, on):
         payload = pack('!B', on) if on is not None else None
-        self.__mqtt.publish(self.__charger_state_topic, payload, qos=1, retain=False)
+        await self.__mqtt.publish(self.__charger_state_topic, payload, qos=1, retain=False)
 
     async def send_charger_energy(self, energy):
-        self.__mqtt.publish(self.__charger_energy_topic, pack('!H', int(energy)), qos=1, retain=False)
+        await self.__mqtt.publish(self.__charger_energy_topic, pack('!H', int(energy)), qos=1, retain=False)
 
     async def send_inverter_state(self, on: bool):
         payload = pack('!B', on) if on is not None else None
-        self.__mqtt.publish(self.__inverter_state_topic, payload, qos=1, retain=False)
+        await self.__mqtt.publish(self.__inverter_state_topic, payload, qos=1, retain=False)
 
     async def send_inverter_power(self, power: int):
-        self.__mqtt.publish(self.__inverter_power_topic, pack('!H', int(power)), qos=1, retain=False)
+        await self.__mqtt.publish(self.__inverter_power_topic, pack('!H', int(power)), qos=1, retain=False)
 
     async def send_inverter_energy(self, energy: int):
-        self.__mqtt.publish(self.__inverter_energy_topic, pack('!H', int(energy)), qos=1, retain=False)
+        await self.__mqtt.publish(self.__inverter_energy_topic, pack('!H', int(energy)), qos=1, retain=False)
 
     async def send_solar_state(self, on: bool):
         payload = pack('!B', on) if on is not None else None
-        self.__mqtt.publish(self.__solar_state_topic, payload, qos=1, retain=False)
+        await self.__mqtt.publish(self.__solar_state_topic, payload, qos=1, retain=False)
 
     async def send_solar_energy(self, energy: int):
-        self.__mqtt.publish(self.__solar_energy_topic, pack('!H', int(energy)), qos=1, retain=False)
+        await self.__mqtt.publish(self.__solar_energy_topic, pack('!H', int(energy)), qos=1, retain=False)
 
     async def send_battery(self, data: BatteryData):
-        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/v', pack('!H', round(data.v * 100)), qos=1, retain=False)
-        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/i', pack('!h', round(data.i * 10)), qos=1, retain=False)
-        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/soc', pack('!B', int(data.soc)), qos=1, retain=False)
-        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/c', pack('!H', round(data.c * 10)), qos=1, retain=False)
-        self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/n', pack('!H', round(data.n)), qos=1, retain=False)
+        await self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/v', pack('!H', round(data.v * 100)), qos=1, retain=False)
+        await self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/i', pack('!h', round(data.i * 10)), qos=1, retain=False)
+        await self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/soc', pack('!B', int(data.soc)), qos=1, retain=False)
+        await self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/c', pack('!H', round(data.c * 10)), qos=1, retain=False)
+        await self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/n', pack('!H', round(data.n)), qos=1, retain=False)
         i = 0
         for temp in data.temps:
-            self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/temp/{i}', pack('!h', round(temp * 10)), qos=1, retain=False)
+            await self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/temp/{i}', pack('!h', round(temp * 10)), qos=1, retain=False)
             i += 1
         i = 0
         for cell in data.cells:
-            self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/cell/{i}', pack('!H', round(cell * 1000)), qos=1, retain=False)
+            await self.__mqtt.publish(f'{self.__battery_device_root}{data.name}/cell/{i}', pack('!H', round(cell * 1000)), qos=1, retain=False)
             i += 1
 
     async def send_locked(self, reason: str):
         payload = reason.encode('utf-8') if reason is not None else None
-        self.__mqtt.publish(self.__locked_topic, payload, qos=1, retain=False)
+        await self.__mqtt.publish(self.__locked_topic, payload, qos=1, retain=False)
 
     @property
     def connected(self):

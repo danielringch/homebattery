@@ -100,25 +100,24 @@ class MqttBattery(BatteryInterface):
 
         self.__parser = self.Parser(self.__name, self.__log, self.__cell_count, self.__temp_count)
 
-        mqtt.subscribe(f'{self.__root}/v', 0, self.__parser.parse)
-        mqtt.subscribe(f'{self.__root}/i', 0, self.__parser.parse)
-        mqtt.subscribe(f'{self.__root}/soc', 0, self.__parser.parse)
-        mqtt.subscribe(f'{self.__root}/c', 0, self.__parser.parse)
-        mqtt.subscribe(f'{self.__root}/n', 0, self.__parser.parse)
-        for i in range(self.__temp_count):
-            mqtt.subscribe(f'{self.__root}/temp/{i}', 0, self.__parser.parse)
-        for i in range(self.__cell_count):
-            mqtt.subscribe(f'{self.__root}/cell/{i}', 0, self.__parser.parse)
-
-
         self.__on_data = CallbackCollection()
 
-        self.__receive_task = create_task(self.__receive())
+        self.__receive_task = create_task(self.__receive(mqtt))
 
     async def read_battery(self):
         pass
 
-    async def __receive(self):
+    async def __receive(self, mqtt: Mqtt):
+        await mqtt.subscribe(f'{self.__root}/v', 0, self.__parser.parse)
+        await mqtt.subscribe(f'{self.__root}/i', 0, self.__parser.parse)
+        await mqtt.subscribe(f'{self.__root}/soc', 0, self.__parser.parse)
+        await mqtt.subscribe(f'{self.__root}/c', 0, self.__parser.parse)
+        await mqtt.subscribe(f'{self.__root}/n', 0, self.__parser.parse)
+        for i in range(self.__temp_count):
+            await mqtt.subscribe(f'{self.__root}/temp/{i}', 0, self.__parser.parse)
+        for i in range(self.__cell_count):
+            await mqtt.subscribe(f'{self.__root}/cell/{i}', 0, self.__parser.parse)
+
         while True:
             await self.__parser.data_event.wait()
             self.__parser.data_event.clear()
