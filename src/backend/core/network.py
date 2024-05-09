@@ -5,7 +5,7 @@ from time import sleep
 from uerrno import ETIMEDOUT
 from .watchdog import Watchdog
 
-_NETWORK_LOG_NAME = const('mqtt')
+_NETWORK_LOG_NAME = const('network')
 
 class Network():
     def __init__(self, config: dict):

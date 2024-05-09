@@ -7,7 +7,7 @@ from ..core.backendmqtt import Mqtt
 from ..core.types import CommandBundle, CallbackCollection, MODE_CHARGE
 from .devices import Devices
 
-_CHARGER_LOG_NAME = const('battery')
+_CHARGER_LOG_NAME = const('charger')
 
 class Charger:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):

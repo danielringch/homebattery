@@ -7,7 +7,7 @@ from ..core.backendmqtt import Mqtt
 from ..core.types import CallbackCollection, CommandBundle, MODE_PROTECT
 from .devices import Devices
 
-_SOLAR_LOG_NAME = const('inverter')
+_SOLAR_LOG_NAME = const('solar')
 
 class Solar:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):

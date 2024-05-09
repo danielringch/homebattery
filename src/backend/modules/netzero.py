@@ -3,7 +3,7 @@ from micropython import const
 from time import time
 from ..core.microdeque import MicroDeque, MicroDequeOverflowError
 
-_NETZERO_LOG_NAME = const('inverter')
+_NETZERO_LOG_NAME = const('netzero')
 
 class NetZero:
     PowerElement = namedtuple("PowerElement", "timestamp power")
