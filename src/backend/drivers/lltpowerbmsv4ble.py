@@ -5,7 +5,6 @@ from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
-from ..core.singletons import Singletons
 from ..core.types import BatteryData, CallbackCollection
 
 # ressources:
@@ -101,14 +100,15 @@ class LltPowerBmsV4Ble(BatteryInterface):
             return memoryview(self.__data)[:-3] if self.__data is not None else None
 
     def __init__(self, name, config):
+        from ..core.singletons import Singletons
+        from ..core.types import TYPE_BATTERY
         self.__name = name
-        self.__device_types = (Singletons.devicetype().battery,)
+        self.__device_types = (TYPE_BATTERY,)
         self.__mac = config['mac']
 
-        self.__ble = Singletons.ble()
-
-        self.__trace = Singletons.log().trace
-        self.__log = Singletons.log().create_logger(name)
+        self.__ble = Singletons.ble
+        self.__trace = Singletons.log.trace
+        self.__log = Singletons.log.create_logger(name)
 
         self.__on_data = CallbackCollection()
 

@@ -3,7 +3,6 @@ from collections import deque
 from micropython import const
 from random import randrange
 from time import time
-from ..core.singletons import Singletons
 from ..core.types import CallbackCollection, CommandBundle
 from .devices import Devices
 
@@ -23,8 +22,9 @@ class Battery:
 
         self.__battery_data = dict()
         self.__batteries = list()
+        from ..core.types import TYPE_BATTERY
         for device in devices.devices:
-            if Singletons.devicetype().battery not in device.device_types:
+            if TYPE_BATTERY not in device.device_types:
                 continue
             device.on_battery_data.add(self.__on_device_data)
             self.__batteries.append(device)
@@ -33,8 +33,9 @@ class Battery:
 
 
     async def run(self):
+        from ..core.singletons import Singletons
         if len(self.__batteries) == 0:
-            Singletons.log().send(_BATTERY_LOG_NAME, 'No batteries found.')
+            Singletons.log.send(_BATTERY_LOG_NAME, 'No batteries found.')
             return
 
         while True:

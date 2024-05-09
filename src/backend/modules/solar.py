@@ -4,29 +4,29 @@ from micropython import const
 from sys import print_exception
 from time import localtime, time
 from ..core.backendmqtt import Mqtt
-from ..core.singletons import Singletons
-from ..core.types import OperationMode, CallbackCollection, CommandBundle
+from ..core.types import CallbackCollection, CommandBundle, MODE_PROTECT
 from .devices import Devices
 
 _SOLAR_LOG_NAME = const('inverter')
 
 class Solar:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
+        from ..core.singletons import Singletons
         self.__lock = Lock()
         self.__commands = deque((), 10)
 
         self.__mqtt = mqtt
 
-        self.__display = Singletons.display()
-        self.__mode_protect = Singletons.operationmode().protect
-        self.__trace = Singletons.log().trace
-        self.__log = Singletons.log().create_logger(_SOLAR_LOG_NAME)
+        self.__display = Singletons.display
+        self.__trace = Singletons.log.trace
+        self.__log = Singletons.log.create_logger(_SOLAR_LOG_NAME)
 
         self.__on_energy = CallbackCollection()
 
         self.__devices = []
         for device in devices.devices:
-            if Singletons.devicetype().solar not in device.device_types:
+            from ..core.types import TYPE_SOLAR
+            if TYPE_SOLAR not in device.device_types:
                 continue
             self.__devices.append(device)
             device.on_solar_status_change.add(self.__on_status_change)
@@ -56,9 +56,9 @@ class Solar:
         async with self.__lock:
             return self.__last_status
 
-    async def set_mode(self, mode: OperationMode):
+    async def set_mode(self, mode: str):
         async with self.__lock:
-            on = mode != self.__mode_protect
+            on = mode != MODE_PROTECT
             is_on = self.__get_status()
             if is_on != on:
                 for device in self.__devices:

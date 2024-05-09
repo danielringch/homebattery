@@ -4,22 +4,20 @@ from micropython import const
 from sys import print_exception
 from time import localtime, time
 from ..core.backendmqtt import Mqtt
-from ..core.singletons import Singletons
-from ..core.types import CommandBundle, OperationMode, CallbackCollection
+from ..core.types import CommandBundle, CallbackCollection, MODE_CHARGE
 from .devices import Devices
 
 _CHARGER_LOG_NAME = const('battery')
 
 class Charger:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
+        from ..core.singletons import Singletons
         self.__lock = Lock()
         self.__commands = deque((), 10)
         self.__mqtt = mqtt
 
-        self.__operationmode = Singletons.operationmode()
-
-        self.__trace = Singletons.log().trace
-        self.__log = Singletons.log().create_logger(_CHARGER_LOG_NAME)
+        self.__trace = Singletons.log.trace
+        self.__log = Singletons.log.create_logger(_CHARGER_LOG_NAME)
 
         self.__last_state = None
 
@@ -27,7 +25,8 @@ class Charger:
 
         self.__chargers = []
         for device in devices.devices:
-            if Singletons.devicetype().charger not in device.device_types:
+            from ..core.types import TYPE_CHARGER
+            if TYPE_CHARGER not in device.device_types:
                 continue
             self.__chargers.append(device)
             device.on_charger_status_change.add(self.__on_charger_status)
@@ -53,9 +52,9 @@ class Charger:
         async with self.__lock:
             return await self.__get_state()
 
-    async def set_mode(self, mode: OperationMode):
+    async def set_mode(self, mode: str):
         async with self.__lock:
-            shall_on = mode == self.__operationmode.charge
+            shall_on = mode == MODE_CHARGE
             if shall_on == self.__last_state:
                 # mode request must be answered
                 await self.__mqtt.send_charger_state(self.__last_state)

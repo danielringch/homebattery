@@ -2,18 +2,19 @@ from asyncio import create_task, Event
 from machine import Pin
 from .interfaces.solarinterface import SolarInterface
 from ..core.byteringbuffer import ByteRingBuffer
-from ..core.singletons import Singletons
 from ..core.types import CallbackCollection
 
 class VictronMppt(SolarInterface):
     def __init__(self, name, config):
-        self.__device_types = (Singletons.devicetype().solar,)
-        self.__log = Singletons.log().create_logger(name)
+        from ..core.singletons import Singletons
+        from ..core.types import TYPE_SOLAR
+        self.__device_types = (TYPE_SOLAR,)
+        self.__log = Singletons.log.create_logger(name)
         port = config['port']
         if port == "ext1":
-            self.__port = Singletons.addon_port_1()
+            self.__port = Singletons.addon_port_1
         elif port == "ext2":
-            self.__port = Singletons.addon_port_2()
+            self.__port = Singletons.addon_port_2
         else:
            raise Exception(f'Unknown port: {port}')
         self.__port.connect(19200, 0, None, 1)

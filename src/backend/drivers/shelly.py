@@ -2,7 +2,6 @@ from asyncio import create_task, Event, sleep, TimeoutError, wait_for
 from time import time
 from .interfaces.chargerinterface import ChargerInterface
 from ..core.microaiohttp import ClientSession
-from ..core.singletons import Singletons
 from ..core.types import CallbackCollection
 
 class Shelly(ChargerInterface):
@@ -10,13 +9,15 @@ class Shelly(ChargerInterface):
 
     def __init__(self, name, config):
         super(Shelly, self).__init__()
-        self.__device_types = (Singletons.devicetype().charger,)
-        self.__log = Singletons.log().create_logger(name)
+        from ..core.singletons import Singletons
+        from ..core.types import TYPE_CHARGER
+        self.__device_types = (TYPE_CHARGER,)
+        self.__log = Singletons.log.create_logger(name)
         self.__host, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
         self.__relay_id = int(config['relay_id'])
 
-        self.__leds = Singletons.leds()
+        self.__leds = Singletons.leds
 
         self.__shall_on = False
         self.__is_on = None

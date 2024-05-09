@@ -1,6 +1,31 @@
-
+from micropython import const
 from struct import pack_into, unpack_from
 from time import time
+
+MODE_CHARGE = const('charge')
+MODE_DISCHARGE = const('discharge')
+MODE_IDLE = const('idle')
+MODE_PROTECT = const('protect')
+
+TYPE_BATTERY = const('battery')
+TYPE_CHARGER = const('charger')
+TYPE_INVERTER = const('inverter')
+TYPE_SOLAR = const('solar')
+
+STATUS_ON = const('on')
+STATUS_SYNCING = const('syncing')
+STATUS_OFF = const('off')
+STATUS_FAULT = const('fault')
+
+def to_operation_mode(str):
+    if str == MODE_CHARGE:
+        return MODE_CHARGE
+    elif str == MODE_DISCHARGE:
+        return MODE_DISCHARGE
+    elif str == MODE_IDLE:
+        return MODE_IDLE
+    else:
+        return MODE_PROTECT
 
 class BatteryData:
     def __init__(self, name, is_forwarded=False):
@@ -95,31 +120,6 @@ class EnumEntry:
     
     def __str__(self) -> str:
         return self.name
-    
-class OperationMode(EnumEntry):
-    pass
-
-class OperationModeValues:
-    def __init__(self):
-        self.__dict = {}
-        self.charge = OperationMode('charge', self.__dict)
-        self.discharge = OperationMode('discharge', self.__dict)
-        self.idle = OperationMode('idle', self.__dict)
-        self.protect = OperationMode('protect', self.__dict)
-
-    def from_string(self, str):
-        return self.__dict[str]
-
-class DeviceType(EnumEntry):
-    pass
-
-class DeviceTypeValues:
-    def __init__(self):
-        self.__dict = {}
-        self.battery = DeviceType('battery', self.__dict)
-        self.charger = DeviceType('charger', self.__dict)
-        self.inverter = DeviceType('inverter', self.__dict)
-        self.solar = DeviceType('solar', self.__dict)
 
 class InverterStatus(EnumEntry):
     pass

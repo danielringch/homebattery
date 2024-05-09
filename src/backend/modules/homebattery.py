@@ -1,4 +1,4 @@
-from asyncio import create_task, get_event_loop, sleep
+from asyncio import create_task, sleep
 from gc import collect as gc_collect
 from gc import mem_alloc, mem_free
 from json import load as load_json
@@ -12,10 +12,6 @@ gc_collect()
 from ..core.leds import Leds
 gc_collect()
 from ..core.logging import Logging
-gc_collect()
-from ..core.singletons import Singletons
-gc_collect()
-from ..core.types import OperationModeValues, DeviceTypeValues, InverterStatusValues
 gc_collect()
 from ..core.watchdog import Watchdog
 gc_collect()
@@ -36,8 +32,6 @@ gc_collect()
 from .outputs import Outputs
 gc_collect()
 
-from micropython import mem_info
-
 __version__ = "0.1.0"
 
 prefix = '[homebattery] {0}'
@@ -45,21 +39,22 @@ prefix = '[homebattery] {0}'
 
 async def homebattery():
     gc_collect()
-    mem_info(1)
 
-    Singletons.set_operationmode(OperationModeValues())
-    Singletons.set_devicetype(DeviceTypeValues())
-    Singletons.set_inverterstatus(InverterStatusValues())
-    Singletons.set_log(Logging())
-    Singletons.set_leds(Leds())
-    Singletons.set_display(Display())
-    Singletons.set_addon_ports(AddonPort(1, 0), AddonPort(0, 1))
-    Singletons.set_ble(MicroBleCentral())
+    from ..core.singletons import Singletons
+    Singletons.log = Logging()
+    Singletons.leds = Leds()
+    Singletons.display = Display()
+    Singletons.addon_port_1 = AddonPort(1, 0)
+    Singletons.addon_port_2 = AddonPort(0, 1)
+    Singletons.ble = MicroBleCentral()
 
-    log = Singletons.log()
-    display = Singletons.display()
+    log = Singletons.log
+    display = Singletons.display
     log.debug(f'Homebattery {__version__}')
     display.print('Homebattery', __version__)
+
+    gc_collect()
+    print_memory(log)
 
     await sleep(3.0)
 
@@ -99,7 +94,6 @@ async def homebattery():
     watchdog.feed()
 
     gc_collect()
-    mem_info(1)
 
     log.debug('Connecting to MQTT broker...')
     display.print('Connecting to', 'MQTT broker...')
@@ -115,7 +109,7 @@ async def homebattery():
     outputs = Outputs(mqtt, supervisor, battery, charger, inverter, solar)
 
     gc_collect()
-    mem_info(1)
+    print_memory(log)
 
     i = 0
     while True:
@@ -124,4 +118,7 @@ async def homebattery():
         i += 1
         if i >= 60:
             i = 0
-            log.info(f'Used memory: {mem_alloc()} Free memory: {mem_free()}')
+            print_memory(log)
+
+def print_memory(log):
+    log.info(f'Used memory: {mem_alloc()} Free memory: {mem_free()}')

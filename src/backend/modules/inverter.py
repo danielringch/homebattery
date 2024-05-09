@@ -4,8 +4,7 @@ from micropython import const
 from sys import print_exception
 from time import localtime, time
 from ..core.backendmqtt import Mqtt
-from ..core.singletons import Singletons
-from ..core.types import OperationMode, CallbackCollection, CommandBundle
+from ..core.types import CallbackCollection, CommandBundle, MODE_DISCHARGE, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 from .devices import Devices
 from .netzero import NetZero
 
@@ -13,14 +12,13 @@ _INVERTER_LOG_NAME = const('inverter')
 
 class Inverter:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
+        from ..core.singletons import Singletons
         self.__lock = Lock()
         self.__commands = deque((), 10)
 
-        self.__operationmode = Singletons.operationmode()
-        self.__inverterstatus = Singletons.inverterstatus()
-        self.__trace = Singletons.log().trace
-        self.__log = Singletons.log().create_logger(_INVERTER_LOG_NAME)
-        self.__display = Singletons.display()
+        self.__trace = Singletons.log.trace
+        self.__log = Singletons.log.create_logger(_INVERTER_LOG_NAME)
+        self.__display = Singletons.display
 
         self.__mqtt = mqtt
         self.__mqtt.on_live_consumption.add(self.__on_live_consumption)
@@ -33,7 +31,8 @@ class Inverter:
         self.__inverters = []
 
         for device in devices.devices:
-            if Singletons.devicetype().inverter not in device.device_types:
+            from ..core.types import TYPE_INVERTER
+            if TYPE_INVERTER not in device.device_types:
                 continue
             self.__inverters.append(device)
             device.on_inverter_status_change.add(self.__on_inverter_status)
@@ -66,30 +65,30 @@ class Inverter:
         status = None
         for inverter in self.__inverters:
             inverter_status = inverter.get_inverter_status()
-            if inverter_status in (self.__inverterstatus.on, self.__inverterstatus.off):
+            if inverter_status in (STATUS_ON, STATUS_OFF):
                 if status is None:
                     status = inverter_status
                 elif status != inverter_status:
-                    status = self.__inverterstatus.syncing
-            elif self.__inverterstatus == self.__inverterstatus.syncing:
-                status = self.__inverterstatus.syncing
+                    status = STATUS_SYNCING
+            elif inverter_status == STATUS_SYNCING:
+                status = STATUS_SYNCING
             else:
-                status = self.__inverterstatus.fault
+                status = STATUS_FAULT
                 break
 
         if status != self.__last_status :
             self.__commands.append(CommandBundle(self.__handle_state_change, (status,)))
-            if status != self.__inverterstatus.on:
+            if status != STATUS_ON:
                 self.__display.update_inverter_power(0)
                 self.__netzero.clear()
-            await self.__mqtt.send_inverter_state(status == self.__inverterstatus.on)
+            await self.__mqtt.send_inverter_state(status == STATUS_ON)
             self.__last_status = status
         return status
 
-    async def set_mode(self, mode: OperationMode):
+    async def set_mode(self, mode: str):
         async with self.__lock:
-            shall_on = mode == self.__operationmode.discharge
-            shall_status = self.__inverterstatus.on if shall_on else self.__inverterstatus.off
+            shall_on = mode == MODE_DISCHARGE
+            shall_status = STATUS_ON if shall_on else STATUS_OFF
             for inverter in self.__inverters:
                 await inverter.switch_inverter(shall_on)
             actual_status = await self.__get_status()
@@ -97,14 +96,14 @@ class Inverter:
                 # Operation mode requests must be answered, but since we are
                 # already in target state, __get_status() will not send anything, so
                 # we need to do it manually here.
-                await self.__mqtt.send_inverter_state(actual_status == self.__inverterstatus.on)
+                await self.__mqtt.send_inverter_state(actual_status == STATUS_ON)
 
     @property
     def on_energy(self):
         return self.__on_energy
     
     async def __handle_state_change(self, new_status):
-        if new_status == self.__inverterstatus.fault:
+        if new_status == STATUS_FAULT:
             # fault recovery has better chances if other inverters produce minimal power
             await self.__set_power(0)
 
@@ -114,7 +113,7 @@ class Inverter:
             return
         status = await self.__get_status()
         power = await self.__get_power()
-        if status != self.__inverterstatus.on or power is None:
+        if status != STATUS_ON or power is None:
             return
         self.__netzero.evaluate(timestamp, consumption)
         if self.__netzero.delta != 0:

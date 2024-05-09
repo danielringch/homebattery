@@ -1,14 +1,11 @@
 from struct import pack, unpack
 from .micromqtt import MicroMqtt
 from ssl import CERT_NONE
-from .singletons import Singletons
-from .types import BatteryData, CallbackCollection, OperationMode
+from .types import BatteryData, CallbackCollection, MODE_PROTECT, to_operation_mode
 
 class Mqtt():
     def __init__(self, config: dict):
         config = config["mqtt"]
-
-        self.__operationmode = Singletons.operationmode()
 
         self.__ip, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
@@ -65,9 +62,8 @@ class Mqtt():
             self.__mqtt.subscribe(topic, qos)
         self.__subscriptions.append((topic, qos))
 
-    async def send_mode(self, mode: OperationMode):
-        payload = mode.name.encode('utf-8')
-        self.__mqtt.publish(self.__mode_actual_topic, payload, qos=1, retain=False)
+    async def send_mode(self, mode: str):
+        self.__mqtt.publish(self.__mode_actual_topic, mode.encode('utf-8'), qos=1, retain=False)
 
     async def send_charger_state(self, on):
         payload = pack('!B', on) if on is not None else None
@@ -130,8 +126,8 @@ class Mqtt():
 
     def __on_mode(self, topic, payload):
         try:
-            mode = self.__operationmode.from_string(payload.decode('utf-8'))
+            mode = to_operation_mode(payload.decode('utf-8'))
         except:
-            mode = self.__operationmode.protect
+            mode = MODE_PROTECT
         self.__mode_callback.run_all(mode)
 

@@ -1,14 +1,13 @@
 from machine import Pin, I2C
 from micropython import const
-from .singletons import Singletons
 from .ssd1306 import SSD1306
-from .types import OperationMode
 
 _DISPLAY_LOG_NAME = const('display')
 
 class Display:
     def __init__(self):
-        self.__log = Singletons.log().create_logger(_DISPLAY_LOG_NAME)
+        from .singletons import Singletons
+        self.__log = Singletons.log.create_logger(_DISPLAY_LOG_NAME)
         try:
 
             i2c = I2C(id=0, sda=Pin(0), scl=Pin(1))
@@ -28,7 +27,7 @@ class Display:
         self.__p_inv = None
         self.__p_grd = None
 
-    def update_mode(self, mode: OperationMode):
+    def update_mode(self, mode: str):
         self.__mode = mode
         self.__refresh()
 
@@ -66,7 +65,7 @@ class Display:
             self.__log.error(f'Update failed: {e}')
 
     def __refresh(self):
-        mode = f'Mode: {self.__mode.name if self.__mode else "unknown"}'
+        mode = f'Mode: {self.__mode if self.__mode else "unknown"}'
         lock = f'! {self.__lock}' if self.__lock is not None else 'normal operation'
         c_bat = f'C_bat: {self.__c_bat} Ah'
         p_sol = f'P_sol: {self.__p_sol} W'
