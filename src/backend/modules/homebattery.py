@@ -58,8 +58,14 @@ async def homebattery():
 
     await sleep(3.0)
 
-    with open("/config.json", "r") as stream:
-        config = load_json(stream)
+    try:
+        with open("/config.json", "r") as stream:
+            config = load_json(stream)
+    except:
+        log.error('Invalid configuration.')
+        display.print('Invalid', 'configuration.')
+        while True:
+            await sleep(1)
 
     watchdog = Watchdog()
     
