@@ -1,23 +1,15 @@
 from asyncio import Event, create_task, sleep
 from sys import print_exception
+from micropython import const
 from time import time
 from .interfaces.inverterinterface import InverterInterface
 from ..core.microaiohttp import ClientSession
-from ..core.types import CallbackCollection, EnumEntry, PowerLut, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from ..core.types import CallbackCollection, PowerLut, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 
-
-class AhoyCommand(EnumEntry):
-    pass
-
-class AhoyCommandValues:
-    def __init__(self):
-        self.__dict = {}
-        self.turn_on = AhoyCommand('turn_on', self.__dict)
-        self.turn_off = AhoyCommand('turn_off', self.__dict)
-        self.reset = AhoyCommand('reset', self.__dict)
-        self.change_power = AhoyCommand('change_power', self.__dict)
-
-ahoycommand = AhoyCommandValues()
+_CMD_TURN_ON = const('turn_on')
+_CMD_TURN_OFF = const('turn_off')
+_CMD_RESET = const('reset')
+_CMD_CHANGE_POWER = const('change_power')
 
 class AhoyDtu(InverterInterface):
     def __init__(self, name, config):
@@ -203,45 +195,46 @@ class AhoyDtu(InverterInterface):
 
         #prio 1: switch off
         if not self.__is_status_synced and self.__shall_status != STATUS_ON:
-            self.__last_command_type = ahoycommand.turn_off
-            self.__last_status_command_type = ahoycommand.turn_off
+            self.__last_command_type = _CMD_TURN_OFF
+            self.__last_status_command_type = _CMD_TURN_OFF
             self.__log.info('Sending switch off command.')
             return f'"id":{self.__id},"cmd":"power","val":0'
         
         #prio 2: reset (a power change will not survive reset, so reset first)
-        if not self.__is_status_synced and self.__shall_status == STATUS_ON and self.__last_status_command_type  == ahoycommand.turn_on:
-            self.__last_command_type = ahoycommand.reset
-            self.__last_status_command_type = ahoycommand.reset
+        if not self.__is_status_synced and self.__shall_status == STATUS_ON and self.__last_status_command_type == _CMD_TURN_ON:
+            self.__last_command_type = _CMD_RESET
+            self.__last_status_command_type = _CMD_RESET
             self.__log.info('Sending reset command.')
             return f'"id":{self.__id},"cmd":"restart"'
         
         #prio 3: change power
         if not self.__is_power_synced:
-            self.__last_command_type = ahoycommand.change_power
+            self.__last_command_type = _CMD_CHANGE_POWER
             self.__log.info('Sending power change request.')
             return f'"id":{self.__id},"cmd":"limit_nonpersistent_relative","val":{self.__shall_percent}'
         
         #prio 4: switch on
         if not self.__is_status_synced and self.__shall_status == STATUS_ON:
-            self.__last_command_type = ahoycommand.turn_on
-            self.__last_status_command_type = ahoycommand.turn_on
+            self.__last_command_type = _CMD_TURN_ON
+            self.__last_status_command_type = _CMD_TURN_ON
             self.__log.info('Sending switch on command.')
             return f'"id":{self.__id},"cmd":"power","val":1'
         
         return None
 
     def __get_wait_time(self):
-        if self.__last_command_type in (ahoycommand.turn_on, ahoycommand.turn_off):
+        if self.__last_command_type == _CMD_TURN_ON \
+                or self.__last_command_type == _CMD_TURN_OFF:
             if self.__is_status_synced:
                 return 0
             else:
                 return 30
-        elif self.__last_command_type == ahoycommand.reset:
+        elif self.__last_command_type == _CMD_RESET:
             if self.__is_status_synced:
                 return 0
             else:
                 return 60
-        elif self.__last_command_type == ahoycommand.change_power:
+        elif self.__last_command_type == _CMD_CHANGE_POWER:
             if self.__is_power_synced:
                 return 0
             else:
