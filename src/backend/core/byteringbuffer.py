@@ -14,7 +14,9 @@ class ByteRingBuffer:
         return not self.empty()
     
     def __len__(self):
-        if self.__begin < self.__end:
+        if self.__begin == self.__end:
+            return 0
+        elif self.__begin < self.__end:
             return self.__end - self.__begin
         else:
             return (self.__max) - (self.__begin - self.__end)
