@@ -40,11 +40,12 @@ class BasicAuth:
         return self.__header
 
 class ClientSession:
-    def __init__(self, host, port, auth=None):
+    def __init__(self, log, host, port, auth=None):
+        self.__log = log
         self.__host = host
         self.__port = port
         self.__auth = auth
-        self.__socket = MicroSocket(self.__host, self.__port, None, None)
+        self.__socket = MicroSocket(self.__log, self.__host, self.__port, None, None)
 
     def __try_close_socket(self):
         if self.__socket.is_connected:
@@ -70,7 +71,7 @@ class ClientSession:
         except:
             self.__try_close_socket()
             raise
-        self.__socket = MicroSocket(self.__host, self.__port, None, None)
+        self.__socket = MicroSocket(self.__log, self.__host, self.__port, None, None)
         return await self._request(method, path, data, headers)
         
 
@@ -85,7 +86,7 @@ class ClientSession:
 
         http_header = b''
 
-        http_header += b'%s /%s HTTP/1.0\r\n' % (method, path)
+        http_header += b'%s /%s HTTP/1.1\r\n' % (method, path)
         if not "Host" in headers:
             http_header += b"Host: %s\r\n" % self.__host
         if self.__auth:

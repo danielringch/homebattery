@@ -269,7 +269,7 @@ class AhoyDtu(InverterInterface):
             self.__update(None, None)
     
     def __create_session(self):
-        return ClientSession(self.__host, self.__port)
+        return ClientSession(self.__log, self.__host, self.__port)
 
     async def __get(self, session, query):
         for i in reversed(range(3)):

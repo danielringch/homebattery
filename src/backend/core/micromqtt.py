@@ -174,7 +174,7 @@ class MicroMqtt():
 
     async def __connect(self):
         self.__log.info("Connecting to broker.")
-        self.__socket = MicroSocket(self.__ip, self.__port, self.__cert, self.__cert_req)
+        self.__socket = MicroSocket(self.__log, self.__ip, self.__port, self.__cert, self.__cert_req)
         if not self.__socket.is_connected:
             return
 
@@ -199,7 +199,7 @@ class MicroMqtt():
                 pass
             except MicroSocketClosedExecption:
                 await self.__disconnect()
-                self.__socket = MicroSocket(self.__ip, self.__port, self.__cert, self.__cert_req)
+                self.__socket = MicroSocket(self.__log, self.__ip, self.__port, self.__cert, self.__cert_req)
             except MQTTException:
                 self.__log.info('Connection to broker failed.')
 

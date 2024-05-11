@@ -18,7 +18,8 @@ class MicroSocketClosedExecption(Exception):
         return 'MicroSocketClosedExecption'
 
 class MicroSocket:
-        def __init__(self, ip, port, cert, cert_req):
+        def __init__(self, log, ip, port, cert, cert_req):
+            self.__log = log
             address = getaddrinfo(ip, port)[0][-1]
             cert = cert
             cert_req = cert_req
@@ -70,7 +71,6 @@ class MicroSocket:
                     except OSError as e:
                         self.__handle_socket_exception(e, 'receive')
                     await sleep(0.05)
-                end = ticks_ms()
 
                 if received_bytes_count >= length:
                     return data
@@ -85,14 +85,12 @@ class MicroSocket:
 
                 start = ticks_ms()
                 data = None
-                success = False
                 while ticks_diff(ticks_ms(), start) < self.__timeout and self.__connected and not data:
                     try:
                         data = self.__socket.readline()
                     except OSError as e:
                         self.__handle_socket_exception(e, 'receive')
                     await sleep(0.05)
-                end = ticks_ms()
 
                 if data:
                     return data
@@ -114,17 +112,15 @@ class MicroSocket:
                     data = data[:length]
                 else:
                     length = len(data)
-                start = ticks_ms()
-                while data and ticks_diff(ticks_ms(), start) < self.__timeout and self.__connected:
+                while len(data) > 0 and self.__connected:
                     try:
                         chunk_size = self.__socket.write(data)
                         data = data[chunk_size:]
                     except OSError as e:
                         self.__handle_socket_exception(e, 'send')
                     await sleep(0.05)
-                end = ticks_ms()
 
-                if data:
+                if len(data) > 0:
                     raise MicroSocketTimeoutException()
                 elif not self.__connected:
                     raise MicroSocketClosedExecption()
@@ -135,10 +131,14 @@ class MicroSocket:
             
         def __handle_socket_exception(self, e, operation):
             code = e.args[0]
-            if code in (ECONNRESET, ECONNABORTED):
+            if code in BUSY_ERRORS:
+                return
+            if code == ECONNRESET:
+                self.__log.error(f'Socket {operation} failed: connection reset.')
                 self.__connected = False
-            elif code in BUSY_ERRORS:
-                pass
+            elif code == ECONNABORTED:
+                self.__log.error(f'Socket {operation} failed: connection aborted.')
+                self.__connected = False
             else:
                 self.__connected = False
-                print(f'Socket {operation} failed: {code}.')
+                self.__log.error(f'Socket {operation} failed: {code}.')
