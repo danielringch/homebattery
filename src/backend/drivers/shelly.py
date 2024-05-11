@@ -1,12 +1,14 @@
 from asyncio import create_task, Event, sleep, TimeoutError, wait_for
+from micropython import const
 from time import time
 from .interfaces.chargerinterface import ChargerInterface
 from ..core.microaiohttp import ClientSession
-from ..core.types import CallbackCollection
+from ..core.types import CallbackCollection, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
+
+_REFRESH_INTERVAL = const(120)
+_TIMER_INTERVAL = const(300)
 
 class Shelly(ChargerInterface):
-    __refresh_interval = 120
-
     def __init__(self, name, config):
         super(Shelly, self).__init__()
         from ..core.singletons import Singletons
@@ -20,14 +22,14 @@ class Shelly(ChargerInterface):
         self.__leds = Singletons.leds
 
         self.__shall_on = False
-        self.__is_on = None
+        self.__last_status = STATUS_SYNCING
         self.__last_on_command = 0
         self.__sync_trigger = Event()
         self.__sync_task = create_task(self.__sync())
 
         self.__on_status_change = CallbackCollection()
 
-        self.__on_request = f'relay/{self.__relay_id}?turn=on&timer=300'
+        self.__on_request = f'relay/{self.__relay_id}?turn=on&timer={_TIMER_INTERVAL}'
         self.__off_request = f'relay/{self.__relay_id}?turn=off'
         self.__state_request = f'relay/{self.__relay_id}'
         self.__energy_request = f'rpc/Switch.GetStatus?id={self.__relay_id}'
@@ -38,7 +40,7 @@ class Shelly(ChargerInterface):
         self.__sync_trigger.set()
 
     def get_charger_status(self):
-        return self.__is_on
+        return self.__last_status
     
     @property
     def on_charger_status_change(self):
@@ -60,22 +62,31 @@ class Shelly(ChargerInterface):
     async def __sync(self):
         while True:
             json = await self.__get(self.__state_request)
-            was_on = self.__is_on
-            self.__is_on = json['ison'] if json is not None else None
-            is_synced = self.__is_on == self.__shall_on
-            self.__log.info(f'State: on={self.__is_on}, synced={is_synced}')
-            if self.__is_on != was_on:
-                self.__on_status_change.run_all(self.__is_on)
+            on = json['ison'] if json is not None else None
+            if on is None:
+                status = STATUS_FAULT
+            elif on and self.__shall_on:
+                status = STATUS_ON
+            elif not on and not self.__shall_on:
+                status = STATUS_OFF
+            else:
+                status = STATUS_SYNCING
+
+            self.__log.info(f'Status: {status}')
+            if status != self.__last_status:
+                self.__on_status_change.run_all(status)
+            self.__last_status = status
 
             now = time()
-            if not is_synced or\
-                    (self.__shall_on and (now - self.__last_on_command) >= (self.__refresh_interval - 5)):
+            request_necessary = (status == STATUS_SYNCING) or (status == STATUS_FAULT)
+            if request_necessary or\
+                    (self.__shall_on and (now - self.__last_on_command) >= (_REFRESH_INTERVAL - 5)):
                 self.__log.info(f'Sending switch request, on={self.__shall_on}')
                 await self.__get(self.__on_request if self.__shall_on else self.__off_request)
                 if self.__shall_on:
                     self.__last_on_command = now
             try:
-                timeout = self.__refresh_interval if is_synced else 2
+                timeout = _REFRESH_INTERVAL if not request_necessary else 2
                 await wait_for(self.__sync_trigger.wait(), timeout=timeout)
             except TimeoutError:
                 pass

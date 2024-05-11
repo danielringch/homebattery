@@ -1,9 +1,10 @@
-from asyncio import Lock, sleep
+from asyncio import Event, Lock, TimeoutError, wait_for
 from collections import deque
 from micropython import const
 from sys import print_exception
-from time import localtime, time
+from time import time
 from ..core.backendmqtt import Mqtt
+from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
 from ..core.types import CallbackCollection, CommandBundle, MODE_DISCHARGE, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 from .devices import Devices
 from .netzero import NetZero
@@ -17,13 +18,15 @@ class Inverter:
         self.__commands = deque((), 10)
 
         self.__log = Singletons.log.create_logger(_INVERTER_LOG_NAME)
-        self.__display = Singletons.display
+        self.__event = Event()
 
         self.__mqtt = mqtt
         self.__mqtt.on_live_consumption.add(self.__on_live_consumption)
 
         self.__netzero = NetZero(config)
         self.__on_energy = CallbackCollection()
+        self.__on_power = CallbackCollection()
+        self.__on_status = CallbackCollection()
 
         self.__last_status = None
         self.__last_power = None
@@ -36,7 +39,10 @@ class Inverter:
 
         self.__max_power = sum((x.max_power for x in self.__inverters), 0)
 
-        self.__set_next_energy_execution()
+        if len(self.__inverters) == 0:
+            self.__last_status = STATUS_OFF
+
+        self.__next_energy_execution = get_energy_execution_timestamp()
 
     async def run(self):
         while True:
@@ -47,57 +53,51 @@ class Inverter:
                         await self.__commands.popleft().run()
                     if now >= self.__next_energy_execution:
                         await self.__get_energy()
-                        self.__set_next_energy_execution()
+                        self.__next_energy_execution = get_energy_execution_timestamp()
             except Exception as e:
                 self.__log.error(f'Inverter cycle failed: {e}')
                 from ..core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
-            await sleep(0.1)
+            try:
+                await wait_for(self.__event.wait(), timeout=1)
+            except TimeoutError:
+                pass
+            self.__event.clear()
 
-    async def get_status(self):
-        async with self.__lock:
-            return self.__get_status()
+    def get_status(self):
+        return self.__last_status if self.__last_status is not None else STATUS_SYNCING
 
     async def __get_status(self):
-        status = None
-        for inverter in self.__inverters:
-            inverter_status = inverter.get_inverter_status()
-            if inverter_status in (STATUS_ON, STATUS_OFF):
-                if status is None:
-                    status = inverter_status
-                elif status != inverter_status:
-                    status = STATUS_SYNCING
-            elif inverter_status == STATUS_SYNCING:
-                status = STATUS_SYNCING
-            else:
-                status = STATUS_FAULT
-                break
+        driver_statuses = tuple(x.get_inverter_status() for x in self.__inverters)
+        status = merge_driver_statuses(driver_statuses)
 
         if status != self.__last_status :
             self.__commands.append(CommandBundle(self.__handle_state_change, (status,)))
+            self.__event.set()
             if status != STATUS_ON:
-                self.__display.update_inverter_power(0)
+                self.__on_power.run_all(0)
                 self.__netzero.clear()
-            await self.__mqtt.send_inverter_state(status == STATUS_ON)
+            self.__on_status.run_all(status)
             self.__last_status = status
         return status
 
     async def set_mode(self, mode: str):
         async with self.__lock:
             shall_on = mode == MODE_DISCHARGE
-            shall_status = STATUS_ON if shall_on else STATUS_OFF
             for inverter in self.__inverters:
                 await inverter.switch_inverter(shall_on)
-            actual_status = await self.__get_status()
-            if actual_status == shall_status:
-                # Operation mode requests must be answered, but since we are
-                # already in target state, __get_status() will not send anything, so
-                # we need to do it manually here.
-                await self.__mqtt.send_inverter_state(actual_status == STATUS_ON)
 
     @property
     def on_energy(self):
         return self.__on_energy
+    
+    @property
+    def on_power(self):
+        return self.__on_power
+    
+    @property
+    def on_status(self):
+        return self.__on_status
     
     async def __handle_state_change(self, new_status):
         if new_status == STATUS_FAULT:
@@ -105,17 +105,15 @@ class Inverter:
             await self.__set_power(0)
 
     async def __update_netzero(self, timestamp, consumption):
-        self.__display.update_consumption(consumption)
         if len(self.__inverters) == 0:
             return
         status = await self.__get_status()
         power = await self.__get_power()
         if status != STATUS_ON or power is None:
             return
-        self.__netzero.evaluate(timestamp, consumption)
-        if self.__netzero.delta != 0:
-            await self.__set_power(power + self.__netzero.delta)
-
+        delta = self.__netzero.evaluate(timestamp, consumption)
+        if delta != 0:
+            await self.__set_power(power + delta)
 
     async def __get_power(self):
         power = 0
@@ -127,8 +125,7 @@ class Inverter:
 
         if power != self.__last_power:
             self.__netzero.clear()
-            self.__display.update_inverter_power(power)
-            await self.__mqtt.send_inverter_power(power)
+            self.__on_power.run_all(power)
             self.__last_power = power
         return power
     
@@ -151,20 +148,14 @@ class Inverter:
             energy += inverter.get_inverter_energy()
         self.__on_energy.run_all(round(energy))
 
-    def __set_next_energy_execution(self):
-        now = localtime()
-        now_seconds = time()
-        minutes = now[4]
-        seconds = now[5]
-        extra_seconds = (minutes % 15) * 60 + seconds
-        seconds_to_add = (15 * 60) - extra_seconds
-        self.__next_energy_execution = now_seconds + seconds_to_add
-
     def __on_inverter_status(self, status):
         self.__commands.append(CommandBundle(self.__get_status, ()))
+        self.__event.set()
 
     def __on_inverter_power(self, power):
         self.__commands.append(CommandBundle(self.__get_power, ()))
+        self.__event.set()
 
     def __on_live_consumption(self, power):
         self.__commands.append(CommandBundle(self.__update_netzero, (time(), power)))
+        self.__event.set()

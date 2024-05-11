@@ -27,9 +27,14 @@ class Outputs:
 
         self.__display = Singletons.display
 
+        self.__mqtt.on_live_consumption.add(self.__on_live_consumption)
+        self.__mqtt.on_connect.add(self.__on_mqtt_connect)
         self.__battery.on_battery_data.add(self.__on_battery_data)
         self.__charger.on_energy.add(self.__on_charger_energy)
+        self.__charger.on_status.add(self.__on_charger_status)
         self.__inverter.on_energy.add(self.__on_inverter_energy)
+        self.__inverter.on_power.add(self.__on_inverter_power)
+        self.__inverter.on_status.add(self.__on_inverter_status)
         self.__solar.on_energy.add(self.__on_solar_energy)
 
         self.__task = create_task(self.__run())
@@ -54,11 +59,39 @@ class Outputs:
     async def __send_charger_energy(self, energy):
         await self.__mqtt.send_charger_energy(energy)
 
+    async def __send_charger_status(self, status):
+        await self.__mqtt.send_charger_status(status)
+
     async def __send_inverter_energy(self, energy):
         await self.__mqtt.send_inverter_energy(energy)
 
+    async def __send_inverter_power(self, power):
+        self.__display.update_inverter_power(power)
+        await self.__mqtt.send_inverter_power(power)
+
+    async def __send_inverter_status(self, status):
+        await self.__mqtt.send_inverter_status(status)
+
     async def __send_solar_energy(self, energy):
         await self.__mqtt.send_solar_energy(energy)
+
+    async def __send_solar_power(self, power):
+        self.__display.update_solar_power(power)
+
+    async def __send_solar_status(self, status):
+        await self.__mqtt.send_solar_status(status)
+
+    async def __send_all_status(self):
+        await self.__mqtt.send_inverter_status(self.__inverter.get_status())
+        await self.__mqtt.send_solar_status(self.__solar.get_status())
+        await self.__mqtt.send_charger_status(self.__charger.get_status())
+
+    def __on_mqtt_connect(self):
+        self.__commands.append(CommandBundle(self.__send_all_status, ()))
+        self.__command_event.set()
+
+    def __on_live_consumption(self, power):
+        self.__display.update_consumption(power)
 
     def __on_battery_data(self, name):
         self.__commands.append(CommandBundle(self.__send_battery_data, (name,)))
@@ -76,10 +109,30 @@ class Outputs:
         self.__commands.append(CommandBundle(self.__send_charger_energy, (energy,)))
         self.__command_event.set()
 
+    def __on_charger_status(self, status):
+        self.__commands.append(CommandBundle(self.__send_charger_status, (status,)))
+        self.__command_event.set()
+
     def __on_inverter_energy(self, energy):
         self.__commands.append(CommandBundle(self.__send_inverter_energy, (energy,)))
         self.__command_event.set()
 
+    def __on_inverter_power(self, power):
+        self.__commands.append(CommandBundle(self.__send_inverter_power, (power,)))
+        self.__command_event.set()
+
+    def __on_inverter_status(self, status):
+        self.__commands.append(CommandBundle(self.__send_inverter_status, (status,)))
+        self.__command_event.set()
+
     def __on_solar_energy(self, energy):
         self.__commands.append(CommandBundle(self.__send_solar_energy, (energy,)))
+        self.__command_event.set()
+
+    def __on_solar_power(self, power):
+        self.__commands.append(CommandBundle(self.__send_solar_power, (power,)))
+        self.__command_event.set()
+
+    def __on_solar_status(self, status):
+        self.__commands.append(CommandBundle(self.__send_solar_status, (status,)))
         self.__command_event.set()

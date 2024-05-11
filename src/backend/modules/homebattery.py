@@ -92,11 +92,12 @@ async def homebattery():
     devices = Devices(config, mqtt)
     gc_collect()
     battery = Battery(config, devices)
-    charger = Charger(config, devices, mqtt)
+    charger = Charger(config, devices)
     inverter = Inverter(config, devices, mqtt)
-    solar = Solar(config, devices, mqtt)
+    solar = Solar(config, devices)
     modeswitcher = ModeSwitcher(config, mqtt, inverter, charger, solar)
     supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, inverter, charger, battery)
+    outputs = Outputs(mqtt, supervisor, battery, charger, inverter, solar)
     watchdog.feed()
 
     gc_collect()
@@ -112,7 +113,7 @@ async def homebattery():
     solar_task = create_task(solar.run())
     modeswitcher.run()
     supervisor.run()
-    outputs = Outputs(mqtt, supervisor, battery, charger, inverter, solar)
+    
 
     gc_collect()
     print_memory(log)

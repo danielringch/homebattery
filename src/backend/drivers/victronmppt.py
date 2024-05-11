@@ -2,7 +2,7 @@ from asyncio import create_task, Event
 from machine import Pin
 from .interfaces.solarinterface import SolarInterface
 from ..core.byteringbuffer import ByteRingBuffer
-from ..core.types import CallbackCollection
+from ..core.types import CallbackCollection, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 
 class VictronMppt(SolarInterface):
     def __init__(self, name, config):
@@ -30,19 +30,17 @@ class VictronMppt(SolarInterface):
         self.__power = self.__power_hysteresis * -1 # make sure hysteresis is reached in the first run
         self.__energy_value = None
         self.__energy_delta = 0
-        self.__shall_on = False
-        self.__is_on = None
+        self.__last_status = STATUS_SYNCING
 
         self.__on_status_change = CallbackCollection()
         self.__on_power_change = CallbackCollection()
 
 
     async def switch_solar(self, on):
-        self.__shall_on = on
         self.__control_pin.value(on)
     
     async def get_solar_status(self):
-        return self.__is_on
+        return self.__last_status
     
     def get_solar_power(self):
         return self.__power
@@ -112,12 +110,11 @@ class VictronMppt(SolarInterface):
                     self.__on_power_change.run_all(power)
                     self.__power = power
             elif header_str == 'CS':
-                is_on = int(str(payload, 'utf-8')) in (3,4,5,7,247)
-                value_changed = is_on != self.__is_on
-                self.__is_on = is_on
-                if value_changed:
-                    self.__log.info(f'Status: on={is_on}')
-                    self.__on_status_change.run_all(is_on)
+                status = STATUS_ON if int(str(payload, 'utf-8')) in (3,4,5,7,247) else STATUS_OFF
+                if status != self.__last_status:
+                    self.__log.info(f'Status: {status}')
+                    self.__on_status_change.run_all(status)
+                self.__last_status = status
             elif header_str == 'H20':
                 energy = int(str(payload, 'utf-8')) * 10
                 if self.__energy_value is None: # first readout after startup

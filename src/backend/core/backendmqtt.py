@@ -2,7 +2,7 @@ from asyncio import sleep
 from struct import pack, unpack
 from .micromqtt import MicroMqtt
 from ssl import CERT_NONE
-from .types import BatteryData, CallbackCollection, MODE_PROTECT, to_operation_mode
+from .types import BatteryData, CallbackCollection, MODE_PROTECT, STATUS_ON, STATUS_OFF, to_operation_mode
 
 class Mqtt():
     def __init__(self, config: dict):
@@ -44,12 +44,14 @@ class Mqtt():
             (self.__mode_set_topic, 0) #TODO change to 1 or 2
         ]
 
+        self.__connect_callback = CallbackCollection()
         self.__live_consumption_callback = CallbackCollection()
         self.__mode_callback = CallbackCollection()
 
     async def __on_mqtt_connect(self):
         for subscription in self.__subscriptions:
             await self.__mqtt.subscribe(topic=subscription[0], qos=subscription[1])
+        self.__connect_callback.run_all()
 
     def __del__(self):
         pass
@@ -66,16 +68,16 @@ class Mqtt():
     async def send_mode(self, mode: str):
         await self.__mqtt.publish(self.__mode_actual_topic, mode.encode('utf-8'), qos=1, retain=False)
 
-    async def send_charger_state(self, on):
-        payload = pack('!B', on) if on is not None else None
-        await self.__mqtt.publish(self.__charger_state_topic, payload, qos=1, retain=False)
+    async def send_charger_status(self, status: str):
+        value = self.status_to_byte(status)
+        await self.__mqtt.publish(self.__charger_state_topic, value, qos=1, retain=False)
 
     async def send_charger_energy(self, energy):
         await self.__mqtt.publish(self.__charger_energy_topic, pack('!H', int(energy)), qos=1, retain=False)
 
-    async def send_inverter_state(self, on: bool):
-        payload = pack('!B', on) if on is not None else None
-        await self.__mqtt.publish(self.__inverter_state_topic, payload, qos=1, retain=False)
+    async def send_inverter_status(self, status: str):
+        value = self.status_to_byte(status)
+        await self.__mqtt.publish(self.__inverter_state_topic, value, qos=1, retain=False)
 
     async def send_inverter_power(self, power: int):
         await self.__mqtt.publish(self.__inverter_power_topic, pack('!H', int(power)), qos=1, retain=False)
@@ -83,9 +85,9 @@ class Mqtt():
     async def send_inverter_energy(self, energy: int):
         await self.__mqtt.publish(self.__inverter_energy_topic, pack('!H', int(energy)), qos=1, retain=False)
 
-    async def send_solar_state(self, on: bool):
-        payload = pack('!B', on) if on is not None else None
-        await self.__mqtt.publish(self.__solar_state_topic, payload, qos=1, retain=False)
+    async def send_solar_status(self, status: str):
+        value = self.status_to_byte(status)
+        await self.__mqtt.publish(self.__solar_state_topic, value, qos=1, retain=False)
 
     async def send_solar_energy(self, energy: int):
         await self.__mqtt.publish(self.__solar_energy_topic, pack('!H', int(energy)), qos=1, retain=False)
@@ -112,6 +114,10 @@ class Mqtt():
     @property
     def connected(self):
         return self.__mqtt.connected
+    
+    @property
+    def on_connect(self):
+        return self.__connect_callback
 
     @property
     def on_live_consumption(self):
@@ -132,3 +138,10 @@ class Mqtt():
             mode = MODE_PROTECT
         self.__mode_callback.run_all(mode)
 
+    @staticmethod
+    def status_to_byte(status):
+        if status == STATUS_ON:
+            return bytes((0x01,))
+        elif status == STATUS_OFF:
+            return bytes((0x00,))
+        return bytes((0xFF,))
