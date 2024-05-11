@@ -1,77 +1,86 @@
-from collections import namedtuple
 from micropython import const
 from time import time
-from ..core.microdeque import MicroDeque, MicroDequeOverflowError
+from ..core.byteringbuffer import ByteRingBuffer
 
 _NETZERO_LOG_NAME = const('netzero')
+_MAX_EVALUATION_TIME = const(120)
+_MIN_ITEMS = const(5)
 
 class NetZero:
-    PowerElement = namedtuple("PowerElement", "timestamp power")
-
     def __init__(self, config):
         config = config['netzero']
 
         from ..core.singletons import Singletons
         self.__log = Singletons.log.create_logger(_NETZERO_LOG_NAME)
         
-        self.__time_span = int(config['evaluated_time_span'])
-
-        self.__power_data = MicroDeque(50)
+        self.__time_span = min(_MAX_EVALUATION_TIME, int(config['evaluated_time_span']))
+        self.__data = ByteRingBuffer(2 * self.__time_span)
+        self.__last_data = 0
 
         self.__offset = int(config['power_offset'])
         self.__hysteresis = int(config['power_hysteresis'])
         self.__step_up = int(config['power_change_upwards'])
         self.__step_down = -int(config['power_change_downwards'])
         self.__mature_interval = int(config['maturity_time_span'])
-        self.__data_deadline = time()
-
-        self.__delta = 0
 
     def evaluate(self, timestamp, consumption):
         self.__update_data(timestamp, consumption)
-        self.__delta = self.__evaluate_power()
+        return self.__evaluate_power()
 
     def clear(self):
-        self.__delta = 0
-        self.__power_data.clear()
-        self.__data_deadline = time()
-
-    @property
-    def delta(self):
-        return self.__delta
+        self.__data.clear()
+        self.__last_data = time()
 
     def __update_data(self, timestamp, consumption):
-        if timestamp < self.__data_deadline:
+        if timestamp < self.__last_data:
             self.__log.info('Omitting data consumption data, too old.')
-        self.__data_deadline = timestamp
-        element = self.PowerElement(timestamp, consumption)
-        try:
-            self.__power_data.append(element)
-        except MicroDequeOverflowError:
-            pass # losing some old data is not critical
-        delete_threshold = timestamp - self.__time_span
-        while self.__power_data[0].timestamp < delete_threshold:
-            self.__power_data.popleft()
+        empty_items = min(self.__time_span, timestamp - self.__last_data) - 1
+        if empty_items > 0 and len(self.__data) > 0:
+            for _ in range(empty_items):
+                self.__data.append(0xFF, ignore_overflow=True)
+                self.__data.append(0xFF, ignore_overflow=True)
+
+        if self.__last_data == timestamp and len(self.__data) > 0:
+            self.__log.info('More than one data point for timestamp, dropping the newer one.')
+        else:
+            self.__data.append((consumption >> 8) & 0xFF, ignore_overflow=True)
+            self.__data.append(consumption & 0xFF, ignore_overflow=True)
+
+        self.__last_data = timestamp
 
     def __evaluate_power(self):
-        oldest_element = self.__power_data[0]
-        current_element = self.__power_data[-1]
-        if sum(1 for i in self.__power_data if i.power < 1) > 1:
-            self.__log.info('Overproduction.')
-            return self.__step_down
-        if (len(self.__power_data) < 5) or (current_element.timestamp - oldest_element.timestamp < self.__mature_interval):
-            self.__log.info(f'Not enough data.')
-            return 0
-        values = [x.power for x in self.__power_data]
-        values.sort()
-        start_index = len(values) // 5
-        upper_values = values[start_index:]
-        min_power = min(upper_values)
-        self.__log.info(f'Minimum power: {min_power}W | {len(values)} data points.')
-        if min_power < self.__offset:
-            value = -(self.__offset - min_power)
-            return value
-        if min_power > (self.__offset + self.__hysteresis):
-            value = min(self.__step_up, min_power - self.__offset - (self.__hysteresis / 2)) 
-            return value
-        return 0
+        valid_items = 0
+        smallest = 0xFFFF
+        second_smallest = 0xFFFF
+        oldest_age = 0
+
+        for i in range(0, len(self.__data), 2):
+            consumption = (self.__data[i] << 8) + self.__data[i + 1]
+            if consumption == 0xFFFF:
+                continue
+
+            valid_items += 1
+            oldest_age = i // 2
+
+            if consumption < smallest:
+                second_smallest = smallest
+                smallest = consumption
+            elif consumption < second_smallest:
+                second_smallest = consumption
+
+        if second_smallest == 0xFF: # not enough data point to do any evaluation
+            second_smallest = None # prevent misleading log data
+            result = 0
+        elif second_smallest == 0:
+            result = self.__step_down
+        elif second_smallest < (self.__offset - self.__hysteresis):
+            result = -(self.__offset - second_smallest)
+        elif valid_items < 5 or oldest_age < self.__mature_interval:
+            result = 0
+        elif second_smallest > (self.__offset + self.__hysteresis):
+            result = min(self.__step_up, second_smallest - self.__offset) 
+        else:
+            result = 0
+
+        self.__log.info(f'Delta: {result} W | Min: {second_smallest} W | {valid_items} / {_MIN_ITEMS} data points | {oldest_age} / {self.__mature_interval} s time span')
+        return result
