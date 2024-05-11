@@ -5,7 +5,7 @@ from ubinascii import unhexlify
 from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
-from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
 from ..core.types import BatteryData, CallbackCollection
 
 # ressources:
@@ -29,12 +29,12 @@ class JkBmsBd4(BatteryInterface):
                 if len(blob) >= 7 \
                         and blob[0] == 0x55 and blob[1] == 0xaa and blob[2] == 0xeb and blob[3] == 0x90 \
                         and blob[4] == 0x02:
-                    self.__data = bytearray(blob[6:])
+                    self.__data = blob[6:]
                 else:
                     self.__success = None
                     return
             else:
-                self.__data += blob
+                self.__data += bytearray(blob)
 
             if len(self.__data) < self.__length: # type: ignore
                 self.__success = None
@@ -65,11 +65,11 @@ class JkBmsBd4(BatteryInterface):
         self.__on_data = CallbackCollection()
 
         self.__device = None
-        self.__receive_task = None
         self.__data = BatteryData(name)
         self.__current_decoder = None
 
     async def read_battery(self):
+        characteristic = None
         try:
             self.__ble.activate()
             self.__data.invalidate()
@@ -84,7 +84,7 @@ class JkBmsBd4(BatteryInterface):
             characteristic = await service.characteristic(BT_UUID(0xffe1))
             descriptor = await characteristic.descriptor()
 
-            self.__receive_task = create_task(self.__receive(characteristic))
+            characteristic.enable_rx(self.__handle_blob)
 
             await descriptor.write(unhexlify('0100'))
             await sleep(0.2)
@@ -112,8 +112,8 @@ class JkBmsBd4(BatteryInterface):
             from ..core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
         finally:
-            if self.__receive_task is not None:
-                self.__receive_task.cancel()
+            if characteristic is not None:
+                characteristic.disable_rx()
             if self.__device is not None:
                 await self.__device.disconnect()
             self.__current_decoder = None
@@ -131,13 +131,9 @@ class JkBmsBd4(BatteryInterface):
     def device_types(self):
         return self.__device_types
 
-    async def __receive(self, characteristic):
-        characteristic.enable_rx()
-        while True:
-            response = await characteristic.notified()
-            if self.__current_decoder is None:
-                continue
-            self.__current_decoder.read(response)
+    def __handle_blob(self, data):
+        if self.__current_decoder is not None:
+            self.__current_decoder.read(data)
 
     async def __send(self, characteristic, data):
         for i in range(5):

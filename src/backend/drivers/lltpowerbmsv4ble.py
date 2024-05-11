@@ -4,7 +4,7 @@ from ubinascii import unhexlify
 from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
-from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
 from ..core.types import BatteryData, CallbackCollection
 
 # ressources:
@@ -77,7 +77,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 self.__length = unpack('!B', blob[3:4])[0] + 3 # 2 bytes checksum + 1 byte end byte
                 self.__data = bytearray(blob[4:])
             else:
-                self.__data += blob
+                self.__data += bytearray(blob)
 
             if len(self.__data) < self.__length: # type: ignore
                 self.__success = None
@@ -112,12 +112,12 @@ class LltPowerBmsV4Ble(BatteryInterface):
         self.__on_data = CallbackCollection()
 
         self.__device = None
-        self.__receive_task = None
         self.__data = BatteryData(name)
         self.__current_bundle = None
         self.__current_decoder = None
 
     async def read_battery(self):
+        rx_characteristic = None
         try:
             self.__ble.activate()
             self.__data.invalidate()
@@ -130,19 +130,19 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 await self.__device.reconnect(timeout=10000)
 
             service = await self.__device.service(BT_UUID(0xff00))
-            send_characteristic = await service.characteristic(BT_UUID(0xff02))
-            receive_characteristic = await service.characteristic(BT_UUID(0xff01))
-            receive_descriptor = await receive_characteristic.descriptor()
+            tx_characteristic = await service.characteristic(BT_UUID(0xff02))
+            rx_characteristic = await service.characteristic(BT_UUID(0xff01))
+            rx_descriptor = await rx_characteristic.descriptor()
 
-            self.__receive_task = create_task(self.__receive(receive_characteristic))
+            rx_characteristic.enable_rx(self.__handle_blob)
 
-            await receive_descriptor.write(unhexlify('01'), is_request=True)
+            await rx_descriptor.write(unhexlify('01'), is_request=True)
             await sleep(1.0)
 
-            success = await self.__send(send_characteristic, unhexlify('dda50300fffd77'))
+            success = await self.__send(tx_characteristic, unhexlify('dda50300fffd77'))
             if success:
                 self.__current_bundle.add(self.__current_decoder)
-                success = await self.__send(send_characteristic, unhexlify('dda50400fffc77'))
+                success = await self.__send(tx_characteristic, unhexlify('dda50400fffc77'))
                 if success:
                     self.__current_bundle.add(self.__current_decoder)
 
@@ -161,8 +161,8 @@ class LltPowerBmsV4Ble(BatteryInterface):
             from ..core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
         finally:
-            if self.__receive_task is not None:
-                self.__receive_task.cancel()
+            if rx_characteristic is not None:
+                rx_characteristic.disable_rx()
             if self.__device is not None:
                 await self.__device.disconnect()
             self.__current_decoder = None
@@ -181,13 +181,9 @@ class LltPowerBmsV4Ble(BatteryInterface):
     def device_types(self):
         return self.__device_types
 
-    async def __receive(self, characteristic):
-        characteristic.enable_rx()
-        while True:
-            response = await characteristic.notified()
-            if self.__current_decoder is None:
-                continue
-            self.__current_decoder.read(response)
+    def __handle_blob(self, blob):
+        if self.__current_decoder is not None:
+            self.__current_decoder.read(blob)
 
     async def __send(self, characteristic, data):
         for i in range(5):

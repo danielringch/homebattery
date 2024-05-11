@@ -1,7 +1,6 @@
 from asyncio import Event, sleep
 from bluetooth import BLE
 from bluetooth import UUID as BT_UUID
-from .microdeque import MicroDeque
 from micropython import const
 from ubinascii import hexlify, unhexlify
 
@@ -45,9 +44,13 @@ class MicroBleConnectionClosedError(Exception):
     def __str__(self):
         return 'MicroBleNoDescriptorError'
 
+class MicroBleBuffer:
+    def __init__(self, size):
+        self.buffer = bytearray(size)
+        self.length = 0
 
 class MicroBleDevice:
-    def __init__(self, central):
+    def __init__(self, central: MicroBleCentral):
         from .singletons import Singletons
         self.__log = Singletons.log.create_logger(_BLUETOOTH_LOG_NAME)
         self.__leds = Singletons.leds
@@ -64,7 +67,6 @@ class MicroBleDevice:
         self.__service_event = Event()
         self.__characteristics_event = Event()
         self.__descriptors_event = Event()
-        self.__notified_event = Event()
         self.__read_event = Event()
         self.__write_event = Event()
 
@@ -228,7 +230,7 @@ class MicroBleService:
 
 
 class MicroBleCharacteristic:
-    def __init__(self, device, uuid, value_handle, end_handle):
+    def __init__(self, device: MicroBleDevice, uuid, value_handle, end_handle):
         self.__device = device
         self.uuid = uuid
         self.value_handle = value_handle
@@ -236,7 +238,7 @@ class MicroBleCharacteristic:
 
         self.__descriptor = None
 
-        self.__input_queue = None
+        self.__rx_handler = None
 
 
     async def write(self, data, is_request=False, timeout = 5000):
@@ -247,19 +249,11 @@ class MicroBleCharacteristic:
         await self.__device.__read(self.value_handle, timeout)
 
 
-    def enable_rx(self):
-        self.__input_queue = MicroDeque(10)
+    def enable_rx(self, handler):
+        self.__rx_handler = handler
 
-
-    async def notified(self):
-        while True:
-            await sleep(0.1)
-            if self.__input_queue is not None and not self.__input_queue.empty():
-                data = self.__input_queue.popleft()
-                if len(self.__input_queue) > 0:
-                    self.__device.__notified_event.set()
-                return data
-
+    def disable_rx(self):
+        self.__rx_handler = None
 
     async def descriptor(self, timeout = 5000):
         if self.__descriptor is not None:
@@ -275,11 +269,9 @@ class MicroBleCharacteristic:
                     return self.__descriptor
         raise MicroBleTimeoutError('descriptor read')
 
-
     def __enqueue(self, data):
-        if self.__input_queue is not None:
-            self.__input_queue.append(data)     
-
+        if self.__rx_handler is not None:
+            self.__rx_handler(data)
 
 class MicroBleDescriptor:
     def __init__(self, device, handle):
@@ -300,8 +292,8 @@ class MicroBleCentral:
         self.__leds = Singletons.leds
 
         self.__ble = BLE()
+        self.__buffer = MicroBleBuffer(512)
         self.__current_device = None
-
     
     def activate(self):
         self.__ble.active(True)
@@ -310,7 +302,6 @@ class MicroBleCentral:
 
     def deactivate(self):
         self.__ble.active(False)
-        
             
     def __on_irq(self, event, data):
         self.__leds.notify_bluetooth()
@@ -411,7 +402,6 @@ class MicroBleCentral:
                 if characteristic is None:
                     return
                 characteristic.__enqueue(bytes(notify_data))
-                self.__current_device.__notified_event.set()
             elif event == _IRQ_CONNECTION_UPDATE:
                 # The remote device has updated connection parameters.
                 conn_handle, conn_interval, conn_latency, supervision_timeout, status = data

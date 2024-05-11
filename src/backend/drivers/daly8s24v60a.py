@@ -29,6 +29,7 @@ class Daly8S24V60A(BatteryInterface):
         self.__data = BatteryData(name)
 
     async def read_battery(self):
+        rx_characteristic = None
         try:
             self.__ble.activate()
             self.__data.invalidate()
@@ -44,7 +45,7 @@ class Daly8S24V60A(BatteryInterface):
             rx_characteristic = await service.characteristic(BT_UUID(0xfff1))
             rx_descriptor = await rx_characteristic.descriptor()
 
-            self.__receive_task = create_task(self.__receive(rx_characteristic))
+            rx_characteristic.enable_rx(self.__handle_blob)
 
             await tx_characteristic.write(b'')
             await rx_descriptor.write(unhexlify('01'), is_request=True)
@@ -73,6 +74,8 @@ class Daly8S24V60A(BatteryInterface):
         finally:
             if self.__receive_task is not None:
                 self.__receive_task.cancel()
+            if rx_characteristic is not None:
+                rx_characteristic.disable_rx()
             if self.__device is not None:
                 await self.__device.disconnect()
             self.__ble.deactivate()
@@ -89,27 +92,22 @@ class Daly8S24V60A(BatteryInterface):
     def device_types(self):
         return self.__device_types
 
-    async def __receive(self, characteristic):
-        characteristic.enable_rx()
-        while True:
-            response = await characteristic.notified()
-            if not self.__receiving:
-                continue
-            if len(response) < 128:
-                self.__log.error(f'Dropping too short bluetooth packet, mac={self.__mac}, len={len(response)}.')
-                continue
-            if response[0] == 0xd2 and response[1] == 0x03 and response[2] == 0x7c:
-                self.__parse(response)
-                self.__receiving = False
-                continue
-                    
-            self.__log.error(f'Dropping unknown bluetooth packet, mac={self.__mac}, data={response} .')
+    def __handle_blob(self, data):
+        if not self.__receiving:
+            return
+        if len(data) < 128:
+            self.__log.error(f'Dropping too short bluetooth packet, mac={self.__mac}, len={len(data)}.')
+        elif data[0] == 0xd2 and data[1] == 0x03 and data[2] == 0x7c:
+            self.__parse(data)
+            self.__receiving = False
+        else:    
+            self.__log.error(f'Dropping unknown bluetooth packet, mac={self.__mac}, data={data} .')
 
     def __parse(self, data):
         temp_1 = unpack('!B', data[94:95])[0] - 40
         temp_2 = unpack('!B', data[96:97])[0] - 40
         temps = (temp_1, temp_2)
-        cells = tuple(x / 1000 for x in unpack(_DALY_CELL_FORMAT_STR, memoryview(data)[3:35]) if x > 0)
+        cells = tuple(x / 1000 for x in unpack(_DALY_CELL_FORMAT_STR, data[3:35]) if x > 0)
 
         self.__data.update(
                 v=unpack('!H', data[83:85])[0] / 10,
