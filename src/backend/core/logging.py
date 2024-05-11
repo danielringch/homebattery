@@ -20,9 +20,13 @@ class Logging:
         config = config['logging']
         for sender in config['ignore']:
             self.__blacklist.add(sender)
-        self.__event = Event()
-        self.__task = create_task(self.__run(config))
-        self.__event.set()
+        if 'host' in config:
+            host, port = config['host'].split(':')
+            self.__event = Event()
+            self.__task = create_task(self.__run(host, port))
+            self.__event.set()
+        else:
+            self.info('Logging via UDP disabled.')
 
     def create_logger(self, sender: str):
         return CustomLogger(self, sender)
@@ -53,21 +57,16 @@ class Logging:
         message = f'[{formatted_time}] [{channel}] {message}'
         print(message)
 
-        self.__buffer.extend(f'{self.__counter:03d} '.encode('utf-8'), 3, ignore_overflow=True)
-        self.__counter += 1
-        if self.__counter > 999:
-            self.__counter = 0
-        self.__buffer.extend(message.encode('utf-8'), 999, ignore_overflow=True)
-        self.__buffer.append(0xA, ignore_overflow=True) # newline
-        if self.__task is None:
-            return
-        try:
+        if self.__task is not None:
+            self.__buffer.extend(f'{self.__counter:03d} '.encode('utf-8'), 3, ignore_overflow=True)
+            self.__counter += 1
+            if self.__counter > 999:
+                self.__counter = 0
+            self.__buffer.extend(message.encode('utf-8'), 999, ignore_overflow=True)
+            self.__buffer.append(0xA, ignore_overflow=True) # newline
             self.__event.set()
-        except AttributeError:
-            pass
     
-    async def __run(self, config):
-        host, port = config['host'].split(':')
+    async def __run(self, host, port):
         address = getaddrinfo(host, int(port))[0][-1]
         socke = None
 
