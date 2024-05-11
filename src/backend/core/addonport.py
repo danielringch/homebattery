@@ -1,7 +1,6 @@
 from asyncio import create_task, sleep
 from machine import Pin, UART
 
-from .microdeque import MicroDeque
 from .types import CallbackCollection
 
 class AddonPort:
