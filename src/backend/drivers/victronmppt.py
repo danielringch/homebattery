@@ -39,7 +39,7 @@ class VictronMppt(SolarInterface):
     async def switch_solar(self, on):
         self.__control_pin.value(on)
     
-    async def get_solar_status(self):
+    def get_solar_status(self):
         return self.__last_status
     
     def get_solar_power(self):
