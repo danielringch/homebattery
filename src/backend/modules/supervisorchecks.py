@@ -1,5 +1,24 @@
+from micropython import const
 from time import time
 from ..core.types import EnumEntry, TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
+
+_DEFAULT_HIGH = const(999)
+_DEFAULT_LOW = const(-999)
+
+_PRIO_BATTERY_OFFLINE = const(30)
+_PRIO_CELL_LOW = const(32)
+_PRIO_CELL_HIGH = const(31)
+_PRIO_TEMP_LOW_CHARGE = const(33)
+_PRIO_TEMP_LOW_DISCHARGE = const(34)
+_PRIO_TEMP_HIGH_CHARGE = const(35)
+_PRIO_TEMP_HIGH_DISCHARGE = const(36)
+_PRIO_LIVE_DATA_LOST_CHARGE = const(11)
+_PRIO_LIVE_DATA_LOST_DISCHARGE = const(10)
+_PRIO_MQTT_OFFLINE = const(5)
+_PRIO_STARTUP = const(2)
+PRIO_INTERNAL = const(0)
+
+
 
 class LockedReason(EnumEntry):
     def __init__(self, name, priority, locked_devices, fatal=False):
@@ -25,7 +44,7 @@ class SubChecker:
 
 class BatteryOfflineChecker(SubChecker):
     def __init__(self, config, battery):
-        super().__init__(config, 'battery_offline', 30, (TYPE_CHARGER, TYPE_SOLAR, TYPE_INVERTER))
+        super().__init__(config, 'battery_offline', _PRIO_BATTERY_OFFLINE, (TYPE_CHARGER, TYPE_SOLAR, TYPE_INVERTER))
         self.__threshold = int(config[self.__name]['threshold'])
         self.__last_data = dict()
         self.__battery = battery
@@ -49,7 +68,7 @@ class BatteryOfflineChecker(SubChecker):
 
 class CellLowChecker(SubChecker):
     def __init__(self, config, battery):
-        super().__init__(config, 'cell_low', 32, (TYPE_INVERTER,))
+        super().__init__(config, 'cell_low', _PRIO_CELL_LOW, (TYPE_INVERTER,))
         self.__threshold = float(config[self.__name]['threshold'])
         self.__hysteresis = float(config[self.__name]['hysteresis'])
         self.__threshold_exceeded = False
@@ -58,14 +77,14 @@ class CellLowChecker(SubChecker):
     def check(self, now):
         if self._lock is None:
             return None
-        lowest_cell = 999
+        lowest_cell = _DEFAULT_HIGH
         for battery in self.__battery.battery_data.values():
             if battery is None or not battery.valid:
                 continue
             for cell in battery.cells:
                 lowest_cell = min(lowest_cell, cell)
 
-        if lowest_cell == 999:
+        if lowest_cell == _DEFAULT_HIGH:
             return None
 
         threshold = self.__threshold
@@ -77,7 +96,7 @@ class CellLowChecker(SubChecker):
         
 class CellHighChecker(SubChecker):
     def __init__(self, config, battery):
-        super().__init__(config, 'cell_high', 31, (TYPE_CHARGER, TYPE_SOLAR))
+        super().__init__(config, 'cell_high', _PRIO_CELL_HIGH, (TYPE_CHARGER, TYPE_SOLAR))
         self.__threshold = float(config[self.__name]['threshold'])
         self.__hysteresis = float(config[self.__name]['hysteresis'])
         self.__threshold_exceeded = False
@@ -86,14 +105,14 @@ class CellHighChecker(SubChecker):
     def check(self, now):
         if self._lock is None:
             return None
-        highest_cell = 0
+        highest_cell = _DEFAULT_LOW
         for battery in self.__battery.battery_data.values():
             if battery is None or not battery.valid:
                 continue
             for cell in battery.cells:
                 highest_cell = max(highest_cell, cell)
                 
-        if highest_cell == 0:
+        if highest_cell == _DEFAULT_LOW:
             return None
 
         threshold = self.__threshold
@@ -105,7 +124,7 @@ class CellHighChecker(SubChecker):
 
 class TempLowChargeChecker(SubChecker):
     def __init__(self, config, battery):
-        super().__init__(config, 'temp_low_charge', 33, (TYPE_CHARGER, TYPE_SOLAR))
+        super().__init__(config, 'temp_low_charge', _PRIO_TEMP_LOW_CHARGE, (TYPE_CHARGER, TYPE_SOLAR))
         self.__threshold = float(config[self.__name]['threshold'])
         self.__hysteresis = float(config[self.__name]['hysteresis'])
         self.__threshold_exceeded = False
@@ -114,14 +133,14 @@ class TempLowChargeChecker(SubChecker):
     def check(self, now):
         if self._lock is None:
             return None
-        lowest_temp = 999
+        lowest_temp = _DEFAULT_HIGH
         for battery in self.__battery.battery_data.values():
             if battery is None or not battery.valid:
                 continue
             for temperature in battery.temps:
                 lowest_temp = min(lowest_temp, temperature)
 
-        if lowest_temp == 999:
+        if lowest_temp == _DEFAULT_HIGH:
             return None
 
         threshold = self.__threshold
@@ -133,7 +152,7 @@ class TempLowChargeChecker(SubChecker):
 
 class TempLowDischargeChecker(SubChecker):
     def __init__(self, config, battery):
-        super().__init__(config, 'temp_low_discharge', 34, (TYPE_INVERTER,))
+        super().__init__(config, 'temp_low_discharge', _PRIO_TEMP_LOW_DISCHARGE, (TYPE_INVERTER,))
         self.__threshold = float(config[self.__name]['threshold'])
         self.__hysteresis = float(config[self.__name]['hysteresis'])
         self.__threshold_exceeded = False
@@ -142,14 +161,14 @@ class TempLowDischargeChecker(SubChecker):
     def check(self, now):
         if self._lock is None:
             return None
-        lowest_temp = 999
+        lowest_temp = _DEFAULT_HIGH
         for battery in self.__battery.battery_data.values():
             if battery is None or not battery.valid:
                 continue
             for temperature in battery.temps:
                 lowest_temp = min(lowest_temp, temperature)
 
-        if lowest_temp == 999:
+        if lowest_temp == _DEFAULT_HIGH:
             return None
 
         threshold = self.__threshold
@@ -161,7 +180,7 @@ class TempLowDischargeChecker(SubChecker):
     
 class TempHighChargeChecker(SubChecker):
     def __init__(self, config, battery):
-        super().__init__(config, 'temp_high_charge', 35, (TYPE_CHARGER, TYPE_SOLAR,))
+        super().__init__(config, 'temp_high_charge', _PRIO_TEMP_HIGH_CHARGE, (TYPE_CHARGER, TYPE_SOLAR,))
         self.__threshold = float(config[self.__name]['threshold'])
         self.__hysteresis = float(config[self.__name]['hysteresis'])
         self.__threshold_exceeded = False
@@ -170,14 +189,14 @@ class TempHighChargeChecker(SubChecker):
     def check(self, now):
         if self._lock is None:
             return None
-        highest_temp = -999
+        highest_temp = _DEFAULT_LOW
         for battery in self.__battery.battery_data.values():
             if battery is None or not battery.valid:
                 continue
             for temperature in battery.temps:
                 highest_temp = max(highest_temp, temperature)
 
-        if highest_temp == -999:
+        if highest_temp == _DEFAULT_LOW:
             return None
 
         threshold = self.__threshold
@@ -189,7 +208,7 @@ class TempHighChargeChecker(SubChecker):
     
 class TempHighDischargeChecker(SubChecker):
     def __init__(self, config, battery):
-        super().__init__(config, 'temp_high_discharge', 36, (TYPE_INVERTER,))
+        super().__init__(config, 'temp_high_discharge', _PRIO_TEMP_HIGH_DISCHARGE, (TYPE_INVERTER,))
         self.__threshold = float(config[self.__name]['threshold'])
         self.__hysteresis = float(config[self.__name]['hysteresis'])
         self.__threshold_exceeded = False
@@ -198,14 +217,14 @@ class TempHighDischargeChecker(SubChecker):
     def check(self, now):
         if self._lock is None:
             return None
-        highest_temp = -999
+        highest_temp = _DEFAULT_LOW
         for battery in self.__battery.battery_data.values():
             if battery is None or not battery.valid:
                 continue
             for temperature in battery.temps:
                 highest_temp = max(highest_temp, temperature)
 
-        if highest_temp == -999:
+        if highest_temp == _DEFAULT_LOW:
             return None
 
         threshold = self.__threshold
@@ -217,7 +236,7 @@ class TempHighDischargeChecker(SubChecker):
         
 class LiveDataOfflineChargeChecker(SubChecker):
     def __init__(self, config, mqtt):
-        super().__init__(config, 'live_data_lost_charge', 11, (TYPE_CHARGER,))
+        super().__init__(config, 'live_data_lost_charge', _PRIO_LIVE_DATA_LOST_CHARGE, (TYPE_CHARGER,))
         self.__threshold = int(config[self.__name]['threshold'])
         self.__last_data = 0
         mqtt.on_live_consumption.add(self.__on_live_consumption)
@@ -233,7 +252,7 @@ class LiveDataOfflineChargeChecker(SubChecker):
 
 class LiveDataOfflineDischargeChecker(SubChecker):
     def __init__(self, config, mqtt):
-        super().__init__(config, 'live_data_lost_discharge', 10, (TYPE_INVERTER,))
+        super().__init__(config, 'live_data_lost_discharge', _PRIO_LIVE_DATA_LOST_DISCHARGE, (TYPE_INVERTER,))
         self.__threshold = int(config[self.__name]['threshold'])
         self.__last_data = 0
         mqtt.on_live_consumption.add(self.__on_live_consumption)
@@ -249,7 +268,7 @@ class LiveDataOfflineDischargeChecker(SubChecker):
 
 class MqttOfflineChecker(SubChecker):
     def __init__(self, config, mqtt):
-        super().__init__(config, 'mqtt_offline', 5, (TYPE_CHARGER, TYPE_INVERTER), True)
+        super().__init__(config, 'mqtt_offline', _PRIO_MQTT_OFFLINE, (TYPE_CHARGER, TYPE_INVERTER), True)
         self.__threshold = int(config[self.__name]['threshold'])
         self.__last_online = 0
         self.__mqtt = mqtt
@@ -265,7 +284,7 @@ class MqttOfflineChecker(SubChecker):
 class StartupChecker(SubChecker):
     def __init__(self, config, locks):
         config = {'startup': {'enabled': True}}
-        super().__init__(config, 'startup', 2, (TYPE_INVERTER, TYPE_SOLAR, TYPE_CHARGER))
+        super().__init__(config, 'startup', _PRIO_STARTUP, (TYPE_INVERTER, TYPE_SOLAR, TYPE_CHARGER))
         self.__mature_timestamp = time() + 60
         self.__locks = locks
 

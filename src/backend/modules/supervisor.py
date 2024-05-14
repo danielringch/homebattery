@@ -12,7 +12,7 @@ from .modeswitcher import ModeSwitcher
 from .supervisorchecks import BatteryOfflineChecker, CellLowChecker, CellHighChecker
 from .supervisorchecks import TempLowChargeChecker, TempLowDischargeChecker, TempHighChargeChecker, TempHighDischargeChecker
 from .supervisorchecks import LiveDataOfflineChargeChecker, LiveDataOfflineDischargeChecker, MqttOfflineChecker
-from .supervisorchecks import StartupChecker, LockedReason
+from .supervisorchecks import StartupChecker, LockedReason, PRIO_INTERNAL
 
 _SUPERVISOR_LOG_NAME = const('supervisor')
 
@@ -35,7 +35,7 @@ class Supervisor:
 
         self.__internal_error = self.internal = LockedReason(
                 name='internal',
-                priority=0,
+                priority=PRIO_INTERNAL,
                 locked_devices=(TYPE_CHARGER, TYPE_SOLAR, TYPE_INVERTER),
                 fatal=True)
 
