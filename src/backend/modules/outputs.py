@@ -36,6 +36,8 @@ class Outputs:
         self.__inverter.on_power.add(self.__on_inverter_power)
         self.__inverter.on_status.add(self.__on_inverter_status)
         self.__solar.on_energy.add(self.__on_solar_energy)
+        self.__solar.on_power.add(self.__on_solar_power)
+        self.__solar.on_status.add(self.__on_solar_status)
 
         self.__task = create_task(self.__run())
 
