@@ -1,3 +1,4 @@
+from json import loads
 from ubinascii import b2a_base64
 
 from .microsocket import MicroSocket, MicroSocketClosedExecption, MicroSocketException, MicroSocketTimeoutException
@@ -12,15 +13,15 @@ class HttpResponse:
     async def read(self):
         try:
             length = int(self.__headers['Content-Length'])
-            data = await self.__socket.receive(length)
+            buffer = bytearray(length)
+            length = await self.__socket.receive_into(buffer, 0, length)
         except:
             raise
-        return data
+        return buffer
 
     async def json(self):
-        import json
         data = await self.read()
-        return json.loads(data)
+        return loads(data)
     
     async def text(self):
         data = await self.read()
@@ -33,7 +34,7 @@ class HttpResponse:
 class BasicAuth:
     def __init__(self, user, password):
         credentials = b2a_base64(f'{user}:{password}'.encode('ascii'), newline=False).decode('ascii')
-        self.__header = f'Authorization: Basic {credentials}\r\n'.encode('iso-8859-1')
+        self.__header = b'Authorization: Basic %s\r\n' % credentials
 
     @property
     def header(self):
@@ -84,24 +85,21 @@ class ClientSession:
     async def _request(self, method, path, data, headers):
         response_headers = {}
 
-        http_header = b''
-
-        http_header += b'%s /%s HTTP/1.1\r\n' % (method, path)
+        await self.__socket.send(b'%s /%s HTTP/1.1\r\n' % (method, path))
         if not "Host" in headers:
-            http_header += b"Host: %s\r\n" % self.__host
+            await self.__socket.send(b"Host: %s\r\n" % self.__host)
         if self.__auth:
-            http_header += self.__auth.header
+            await self.__socket.send(self.__auth.header)
         for k in headers.items():
-            http_header += b'%s: %s\r\n' % k
+            await self.__socket.send(b'%s: %s\r\n' % k)
 
         if data:
             payload = data.encode('iso-8859-1')
-            http_header += b"Content-Length: %d\r\n" % len(payload)
+            await self.__socket.send(b"Content-Length: %d\r\n" % len(payload))
         else:
             payload = None
                 
-        http_header += b"\r\n"
-        await self.__socket.send(http_header)
+        await self.__socket.send(b"\r\n")
         if payload:
             await self.__socket.send(payload)
 
