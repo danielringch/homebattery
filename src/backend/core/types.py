@@ -59,11 +59,6 @@ class BatteryData:
     def valid(self):
         return self.timestamp > 0
 
-    def __str__(self) -> str:
-        temperatues_str = ' ; '.join(f'{x:.1f}' for x in self.temps)
-        cells_str = ' | '.join(f'{x:.3f}' for x in self.cells)
-        return f'Voltage: {self.v} V | Current: {self.i} A\nSoC: {self.soc} % | {self.c} / {self.c_full} Ah\nCycles: {self.n} | Temperatures [°C]: {temperatues_str}\nCells [V]: {cells_str}'
-
 class CallbackCollection:
     def __init__(self):
         self.__callbacks = list()

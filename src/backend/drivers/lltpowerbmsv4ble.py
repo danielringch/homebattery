@@ -4,6 +4,7 @@ from ubinascii import unhexlify
 from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
+from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
 from ..core.types import BatteryData, CallbackCollection
 
@@ -148,8 +149,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
 
             if self.__current_bundle.complete:
                 self.__current_bundle.parse(self.__data)
-                for line in str(self.__data).split('\n'):
-                    self.__log.info(line)
+                print_battery(self.__log, self.__data)
                 self.__on_data.run_all(self.__data)
             else:
                 self.__log.error(f'Failed to receive battery data.')

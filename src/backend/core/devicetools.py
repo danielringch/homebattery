@@ -1,5 +1,6 @@
 from time import localtime, time
-from .types import STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from .logging import CustomLogger
+from .types import BatteryData, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 
 def get_energy_execution_timestamp():
     now = localtime()
@@ -20,3 +21,11 @@ def merge_driver_statuses(statuses):
     if all(x == STATUS_OFF for x in statuses):
         return STATUS_OFF
     return STATUS_SYNCING
+
+def print_battery(logger: CustomLogger, battery: BatteryData):
+    temperatues_str = ' ; '.join(f'{x:.1f}' for x in battery.temps)
+    cells_str = ' | '.join(f'{x:.3f}' for x in battery.cells)
+    logger.info(f'Voltage: {battery.v} V | Current: {battery.i} A')
+    logger.info(f'SoC: {battery.soc} % | {battery.c} / {battery.c_full} Ah')
+    logger.info(f'Cycles: {battery.n} | Temperatures [°C]: {temperatues_str}')
+    logger.info(f'Cells [V]: {cells_str}')

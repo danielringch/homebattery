@@ -4,6 +4,7 @@ from ubinascii import hexlify
 from time import time
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.backendmqtt import Mqtt
+from ..core.devicetools import print_battery
 from ..core.types import BatteryData, CallbackCollection
 
 class MqttBattery(BatteryInterface):
@@ -122,8 +123,7 @@ class MqttBattery(BatteryInterface):
             await self.__parser.data_event.wait()
             self.__parser.data_event.clear()
 
-            for line in str(self.__parser.data).split('\n'):
-                self.__log.info(line)
+            print_battery(self.__log, self.__parser.data)
             self.__on_data.run_all(self.__parser.data)
 
     @property

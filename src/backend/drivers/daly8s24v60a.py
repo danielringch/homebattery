@@ -5,6 +5,7 @@ from ubinascii import unhexlify
 from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
+from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
 from ..core.types import BatteryData, CallbackCollection
 
@@ -61,8 +62,7 @@ class Daly8S24V60A(BatteryInterface):
                 self.__log.error(f'Failed to receive battery data.')
                 return
             
-            for line in str(self.__data).split('\n'):
-                self.__log.info(line)
+            print_battery(self.__log, self.__data)
             self.__on_data.run_all(self.__data)
 
         except MicroBleTimeoutError as e:
