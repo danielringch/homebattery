@@ -14,7 +14,7 @@ class NetZero:
         self.__log = Singletons.log.create_logger(_NETZERO_LOG_NAME)
         
         self.__time_span = min(_MAX_EVALUATION_TIME, int(config['evaluated_time_span']))
-        self.__data = ByteRingBuffer(2 * self.__time_span)
+        self.__data = ByteRingBuffer(2 * self.__time_span, ignore_overflow=True)
         self.__last_data = 0
 
         self.__offset = int(config['power_offset'])
@@ -37,14 +37,14 @@ class NetZero:
         empty_items = min(self.__time_span, timestamp - self.__last_data) - 1
         if empty_items > 0 and len(self.__data) > 0:
             for _ in range(empty_items):
-                self.__data.append(0xFF, ignore_overflow=True)
-                self.__data.append(0xFF, ignore_overflow=True)
+                self.__data.append(0xFF)
+                self.__data.append(0xFF)
 
         if self.__last_data == timestamp and len(self.__data) > 0:
             self.__log.info('More than one data point for timestamp, dropping the newer one.')
         else:
-            self.__data.append((consumption >> 8) & 0xFF, ignore_overflow=True)
-            self.__data.append(consumption & 0xFF, ignore_overflow=True)
+            self.__data.append((consumption >> 8) & 0xFF)
+            self.__data.append(consumption & 0xFF)
 
         self.__last_data = timestamp
 

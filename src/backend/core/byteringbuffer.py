@@ -3,12 +3,13 @@ class ByteRingBufferOverflowError(Exception):
     pass
 
 class ByteRingBuffer:
-    def __init__(self, size):
+    def __init__(self, size, ignore_overflow=False):
         self.__max = size + 1
         self.__buffer = bytearray(self.__max)
         self.__view = memoryview(self.__buffer)
         self.__begin = 0
         self.__end = 0
+        self.__ignore_overflow = ignore_overflow
 
     def __bool__(self):
         return not self.empty()
@@ -45,18 +46,18 @@ class ByteRingBuffer:
     def clear(self):
         self.__begin = self.__end
 
-    def append(self, byte, ignore_overflow=False):
+    def append(self, byte):
         self.__buffer[self.__end] = byte
         self.__end = self.__increment(self.__end)
         if self.__end == self.__begin: #overflow
             self.__begin = self.__increment(self.__begin)
-            if not ignore_overflow:
+            if not self.__ignore_overflow:
                 raise ByteRingBufferOverflowError('Deque overflow.')
         
-    def extend(self, bytes, length, ignore_overflow=False):
+    def extend(self, bytes, length):
         effective_length = min(len(bytes), length)
         for i in range(effective_length):
-            self.append(bytes[i], ignore_overflow)
+            self.append(bytes[i])
 
     def peekleft(self):
         if self.empty():
