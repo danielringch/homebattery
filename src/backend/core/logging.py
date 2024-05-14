@@ -1,10 +1,15 @@
 from asyncio import create_task, Event, sleep
+from micropython import const
 from socket import getaddrinfo, socket, AF_INET, SOCK_DGRAM
 from collections import namedtuple
 from time import localtime
 from uio import IOBase
 from .byteringbuffer import ByteRingBuffer
 from .microsocket import BUSY_ERRORS
+
+_SEP1 = const(' [')
+_SEP2 = const('] ')
+_UTF8 = const('UTF-8')
 
 class Logging:
     MessageBlob = namedtuple("MessageBlob", "channel message")
@@ -13,7 +18,7 @@ class Logging:
         self.__blacklist = set()
         self.__task = None
         self.__counter = 0
-        self.__buffer = ByteRingBuffer(2048)
+        self.__buffer = ByteRingBuffer(2048, ignore_overflow=True)
         self.trace = TraceLogger(self, 'trace')
 
     def configure(self, config):
@@ -50,20 +55,24 @@ class Logging:
         if channel in self.__blacklist:
             return
         now = localtime()  # Get current time
-        formatted_time = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}".format(
-            now[0], now[1], now[2],
-            now[3], now[4], now[5]
-        )
-        message = f'[{formatted_time}] [{channel}] {message}'
+        formatted_time = "{:02d}:{:02d}:{:02d}".format(now[3], now[4], now[5])
+        print(formatted_time, end='')
+        print(_SEP1, end='')
+        print(channel, end='')
+        print(_SEP2, end='')
         print(message)
 
         if self.__task is not None:
-            self.__buffer.extend(f'{self.__counter:03d} '.encode('utf-8'), 3, ignore_overflow=True)
+            self.__buffer.extend(f'{self.__counter:03d} '.encode(_UTF8), 999)
             self.__counter += 1
             if self.__counter > 999:
                 self.__counter = 0
-            self.__buffer.extend(message.encode('utf-8'), 999, ignore_overflow=True)
-            self.__buffer.append(0xA, ignore_overflow=True) # newline
+            self.__buffer.extend(formatted_time.encode(_UTF8), 999)
+            self.__buffer.extend(_SEP1.encode(_UTF8), 999)
+            self.__buffer.extend(channel.encode(_UTF8), 999)
+            self.__buffer.extend(_SEP2.encode(_UTF8), 999)
+            self.__buffer.extend(message.encode(_UTF8), 999)
+            self.__buffer.append(0xA) # newline
             self.__event.set()
     
     async def __run(self, host, port):
@@ -109,7 +118,7 @@ class CustomLogger:
         self.__logger.__send(self.__sender, message)
 
     def error(self, message):
-        self.__logger.__send(f'error] [{self.__sender}', message)
+        self.__logger.__send(f'error@{self.__sender}', message)
 
 class TraceLogger(IOBase):
     def __init__(self, logger: Logging, prefix: str):
