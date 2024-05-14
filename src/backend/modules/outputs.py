@@ -3,7 +3,7 @@ from collections import deque
 from micropython import const
 from sys import print_exception
 from ..core.backendmqtt import Mqtt
-from ..core.types import CommandBundle
+from ..core.types import CommandBundle, STATUS_ON
 from .supervisor import Supervisor
 from .battery import Battery
 from .charger import Charger
@@ -26,6 +26,7 @@ class Outputs:
         self.__solar = solar
 
         self.__display = Singletons.display
+        self.__leds = Singletons.leds
 
         self.__mqtt.on_live_consumption.add(self.__on_live_consumption)
         self.__mqtt.on_connect.add(self.__on_mqtt_connect)
@@ -112,6 +113,7 @@ class Outputs:
         self.__command_event.set()
 
     def __on_charger_status(self, status):
+        self.__leds.switch_charger_on(status == STATUS_ON)
         self.__commands.append(CommandBundle(self.__send_charger_status, (status,)))
         self.__command_event.set()
 
@@ -124,6 +126,7 @@ class Outputs:
         self.__command_event.set()
 
     def __on_inverter_status(self, status):
+        self.__leds.switch_inverter_on(status == STATUS_ON)
         self.__commands.append(CommandBundle(self.__send_inverter_status, (status,)))
         self.__command_event.set()
 
@@ -136,5 +139,6 @@ class Outputs:
         self.__command_event.set()
 
     def __on_solar_status(self, status):
+        self.__leds.switch_solar_on(status == STATUS_ON)
         self.__commands.append(CommandBundle(self.__send_solar_status, (status,)))
         self.__command_event.set()
