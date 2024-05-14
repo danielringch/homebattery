@@ -3,13 +3,14 @@ from micropython import const
 from sys import print_exception
 from time import time
 from ..core.backendmqtt import Mqtt
-from ..core.types import EnumEntry, TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
+from ..core.types import TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
 from ..core.watchdog import Watchdog
 from .inverter import Inverter
 from .charger import Charger
 from .battery import Battery
 from .modeswitcher import ModeSwitcher
-from .supervisorchecks import BatteryOfflineChecker, CellHighChecker, CellLowChecker
+from .supervisorchecks import BatteryOfflineChecker, CellLowChecker, CellHighChecker
+from .supervisorchecks import TempLowChargeChecker, TempLowDischargeChecker, TempHighChargeChecker, TempHighDischargeChecker
 from .supervisorchecks import LiveDataOfflineChargeChecker, LiveDataOfflineDischargeChecker, MqttOfflineChecker
 from .supervisorchecks import StartupChecker, LockedReason
 
@@ -41,8 +42,12 @@ class Supervisor:
         self.__locks = set()
         self.__checkers = (
                 BatteryOfflineChecker(config, battery),
-                CellHighChecker(config, battery),
                 CellLowChecker(config, battery),
+                CellHighChecker(config, battery),
+                TempLowChargeChecker(config, battery),
+                TempLowDischargeChecker(config, battery),
+                TempHighChargeChecker(config, battery),
+                TempHighDischargeChecker(config, battery),
                 LiveDataOfflineChargeChecker(config, mqtt),
                 LiveDataOfflineDischargeChecker(config, mqtt),
                 MqttOfflineChecker(config, mqtt),
