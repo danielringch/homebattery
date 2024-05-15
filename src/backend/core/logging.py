@@ -1,24 +1,24 @@
 from asyncio import create_task, Event, sleep
 from micropython import const
 from socket import getaddrinfo, socket, AF_INET, SOCK_DGRAM
-from collections import namedtuple
 from time import localtime
 from uio import IOBase
-from .byteringbuffer import ByteRingBuffer
 from .microsocket import BUSY_ERRORS
+from .types import SimpleFiFo
 
-_SEP1 = const(' [')
-_SEP2 = const('] ')
-_UTF8 = const('UTF-8')
+_UTF8 = const('utf-8')
+_COUNTER_PREFIX = const('%03d ')
+_ERROR_PREFIX = const('error@%s')
+_HEADER_TEMPLATE = const('%s [%s] ')
+_TIME_TEMPLATE = const('{:02d}:{:02d}:{:02d}')
+_NEWLINE = const('\n')
 
 class Logging:
-    MessageBlob = namedtuple("MessageBlob", "channel message")
-
     def __init__(self):
         self.__blacklist = set()
         self.__task = None
         self.__counter = 0
-        self.__buffer = ByteRingBuffer(2048, ignore_overflow=True)
+        self.__buffer = SimpleFiFo()
         self.trace = TraceLogger(self, 'trace')
 
     def configure(self, config):
@@ -54,28 +54,26 @@ class Logging:
     def __send(self, channel, *msg):
         if channel in self.__blacklist:
             return
+        self.__counter += 1
+        if self.__counter > 999:
+            self.__counter = 0
         now = localtime()  # Get current time
-        formatted_time = "{:02d}:{:02d}:{:02d}".format(now[3], now[4], now[5])
-        print(formatted_time, end='')
-        print(_SEP1, end='')
-        print(channel, end='')
-        print(_SEP2, end='')
+        formatted_time = _TIME_TEMPLATE.format(now[3], now[4], now[5])
+        self.__buffer.append(_COUNTER_PREFIX % self.__counter)
+        header = _HEADER_TEMPLATE % (formatted_time, channel)
+        self.__buffer.append(header)
+        print(header, end='')
         for part in msg:
-            print(str(part), end='')
+            string = str(part)
+            print(string, end='')
+            self.__buffer.append(string)
         print('')
+        self.__buffer.append(_NEWLINE)
 
-        if self.__task is not None:
-            self.__buffer.extend(f'{self.__counter:03d} '.encode(_UTF8), 999)
-            self.__counter += 1
-            if self.__counter > 999:
-                self.__counter = 0
-            self.__buffer.extend(formatted_time.encode(_UTF8), 999)
-            self.__buffer.extend(_SEP1.encode(_UTF8), 999)
-            self.__buffer.extend(channel.encode(_UTF8), 999)
-            self.__buffer.extend(_SEP2.encode(_UTF8), 999)
-            for part in msg:
-                self.__buffer.extend(str(part).encode(_UTF8), 999)
-            self.__buffer.append(0xA) # newline
+        if self.__task is None:
+            while not self.__buffer.empty:
+                _ = self.__buffer.popleft()
+        else:
             self.__event.set()
     
     async def __run(self, host, port):
@@ -88,15 +86,12 @@ class Logging:
                 while True:
                     await self.__event.wait()
                     self.__event.clear()
-                    while not self.__buffer.empty():
-                        blob = self.__buffer.popuntil(128)
-                        if len(blob) > 0:
-                            try:
-                                socke.sendto(blob, address)
-                            except OSError as e:
-                                if e.args[0] in BUSY_ERRORS:
-                                    pass
-                        await sleep(0.05)                    
+                    while not self.__buffer.empty:
+                        try:
+                            socke.sendto(self.__buffer.popleft().encode(_UTF8), address)
+                        except OSError as e:
+                            if e.args[0] in BUSY_ERRORS:
+                                await sleep(0.05)                 
             except Exception as e:
                 print(f'External logging failed: {e}')
             finally:
@@ -121,7 +116,7 @@ class CustomLogger:
         self.__logger.__send(self.__sender, *msg)
 
     def error(self, *msg):
-        self.__logger.__send('error@%s' % self.__sender, *msg)
+        self.__logger.__send(_ERROR_PREFIX % self.__sender, *msg)
 
 class TraceLogger(IOBase):
     def __init__(self, logger: Logging, prefix: str):
@@ -132,9 +127,9 @@ class TraceLogger(IOBase):
     def write(self, bytes):
         blob = bytes.decode('utf-8')
         self.__buffer.append(blob)
-        if blob.endswith('\n'):
+        if blob.endswith(_NEWLINE):
             lines = "".join(self.__buffer)
-            for line in lines.split('\n')[:-1]:
+            for line in lines.split(_NEWLINE)[:-1]:
                 self.__logger.__send(self.__prefix, line)
             self.__buffer.clear()
 
