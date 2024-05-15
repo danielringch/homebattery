@@ -42,9 +42,9 @@ class Network():
             except OSError as e:
                 if e.args[0] != ETIMEDOUT:
                     raise
-                self.__log.info(f'Waiting for network time...')
+                self.__log.info('Waiting for network time...')
                 if countdown > 0:
                     watchdog.feed()
                     countdown -= 1
                 sleep(2)
-        self.__log.info(f'Clock synchronized.')
+        self.__log.info('Clock synchronized.')

@@ -85,7 +85,7 @@ class MicroBleDevice:
             self.__handle = None
             self.__mtu = None
             self.__central.__current_device = self
-            self.__log.info(f'Connecting to {self.__printable_address}.')
+            self.__log.info('Connecting to ', self.__printable_address)
             self.__ble.gap_connect(self.__address_type, self.__address)
             self.__leds.notify_bluetooth()
             for _ in range (timeout // 100):
@@ -125,7 +125,7 @@ class MicroBleDevice:
                 await sleep(0.1)
         finally:
             # Even if device did not respond, there is nothing we can do, so mark as disconnected
-            self.__log.info(f'Disconnected from {self.__printable_address}.')
+            self.__log.info('Disconnected from ', self.__printable_address)
             self.__central.__current_device = None
             self.__handle = None
 
@@ -309,30 +309,30 @@ class MicroBleCentral:
             if event == _IRQ_PERIPHERAL_CONNECT:
                 conn_handle, addr_type, addr = data
                 printable_address = hexlify(addr, ':').decode('utf-8')
-                self.__log.info(f'Connect event, handle={conn_handle}, type={addr_type}, addr={printable_address} .')
+                self.__log.info('Connect event, handle=', conn_handle, ' type=', addr_type, ' addr=', printable_address)
                 if self.__current_device is None or \
                         addr_type != self.__current_device.__address_type or \
                         addr != self.__current_device.__address:
-                    self.__log.info(f'No matching device for event.')
+                    self.__log.info('No matching device for event.')
                     self.__ble.gap_disconnect(conn_handle)
                     return
                 self.__current_device.__handle = conn_handle
             elif event == _IRQ_PERIPHERAL_DISCONNECT:
                 conn_handle, _, _ = data
-                self.__log.info(f'Disconnect event, handle={conn_handle} .')
+                self.__log.info('Disconnect event, handle=', conn_handle)
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__handle = None
                 self.__current_device = None
             elif event == _IRQ_MTU_EXCHANGED:
                 conn_handle, mtu = data
-                self.__log.info(f'Mtu exchanged event, handle={conn_handle}, mtu={mtu} .')
+                self.__log.info('Mtu exchanged event, handle=', conn_handle, ' mtu=', mtu)
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__mtu = mtu
             elif event == _IRQ_GATTC_SERVICE_RESULT:
                 conn_handle, start_handle, end_handle, uuid = data
-                self.__log.info(f'Service event, connection={conn_handle}, start={start_handle}, end={end_handle}, uuid={uuid} .')
+                self.__log.info('Service event, connection=', conn_handle, ' start=', start_handle, ' end=', end_handle, ' uuid=', uuid)
                 if not self.__check_connection_handle(conn_handle):
                     return
                 uuid = BT_UUID(uuid) # uuid is only passed as memoryview
@@ -344,7 +344,7 @@ class MicroBleCentral:
                 self.__current_device.__service_event.set()
             elif event == _IRQ_GATTC_CHARACTERISTIC_RESULT:
                 conn_handle, end_handle, value_handle, properties, uuid = data
-                self.__log.info(f'Characteristic event, connection={conn_handle}, end={end_handle}, value={value_handle}, uuid={uuid} .')
+                self.__log.info('Characteristic event, connection=', conn_handle, ' end=', end_handle, ' value=', value_handle, ' uuid=', uuid)
                 if not self.__check_connection_handle(conn_handle):
                     return
                 uuid = BT_UUID(uuid) # uuid is only passed as memoryview
@@ -359,7 +359,7 @@ class MicroBleCentral:
                 self.__current_device.__characteristics_event.set()
             elif event == _IRQ_GATTC_DESCRIPTOR_RESULT:
                 conn_handle, dsc_handle, uuid = data
-                self.__log.info(f'Descriptor event, connection={conn_handle}, value={dsc_handle}, uuid={uuid} .')
+                self.__log.info('Descriptor event, connection=', conn_handle, ' value=', dsc_handle, ' uuid=', uuid)
                 if not self.__check_connection_handle(conn_handle) or uuid != BT_UUID(0x2902):
                     return
                 characteristic = self.__current_device.__get_characteristic_by_handle(dsc_handle)
@@ -368,13 +368,13 @@ class MicroBleCentral:
                 characteristic.__descriptor = MicroBleDescriptor(self.__current_device, dsc_handle)
             elif event == _IRQ_GATTC_DESCRIPTOR_DONE:
                 conn_handle, status = data
-                self.__log.info('Descriptor done event, connection={conn_handle}, status={status}.')
+                self.__log.info('Descriptor done event, connection=', conn_handle, ' status=', status)
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__descriptors_event.set()
             elif event == _IRQ_GATTC_READ_RESULT:
                 conn_handle, value_handle, char_data = data
-                self.__log.info(f'Read result event, connection={conn_handle}, characteristic={value_handle}, len={len(char_data)}')
+                self.__log.info('Read result event, connection=', conn_handle, ' characteristic=', value_handle, ' len=', len(char_data))
                 if not self.__check_connection_handle(conn_handle):
                     return
                 characteristic = self.__current_device.__get_characteristic_by_handle(value_handle)
@@ -383,19 +383,19 @@ class MicroBleCentral:
                 characteristic.__enqueue(bytes(char_data))
             elif event == _IRQ_GATTC_READ_DONE:
                 conn_handle, value_handle, status = data
-                self.__log.info(f'Read done event, connection={conn_handle}, characteristic={value_handle}, status={status}')
+                self.__log.info('Read done event, connection=', conn_handle, ' characteristic=', value_handle, ' status=', status)
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__read_event.set()
             elif event == _IRQ_GATTC_WRITE_DONE:
                 conn_handle, value_handle, status = data
-                self.__log.info(f'Write done event, connection={conn_handle}, characteristic={value_handle}, status={status}')
+                self.__log.info('Write done event, connection=', conn_handle, ' characteristic=', value_handle, ' status=', status)
                 if not self.__check_connection_handle(conn_handle):
                     return
                 self.__current_device.__write_event.set()
             elif event == _IRQ_GATTC_NOTIFY:
                 conn_handle, value_handle, notify_data = data
-                self.__log.info(f'Notify event, connection={conn_handle}, characteristic={value_handle}, len={len(notify_data)}')
+                self.__log.info('Notify event, connection=', conn_handle, ' characteristic=', value_handle, ' len=', len(notify_data))
                 if not self.__check_connection_handle(conn_handle):
                     return
                 characteristic = self.__current_device.__get_characteristic_by_handle(value_handle)
@@ -405,15 +405,15 @@ class MicroBleCentral:
             elif event == _IRQ_CONNECTION_UPDATE:
                 # The remote device has updated connection parameters.
                 conn_handle, conn_interval, conn_latency, supervision_timeout, status = data
-                self.__log.info(f'Connection update event, connection={conn_handle}, interval={conn_interval}, latency={conn_latency}, supervision_timeout={supervision_timeout}, status={status}')
+                self.__log.info('Connection update event, connection=', conn_handle, ' interval=', conn_interval, ' latency=', conn_latency, ' supervision_timeout=', supervision_timeout, ' status=', status)
             else:
-                self.__log.error(f'Unknown event: {event}.')
+                self.__log.error('Unknown event: ', event)
         except Exception as e:
-            self.__log.error(f'Error in IRQ callback: {e}')
+            self.__log.error('Error in IRQ callback: ', e)
 
 
     def __check_connection_handle(self, handle):
         if self.__current_device is None or handle != self.__current_device.__handle:
-            self.__log.error(f'No matching device for event.')
+            self.__log.error('No matching device for event.')
             return False
         return True

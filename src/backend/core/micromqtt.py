@@ -107,7 +107,7 @@ class MicroMqtt():
         packet.length = subscribe_to_bytes(pid, topic, qos, buffer)
         packet.pid = pid
             
-        self.__log.info(f'Outgoing subscription, pid={pid}, qos={qos}: {topic}')
+        self.__log.info('Outgoing subscription, pid=', pid, ' qos=', qos, ': ', topic)
         await self.__send_packet(packet)
 
     async def publish(self, topic, payload, qos, retain):
@@ -120,7 +120,7 @@ class MicroMqtt():
         packet.length = publish_to_bytes(pid, topic, payload, qos, retain, buffer)
         packet.pid = pid
 
-        self.__log.info(f'Outgoing message, pid={pid}, qos={qos}, topic={topic}')
+        self.__log.info('Outgoing message, pid=', pid, ' qos=', qos, ' topic=', topic)
         await self.__send_packet(packet)
         if qos == 0:
             packet.clear()
@@ -209,7 +209,7 @@ class MicroMqtt():
             elif type == PACKET_TYPE_PUBLISH:
                 await self.__receive_publish(self.__rx_buffer)
             else:
-                self.__log.error(f'Unkown MQTT code: {type}.')
+                self.__log.error('Unkown MQTT code: ', type)
 
     async def __receive_connack(self):
         assert self.__socket is not None
@@ -217,12 +217,12 @@ class MicroMqtt():
         async with self.__receive_lock:
             type = await read_packet(self.__socket, self.__rx_buffer)
             if type != PACKET_TYPE_CONNACK:
-                self.__log.error(f'Bad CONACK packet: wrong header: {type}.')
+                self.__log.error('Bad CONACK packet: wrong header: ', type)
 
             error = bytes_to_connack(self.__rx_buffer)
 
             if error is not None:
-                self.__log.error(f'Bad CONACK packet: {error}')
+                self.__log.error('Bad CONACK packet: ', error)
                 return False
             
             return True
@@ -230,7 +230,7 @@ class MicroMqtt():
     def __receive_pingresp(self, buffer: bytes):
         valid = bytes_to_pingresp(buffer)
         if not valid:
-            self.__log.error(f'Bad PINGRESP packet.')
+            self.__log.error('Bad PINGRESP packet.')
             return
         self.__log.info('Incoming PINGRESP.')
 
@@ -243,9 +243,9 @@ class MicroMqtt():
                     packet.clear()
 
         if error is not None:
-            self.__log.error(f'Bad SUBACK packet: {error}, pid={pid}, qos={qos}')
+            self.__log.error('Bad SUBACK packet: ', error, ', pid=', pid, ' qos=', qos)
         else:
-            self.__log.info(f'Incoming SUBACK, pid={pid}, qos={qos}')        
+            self.__log.info('Incoming SUBACK, pid=', pid, ' qos=', qos)        
 
     def __receive_puback(self, buffer: bytes):
         error, pid = bytes_to_puback(buffer)
@@ -256,9 +256,9 @@ class MicroMqtt():
                     packet.clear()
 
         if error is not None:
-            self.__log.error(f'Bad PUBACK packet: {error}, pid={pid}')
+            self.__log.error('Bad PUBACK packet: ', error, ', pid=', pid)
         else:
-            self.__log.info(f'Incoming PUBACK, pid={pid}.')  
+            self.__log.info('Incoming PUBACK, pid=', pid)  
 
     async def __receive_publish(self, buffer: bytes):
         pid, qos, topic, payload = bytes_to_publish(buffer)
@@ -266,20 +266,20 @@ class MicroMqtt():
         try:
             self.__check_qos(qos)
         except:
-            self.__log.error(f'Invalid qos at topic {topic}, qos={qos}.')
+            self.__log.error('Invalid qos at topic ', topic, ', qos=', qos)
             raise
 
         if qos > 0:
             buffer = puback_to_bytes(pid)
             await self.__send_buffer(buffer, len(buffer))
 
-        self.__log.info(f'Incoming message pid={pid}, qos={qos}, topic={topic}')
+        self.__log.info('Incoming message, pid=', pid, ' qos=', qos, ' topic=', topic)
         try:
             self.__message_callbacks[topic](topic, payload)
         except KeyError:
             pass
         except Exception as e:
-            self.__log.error(f'Callback failed: {e}')
+            self.__log.error('Callback failed: ', e)
             from sys import print_exception
             from ..core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
@@ -328,8 +328,8 @@ class MicroMqtt():
                     await self.__ping()
 
             except Exception as e:
-                self.__log.error(f'Send loop error: {e}')
-                self.__log.error(f'Send loop crashed, disconnecting...')
+                self.__log.error('Send loop error: ', e)
+                self.__log.error('Send loop crashed, disconnecting...')
                 await self.__disconnect()
                 return
 
@@ -342,8 +342,8 @@ class MicroMqtt():
                 await self.__disconnect()
                 return
             except Exception as e:
-                self.__log.error(f'Receive loop error: {e}')
-                self.__log.error(f'Receive loop crashed, disconnecting...')
+                self.__log.error('Receive loop error: ', e)
+                self.__log.error('Receive loop crashed, disconnecting...')
                 await self.__disconnect()
                 return
 
@@ -351,7 +351,7 @@ class MicroMqtt():
         while True:
             while True:
                 if not self.connected:
-                    self.__log.error(f'Disconnect detected: socket is closed.')
+                    self.__log.error('Disconnect detected: socket is closed.')
                     break
                 await sleep(3)
             self.__send_task.cancel()

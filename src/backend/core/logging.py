@@ -39,19 +39,19 @@ class Logging:
     def get_custom_logger(self, prefix):
         return Customlogging(self, prefix)
 
-    def debug(self, message):
-        self.__send('debug', message)
+    def debug(self, *msg):
+        self.__send('debug', *msg)
 
-    def error(self, message):
-        self.__send('error', message)
+    def error(self, *msg):
+        self.__send('error', *msg)
 
-    def info(self, message):
-        self.__send('info', message)      
+    def info(self, *msg):
+        self.__send('info', *msg)      
 
-    def send(self, sender, message):
-        self.__send(sender, message)
+    def send(self, sender, *msg):
+        self.__send(sender, *msg)
 
-    def __send(self, channel, message):
+    def __send(self, channel, *msg):
         if channel in self.__blacklist:
             return
         now = localtime()  # Get current time
@@ -60,7 +60,9 @@ class Logging:
         print(_SEP1, end='')
         print(channel, end='')
         print(_SEP2, end='')
-        print(message)
+        for part in msg:
+            print(str(part), end='')
+        print('')
 
         if self.__task is not None:
             self.__buffer.extend(f'{self.__counter:03d} '.encode(_UTF8), 999)
@@ -71,7 +73,8 @@ class Logging:
             self.__buffer.extend(_SEP1.encode(_UTF8), 999)
             self.__buffer.extend(channel.encode(_UTF8), 999)
             self.__buffer.extend(_SEP2.encode(_UTF8), 999)
-            self.__buffer.extend(message.encode(_UTF8), 999)
+            for part in msg:
+                self.__buffer.extend(str(part).encode(_UTF8), 999)
             self.__buffer.append(0xA) # newline
             self.__event.set()
     
@@ -106,19 +109,19 @@ class Customlogging:
         self.__logger = logger
         self.__prefix = prefix
 
-    def send(self, message):
-        self.__logger.__send(self.__prefix, message)
+    def send(self, *msg):
+        self.__logger.__send(self.__prefix, *msg)
 
 class CustomLogger:
     def __init__(self, logger: Logging, sender: str):
         self.__logger = logger
         self.__sender = sender
 
-    def info(self, message):
-        self.__logger.__send(self.__sender, message)
+    def info(self, *msg):
+        self.__logger.__send(self.__sender, *msg)
 
-    def error(self, message):
-        self.__logger.__send(f'error@{self.__sender}', message)
+    def error(self, *msg):
+        self.__logger.__send('error@', self.__sender, *msg)
 
 class TraceLogger(IOBase):
     def __init__(self, logger: Logging, prefix: str):

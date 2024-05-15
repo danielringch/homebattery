@@ -155,11 +155,11 @@ class MicroSocket:
             if code in BUSY_ERRORS:
                 return
             if code == ECONNRESET:
-                self.__log.error(f'Socket {operation} failed: connection reset.')
+                self.__log.error('Socket ', operation, ' failed: connection reset.')
                 self.__connected = False
             elif code == ECONNABORTED:
-                self.__log.error(f'Socket {operation} failed: connection aborted.')
+                self.__log.error('Socket ', operation, ' failed: connection aborted.')
                 self.__connected = False
             else:
                 self.__connected = False
-                self.__log.error(f'Socket {operation} failed: {code}.')
+                self.__log.error('Socket ', operation, ' failed: ', code)

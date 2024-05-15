@@ -47,7 +47,7 @@ class ModeSwitcher:
                 while len(self.__commands) > 0:
                     await self.__commands.popleft().run()
             except Exception as e:
-                self.__log.error(f'ModeSwitcher cycle failed: {e}')
+                self.__log.error('ModeSwitcher cycle failed: ', e)
                 from ..core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
 
@@ -100,15 +100,15 @@ class ModeSwitcher:
         return MODE_PROTECT
 
     async def __switch_charger(self, mode: str):
-        self.__log.info(f'Switching charger to mode {mode}.')
+        self.__log.info('Switching charger to mode ', mode)
         await self.__charger.set_mode(mode)
 
     async def __switch_solar(self, mode: str):
-        self.__log.info(f'Switching solar to mode {mode}.')
+        self.__log.info('Switching solar to mode ', mode)
         await self.__solar.set_mode(mode)
             
     async def __switch_inverter(self, mode: str):
-        self.__log.info(f'Switching inverter to mode {mode}.')
+        self.__log.info('Switching inverter to mode ', mode)
         await self.__inverter.set_mode(mode)
 
     def __on_mode(self, mode):

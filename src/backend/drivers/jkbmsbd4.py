@@ -103,12 +103,12 @@ class JkBmsBd4(BatteryInterface):
                 print_battery(self.__log, self.__data)
                 self.__on_data.run_all(self.__data)
             else:
-                self.__log.error(f'Failed to receive battery data.')
+                self.__log.error('Failed to receive battery data.')
 
         except MicroBleTimeoutError as e:
             self.__log.error(str(e))
         except Exception as e:
-            self.__log.error(f'BLE error: {e}')
+            self.__log.error('BLE error: ', e)
             from ..core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
         finally:
@@ -143,7 +143,7 @@ class JkBmsBd4(BatteryInterface):
                 await sleep(0.1)
                 if self.__current_decoder.success == True:
                     return True
-            self.__log.error(f'Attempt {i} for command failed.')
+            self.__log.error('Attempt ', i, ' for command failed.')
         return False
     
     def __parse(self, data):

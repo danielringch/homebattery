@@ -25,7 +25,7 @@ class AddonPort:
     def send(self, buffer):
         print(buffer)
         bytes = self.__uart.write(buffer)
-        print(f'{bytes} Bytes sent')
+        print(bytes, ' Bytes sent')
 
     async def __receive(self):
         while self.__connected:

@@ -8,7 +8,7 @@ class Watchdog:
     def __init__(self):
         enabled = bool(Pin(8, Pin.IN).value())
         from .singletons import Singletons
-        Singletons.log.info(f'Watchdog enabled={enabled}')
+        Singletons.log.info('Watchdog enabled=', enabled)
         self.__wdt = WDT(timeout=5000) if enabled else self.Stub()
 
     def feed(self):

@@ -52,7 +52,7 @@ class Shelly(ChargerInterface):
         if energy is None:
             return None
         _ = await self.__get(self.__energy_reset_request)
-        self.__log.info(f'{energy:.1f} Wh consumed since last check.')
+        self.__log.info(f'{energy:.1f}', ' Wh consumed since last check.')
         return energy
 
     @property
@@ -72,7 +72,7 @@ class Shelly(ChargerInterface):
             else:
                 status = STATUS_SYNCING
 
-            self.__log.info(f'Status: {status}')
+            self.__log.info('Status: ', status)
             if status != self.__last_status:
                 self.__on_status_change.run_all(status)
             self.__last_status = status
@@ -81,7 +81,7 @@ class Shelly(ChargerInterface):
             request_necessary = (status == STATUS_SYNCING) or (status == STATUS_FAULT)
             if request_necessary or\
                     (self.__shall_on and (now - self.__last_on_command) >= (_REFRESH_INTERVAL - 5)):
-                self.__log.info(f'Sending switch request, on={self.__shall_on}')
+                self.__log.info('Sending switch request, on=', self.__shall_on)
                 await self.__get(self.__on_request if self.__shall_on else self.__off_request)
                 if self.__shall_on:
                     self.__last_on_command = now
@@ -106,13 +106,9 @@ class Shelly(ChargerInterface):
                         self.__leds.notify_control()
                         return json
                     else:
-                        self.__log.error(f'Charger query {query} for {self.__host} failed with code {status}, {i} retries left.')
-                    #    except aiohttp.ContentTypeError as e:
-                    #        # other content type usually means request is not supported, so no retry
-                    #        log.error(f'Charger query {query} for {self.__host} failed: {str(e)}')
-                    #        return None
+                        self.__log.error('Charger query ', query, ' for ', self.__host, ' failed with code ', status, ', ', i, ' retries left.')
             except Exception as e:
-                self.__log.error(f'Charger query {query} for {self.__host} failed: {str(e)}, {i} retries left.')
+                self.__log.error('Charger query ', query, ' for ', self.__host, ' failed: ', e, ', ', i, ' retries left.')
             await sleep(1)
         return None
         

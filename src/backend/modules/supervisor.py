@@ -63,7 +63,7 @@ class Supervisor:
             try:
                 await self.__tick()
             except Exception as e:
-                self.__log.error(f'Supervisor cycle failed: {e}')
+                self.__log.error('Supervisor cycle failed: ', e)
                 from ..core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
             
@@ -94,12 +94,12 @@ class Supervisor:
             self.__clear_lock(self.__internal_error)
 
         except Exception as e:
-            self.__log.error(f'Cycle failed: {e}')
+            self.__log.error('Cycle failed: ', e)
             self.__locks.add(self.__internal_error)
 
         locked_devices = set()
         for lock in self.__locks:
-            self.__log.info(f'System lock: {lock.name}')
+            self.__log.info('System lock: ', lock.name)
             locked_devices.update(lock.locked_devices)
 
         top_priority_lock = sorted(self.__locks)[0] if len(self.__locks) else None

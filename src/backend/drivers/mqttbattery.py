@@ -55,7 +55,7 @@ class MqttBattery(BatteryInterface):
                     else:
                         raise Exception()
             except:
-                self.__log.error(f'Invalid battery data: topic={topic}, payload={hexlify(payload, " ")}')
+                self.__log.error('Invalid battery data: topic=', topic, ' payload=', hexlify(payload, " "))
                 return
             
             if self.timestamp == 0:

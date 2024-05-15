@@ -25,7 +25,7 @@ def merge_driver_statuses(statuses):
 def print_battery(logger: CustomLogger, battery: BatteryData):
     temperatues_str = ' ; '.join(f'{x:.1f}' for x in battery.temps)
     cells_str = ' | '.join(f'{x:.3f}' for x in battery.cells)
-    logger.info(f'Voltage: {battery.v} V | Current: {battery.i} A')
-    logger.info(f'SoC: {battery.soc} % | {battery.c} / {battery.c_full} Ah')
-    logger.info(f'Cycles: {battery.n} | Temperatures [°C]: {temperatues_str}')
-    logger.info(f'Cells [V]: {cells_str}')
+    logger.info('Voltage: ', battery.v, ' V | Current: ', battery.i, ' A')
+    logger.info('SoC: ', battery.soc, ' % | ', battery.c, ' / ', battery.c_full, ' Ah')
+    logger.info('Cycles: ', battery.n, ' | Temperatures [°C]: ', temperatues_str)
+    logger.info('Cells [V]: ', cells_str)

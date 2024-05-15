@@ -16,7 +16,7 @@ class VictronMppt(SolarInterface):
         elif port == "ext2":
             self.__port = Singletons.addon_port_2
         else:
-           raise Exception(f'Unknown port: {port}')
+           raise Exception('Unknown port: ', port)
         self.__port.connect(19200, 0, None, 1)
         self.__port.on_rx.add(self.__on_rx)
         self.__rx_buffer = ByteRingBuffer(1024)
@@ -56,7 +56,7 @@ class VictronMppt(SolarInterface):
     async def get_solar_energy(self):
         energy = self.__energy_delta
         self.__energy_delta = 0
-        self.__log.info(f'{energy} Wh fed after last check')
+        self.__log.info(energy, ' Wh fed after last check')
         return energy
     
     @property
@@ -106,13 +106,13 @@ class VictronMppt(SolarInterface):
                 power = int(str(payload, 'utf-8'))
                 value_changed = abs(power - self.__power) >= self.__power_hysteresis
                 if value_changed:
-                    self.__log.info(f'Power: {power} W')
+                    self.__log.info('Power: ', power, ' W')
                     self.__on_power_change.run_all(power)
                     self.__power = power
             elif header_str == 'CS':
                 status = STATUS_ON if int(str(payload, 'utf-8')) in (3,4,5,7,247) else STATUS_OFF
                 if status != self.__last_status:
-                    self.__log.info(f'Status: {status}')
+                    self.__log.info('Status: ', status)
                     self.__on_status_change.run_all(status)
                 self.__last_status = status
             elif header_str == 'H20':
@@ -125,4 +125,4 @@ class VictronMppt(SolarInterface):
                     self.__energy_delta += energy - self.__energy_value
                 self.__energy_value = energy
         except:
-            self.__log.error(f'Invalid packet received: {bytes(header)} {bytes(payload) if payload is not None else None}')
+            self.__log.error('Invalid packet received: ', bytes(header) , bytes(payload) if payload is not None else None)

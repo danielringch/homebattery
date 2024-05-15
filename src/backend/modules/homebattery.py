@@ -2,6 +2,7 @@ from asyncio import create_task, sleep
 from gc import collect as gc_collect
 from gc import mem_alloc, mem_free
 from json import load as load_json
+from micropython import const
 gc_collect()
 from ..core.addonport import AddonPort
 gc_collect()
@@ -32,7 +33,7 @@ gc_collect()
 from .outputs import Outputs
 gc_collect()
 
-__version__ = "0.1.0"
+_VERSION = const('0.1.0')
 
 prefix = '[homebattery] {0}'
 
@@ -50,8 +51,8 @@ async def homebattery():
 
     log = Singletons.log
     display = Singletons.display
-    log.debug(f'Homebattery {__version__}')
-    display.print('Homebattery', __version__)
+    log.debug('Homebattery ', _VERSION)
+    display.print('Homebattery', _VERSION)
 
     gc_collect()
     print_memory(log)
@@ -128,4 +129,4 @@ async def homebattery():
             print_memory(log)
 
 def print_memory(log):
-    log.info(f'Used memory: {mem_alloc()} Free memory: {mem_free()}')
+    log.info('Memory: ', mem_alloc(), ' used, free: ', mem_free())

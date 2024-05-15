@@ -59,7 +59,7 @@ class Daly8S24V60A(BatteryInterface):
                 if self.__data.valid:
                     break
             else:
-                self.__log.error(f'Failed to receive battery data.')
+                self.__log.error('Failed to receive battery data.')
                 return
             
             print_battery(self.__log, self.__data)
@@ -68,7 +68,7 @@ class Daly8S24V60A(BatteryInterface):
         except MicroBleTimeoutError as e:
             self.__log.error(str(e))
         except Exception as e:
-            self.__log.error(f'BLE error: {e}')
+            self.__log.error('BLE error: ', e)
             from ..core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
         finally:
@@ -96,12 +96,12 @@ class Daly8S24V60A(BatteryInterface):
         if not self.__receiving:
             return
         if len(data) < 128:
-            self.__log.error(f'Dropping too short bluetooth packet, mac={self.__mac}, len={len(data)}.')
+            self.__log.error('Dropping too short bluetooth packet, mac=', self.__mac, ' len=', len(data))
         elif data[0] == 0xd2 and data[1] == 0x03 and data[2] == 0x7c:
             self.__parse(data)
             self.__receiving = False
         else:    
-            self.__log.error(f'Dropping unknown bluetooth packet, mac={self.__mac}, data={data} .')
+            self.__log.error('Dropping unknown bluetooth packet, mac=', self.__mac, ' data=', data)
 
     def __parse(self, data):
         temp_1 = unpack('!B', data[94:95])[0] - 40

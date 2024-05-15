@@ -42,7 +42,7 @@ class Devices:
             try:
                 driver_name = meta['driver']
                 driver = drivers[driver_name]
-                log.send(_DEVICES_LOG_NAME, f'Loading device {name} with driver {driver.__name__}.')
+                log.send(_DEVICES_LOG_NAME, 'Loading device ', name, ' with driver ', driver.__name__)
                 gc_collect()
                 if driver_name == _MQTT_BATTERY:
                     instance = driver(name, meta, mqtt) 
@@ -50,7 +50,7 @@ class Devices:
                     instance = driver(name, meta)
                 self.__devices.append(instance)
             except Exception as e:
-                log.error(f'Failed to initialize device {name}: {e}')
+                log.error('Failed to initialize device ', name, ': ', e)
                 print_exception(e, log.trace)
 
     def get_by_type(self, type: str):

@@ -82,5 +82,5 @@ class NetZero:
         else:
             result = 0
 
-        self.__log.info(f'Delta: {result} W | Min: {second_smallest} W | {valid_items} / {_MIN_ITEMS} data points | {oldest_age} / {self.__mature_interval} s time span')
+        self.__log.info('Delta: ', result, ' W | Min: ', second_smallest, ' W | ', valid_items, ' / ', _MIN_ITEMS, ' data points | ', oldest_age, ' / ', self.__mature_interval, ' s time span')
         return result
