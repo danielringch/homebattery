@@ -3,7 +3,7 @@ from micropython import const
 from sys import print_exception
 from time import time
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
-from ..core.types import CallbackCollection, CommandFiFo, MODE_CHARGE, STATUS_ON, STATUS_OFF, STATUS_SYNCING
+from ..core.types import CommandFiFo, MODE_CHARGE, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 from .devices import Devices
 
 _CHARGER_LOG_NAME = const('charger')
@@ -18,13 +18,13 @@ class Charger:
 
         self.__last_status = None
 
-        self.__on_energy = CallbackCollection()
-        self.__on_status = CallbackCollection()
+        self.__on_energy = list()
+        self.__on_status = list()
 
         from ..core.types import TYPE_CHARGER
         self.__chargers = devices.get_by_type(TYPE_CHARGER)
         for device in self.__chargers:
-            device.on_charger_status_change.add(self.__on_charger_status)
+            device.on_charger_status_change.append(self.__on_charger_status)
 
         if len(self.__chargers) == 0:
             self.__last_status = STATUS_OFF
@@ -72,7 +72,7 @@ class Charger:
         status = merge_driver_statuses(driver_statuses)
 
         if status != self.__last_status:
-            self.__on_status.run_all(status)
+            run_callbacks(self.__on_status, status)
             self.__last_status = status
 
     async def __get_energy(self):
@@ -81,7 +81,7 @@ class Charger:
             charger_energy = await charger.get_charger_energy()
             if charger_energy is not None:
                 energy += charger_energy
-        self.__on_energy.run_all(round(energy))
+        run_callbacks(self.__on_energy, round(energy))
 
     def __on_charger_status(self, status):
         self.__commands.append(self.__get_status)

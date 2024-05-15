@@ -4,7 +4,7 @@ from micropython import const
 from time import time
 from .interfaces.inverterinterface import InverterInterface
 from ..core.microaiohttp import ClientSession
-from ..core.types import CallbackCollection, PowerLut, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from ..core.types import PowerLut, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 
 _CMD_TURN_ON = const('turn_on')
 _CMD_TURN_OFF = const('turn_off')
@@ -30,8 +30,8 @@ class AhoyDtu(InverterInterface):
 
         self.__leds = Singletons.leds
 
-        self.__on_status_change = CallbackCollection()
-        self.__on_power_change = CallbackCollection()
+        self.__on_status_change = list()
+        self.__on_power_change = list()
 
         self.__tx_event = Event()
         self.__last_tx = time()
@@ -180,9 +180,9 @@ class AhoyDtu(InverterInterface):
         self.__log.info('State=', status_str, ' Power=', power_str, ' %')
 
         if last_status != self.__current_status:
-            self.__on_status_change.run_all(self.__current_status)
+            run_callbacks(self.__on_status_change, self.__current_status)
         if last_percent != self.__current_percent:
-            self.__on_power_change.run_all(self.__current_power)
+            run_callbacks(self.__on_power_change, self.__current_power)
 
     def __get_next_request(self):
         if self.__is_status_synced and self.__is_power_synced:

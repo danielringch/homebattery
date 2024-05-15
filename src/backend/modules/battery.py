@@ -2,7 +2,7 @@ from asyncio import sleep
 from micropython import const
 from random import randrange
 from time import time
-from ..core.types import CallbackCollection, CommandFiFo
+from ..core.types import CommandFiFo, run_callbacks
 from .devices import Devices
 
 _BATTERY_LOG_NAME = const('battery')
@@ -17,14 +17,14 @@ class Battery:
     def __init__(self, config: dict, devices: Devices):
         self.__commands = CommandFiFo()
 
-        self.__on_battery_data = CallbackCollection()
+        self.__on_battery_data = list()
 
         self.__battery_data = dict()
         from ..core.types import TYPE_BATTERY
         self.__batteries = devices.get_by_type(TYPE_BATTERY)
         for battery in self.__batteries:
             self.__battery_data[battery.name] = None
-            battery.on_battery_data.add(self.__on_device_data)
+            battery.on_battery_data.append(self.__on_device_data)
 
     async def run(self):
         from ..core.singletons import Singletons
@@ -42,7 +42,7 @@ class Battery:
 
     def __on_device_data(self, data):
         self.__battery_data[data.name] = data
-        self.__on_battery_data.run_all(data.name)
+        run_callbacks(self.__on_battery_data, data.name)
                     
     @property
     def battery_data(self):

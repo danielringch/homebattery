@@ -3,7 +3,7 @@ from micropython import const
 from sys import print_exception
 from time import time
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
-from ..core.types import CallbackCollection, CommandFiFo, MODE_PROTECT, STATUS_ON, STATUS_OFF, STATUS_SYNCING
+from ..core.types import CommandFiFo, MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 from .devices import Devices
 
 _SOLAR_LOG_NAME = const('solar')
@@ -16,15 +16,15 @@ class Solar:
 
         self.__log = Singletons.log.create_logger(_SOLAR_LOG_NAME)
 
-        self.__on_energy = CallbackCollection()
-        self.__on_power = CallbackCollection()
-        self.__on_status = CallbackCollection()
+        self.__on_energy = list()
+        self.__on_power = list()
+        self.__on_status = list()
 
         from ..core.types import TYPE_SOLAR
         self.__devices = devices.get_by_type(TYPE_SOLAR)
         for device in self.__devices:
-            device.on_solar_status_change.add(self.__on_status_change)
-            device.on_solar_power_change.add(self.__on_power_change)
+            device.on_solar_status_change.append(self.__on_status_change)
+            device.on_solar_power_change.append(self.__on_power_change)
 
         self.__last_status = None
         self.__last_power = None
@@ -79,13 +79,13 @@ class Solar:
         status = merge_driver_statuses(driver_statuses)
 
         if status != self.__last_status:
-            self.__on_status.run_all(status)
+            run_callbacks(self.__on_status, status)
             self.__last_status = status
 
     async def __get_power(self):
         power = sum((x.get_solar_power() for x in self.__devices), 0)
         if power != self.__last_power:
-            self.__on_power.run_all(power)
+            run_callbacks(self.__on_power, power)
             self.__last_power = power
 
     async def __get_energy(self):
@@ -94,7 +94,7 @@ class Solar:
             device_energy = await device.get_solar_energy()
             if device_energy is not None:
                 energy += device_energy
-        self.__on_energy.run_all(round(energy))
+        run_callbacks(self.__on_energy, round(energy))
 
     def __on_status_change(self, _):
         self.__commands.append(self.__get_status)

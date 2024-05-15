@@ -27,7 +27,7 @@ class ModeSwitcher:
         self.__locked_devices = set()
 
         self.__mqtt = mqtt
-        self.__mqtt.on_mode.add(self.__on_mode)
+        self.__mqtt.on_mode.append(self.__on_mode)
     
         self.__requested_mode = MODE_IDLE
         self.__current_modes = (MODE_PROTECT, MODE_PROTECT, MODE_PROTECT)

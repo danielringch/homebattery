@@ -5,7 +5,7 @@ from time import time
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.backendmqtt import Mqtt
 from ..core.devicetools import print_battery
-from ..core.types import BatteryData, CallbackCollection
+from ..core.types import BatteryData, run_callbacks
 
 class MqttBattery(BatteryInterface):
     class Parser():
@@ -101,7 +101,7 @@ class MqttBattery(BatteryInterface):
 
         self.__parser = self.Parser(self.__name, self.__log, self.__cell_count, self.__temp_count)
 
-        self.__on_data = CallbackCollection()
+        self.__on_data = list()
 
         self.__receive_task = create_task(self.__receive(mqtt))
 
@@ -124,7 +124,7 @@ class MqttBattery(BatteryInterface):
             self.__parser.data_event.clear()
 
             print_battery(self.__log, self.__parser.data)
-            self.__on_data.run_all(self.__parser.data)
+            run_callbacks(self.__on_data, self.__parser.data)
 
     @property
     def on_battery_data(self):

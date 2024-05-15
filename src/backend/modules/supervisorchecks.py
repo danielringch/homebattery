@@ -50,7 +50,7 @@ class BatteryOfflineChecker(SubChecker):
         self.__battery = battery
         for name in self.__battery.battery_data.keys():
             self.__on_battery_data(name)
-        battery.on_battery_data.add(self.__on_battery_data)
+        battery.on_battery_data.append(self.__on_battery_data)
 
     def check(self, now):
         if self._lock is None:
@@ -239,7 +239,7 @@ class LiveDataOfflineChargeChecker(SubChecker):
         super().__init__(config, 'live_data_lost_charge', _PRIO_LIVE_DATA_LOST_CHARGE, (TYPE_CHARGER,))
         self.__threshold = int(config[self.__name]['threshold'])
         self.__last_data = 0
-        mqtt.on_live_consumption.add(self.__on_live_consumption)
+        mqtt.on_live_consumption.append(self.__on_live_consumption)
 
     def check(self, now):
         if self._lock is None:
@@ -255,7 +255,7 @@ class LiveDataOfflineDischargeChecker(SubChecker):
         super().__init__(config, 'live_data_lost_discharge', _PRIO_LIVE_DATA_LOST_DISCHARGE, (TYPE_INVERTER,))
         self.__threshold = int(config[self.__name]['threshold'])
         self.__last_data = 0
-        mqtt.on_live_consumption.add(self.__on_live_consumption)
+        mqtt.on_live_consumption.append(self.__on_live_consumption)
 
     def check(self, now):
         if self._lock is None:

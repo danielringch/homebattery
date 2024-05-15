@@ -1,7 +1,7 @@
 from asyncio import create_task, sleep
 from machine import Pin, UART
 
-from .types import CallbackCollection
+from .types import run_callbacks
 
 class AddonPort:
     def __init__(self, uart_id: int, spi_id: int):
@@ -15,7 +15,7 @@ class AddonPort:
         self.__rx_buffer = bytearray(64)
         self.__connected = False
         self.__rx_task = None
-        self.__on_rx = CallbackCollection()
+        self.__on_rx = list()
 
     def connect(self, baud, bits, parity, stop):
         self.__uart.init(baudrate=baud, bits=bits, parity=parity, stop=stop)
@@ -32,7 +32,7 @@ class AddonPort:
             while True:
                 if self.__uart.any() > 0:
                     length = self.__uart.readinto(self.__rx_buffer)
-                    self.on_rx.run_all(self.__rx_buffer, length)
+                    run_callbacks(self.on_rx, self.__rx_buffer, length)
                 else:
                     break
             await sleep(0.1)

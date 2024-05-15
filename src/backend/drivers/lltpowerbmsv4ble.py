@@ -6,7 +6,7 @@ from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
-from ..core.types import BatteryData, CallbackCollection
+from ..core.types import BatteryData, run_callbacks
 
 # ressources:
 # https://blog.ja-ke.tech/2020/02/07/ltt-power-bms-chinese-protocol.html
@@ -110,7 +110,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
         self.__ble = Singletons.ble
         self.__log = Singletons.log.create_logger(name)
 
-        self.__on_data = CallbackCollection()
+        self.__on_data = list()
 
         self.__device = None
         self.__data = BatteryData(name)
@@ -150,7 +150,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
             if self.__current_bundle.complete:
                 self.__current_bundle.parse(self.__data)
                 print_battery(self.__log, self.__data)
-                self.__on_data.run_all(self.__data)
+                run_callbacks(self.__on_data, self.__data)
             else:
                 self.__log.error('Failed to receive battery data.')
 

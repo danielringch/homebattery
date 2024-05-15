@@ -3,7 +3,7 @@ from micropython import const
 from time import time
 from .interfaces.chargerinterface import ChargerInterface
 from ..core.microaiohttp import ClientSession
-from ..core.types import CallbackCollection, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
+from ..core.types import run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
 
 _REFRESH_INTERVAL = const(120)
 _TIMER_INTERVAL = const(300)
@@ -27,7 +27,7 @@ class Shelly(ChargerInterface):
         self.__sync_trigger = Event()
         self.__sync_task = create_task(self.__sync())
 
-        self.__on_status_change = CallbackCollection()
+        self.__on_status_change = list()
 
         self.__on_request = f'relay/{self.__relay_id}?turn=on&timer={_TIMER_INTERVAL}'
         self.__off_request = f'relay/{self.__relay_id}?turn=off'
@@ -74,7 +74,7 @@ class Shelly(ChargerInterface):
 
             self.__log.info('Status: ', status)
             if status != self.__last_status:
-                self.__on_status_change.run_all(status)
+                run_callbacks(self.__on_status_change, status)
             self.__last_status = status
 
             now = time()

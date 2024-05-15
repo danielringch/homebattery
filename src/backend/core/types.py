@@ -59,21 +59,10 @@ class BatteryData:
     @property
     def valid(self):
         return self.timestamp > 0
-
-class CallbackCollection:
-    def __init__(self):
-        self.__callbacks = list()
-
-    def add(self, callback):
-        self.__callbacks.append(callback)
-
-    def run_all(self, *args, **kwargs):
-        for callback in self.__callbacks:
-            callback(*args, **kwargs)
-
-    @property
-    def items(self):
-        return tuple(self.__callbacks)
+    
+def run_callbacks(list, *args, **kwargs):
+    for callback in list:
+        callback(*args, **kwargs)
 
 class EnergyIntegral:
     def __init__(self):

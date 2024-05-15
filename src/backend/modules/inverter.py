@@ -4,7 +4,7 @@ from sys import print_exception
 from time import time
 from ..core.backendmqtt import Mqtt
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
-from ..core.types import CallbackCollection, CommandFiFo, MODE_DISCHARGE, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from ..core.types import CommandFiFo, MODE_DISCHARGE, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 from .devices import Devices
 from .netzero import NetZero
 
@@ -20,12 +20,12 @@ class Inverter:
         self.__event = Event()
 
         self.__mqtt = mqtt
-        self.__mqtt.on_live_consumption.add(self.__on_live_consumption)
+        self.__mqtt.on_live_consumption.append(self.__on_live_consumption)
 
         self.__netzero = NetZero(config)
-        self.__on_energy = CallbackCollection()
-        self.__on_power = CallbackCollection()
-        self.__on_status = CallbackCollection()
+        self.__on_energy = list()
+        self.__on_power = list()
+        self.__on_status = list()
 
         self.__last_status = None
         self.__last_power = None
@@ -33,8 +33,8 @@ class Inverter:
         from ..core.types import TYPE_INVERTER
         self.__inverters = devices.get_by_type(TYPE_INVERTER)
         for device in self.__inverters:
-            device.on_inverter_status_change.add(self.__on_inverter_status)
-            device.on_inverter_power_change.add(self.__on_inverter_power)
+            device.on_inverter_status_change.append(self.__on_inverter_status)
+            device.on_inverter_power_change.append(self.__on_inverter_power)
 
         self.__max_power = sum((x.max_power for x in self.__inverters), 0)
 
@@ -72,9 +72,9 @@ class Inverter:
         if status != self.__last_status :
             self.__commands.append(self.__handle_state_change)
             if status != STATUS_ON:
-                self.__on_power.run_all(0)
+                run_callbacks(self.__on_power, 0)
                 self.__netzero.clear()
-            self.__on_status.run_all(status)
+            run_callbacks(self.__on_status, status)
             self.__last_status = status
         return status
 
@@ -122,7 +122,7 @@ class Inverter:
 
         if power != self.__last_power:
             self.__netzero.clear()
-            self.__on_power.run_all(power)
+            run_callbacks(self.__on_power, power)
             self.__last_power = power
         return power
     
@@ -143,7 +143,7 @@ class Inverter:
         energy = 0.0
         for inverter in self.__inverters:
             energy += inverter.get_inverter_energy()
-        self.__on_energy.run_all(round(energy))
+        run_callbacks(self.__on_energy, round(energy))
 
     def __on_inverter_status(self, status):
         self.__commands.append(self.__get_status)

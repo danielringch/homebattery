@@ -2,7 +2,7 @@ from asyncio import create_task, Event
 from machine import Pin
 from .interfaces.solarinterface import SolarInterface
 from ..core.byteringbuffer import ByteRingBuffer
-from ..core.types import CallbackCollection, STATUS_ON, STATUS_OFF, STATUS_SYNCING
+from ..core.types import run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 
 class VictronMppt(SolarInterface):
     def __init__(self, name, config):
@@ -18,7 +18,7 @@ class VictronMppt(SolarInterface):
         else:
            raise Exception('Unknown port: ', port)
         self.__port.connect(19200, 0, None, 1)
-        self.__port.on_rx.add(self.__on_rx)
+        self.__port.on_rx.append(self.__on_rx)
         self.__rx_buffer = ByteRingBuffer(1024)
         self.__rx_task = create_task(self.__receive())
         self.__rx_trigger = Event()
@@ -32,8 +32,8 @@ class VictronMppt(SolarInterface):
         self.__energy_delta = 0
         self.__last_status = STATUS_SYNCING
 
-        self.__on_status_change = CallbackCollection()
-        self.__on_power_change = CallbackCollection()
+        self.__on_status_change = list()
+        self.__on_power_change = list()
 
 
     async def switch_solar(self, on):
@@ -107,13 +107,13 @@ class VictronMppt(SolarInterface):
                 value_changed = abs(power - self.__power) >= self.__power_hysteresis
                 if value_changed:
                     self.__log.info('Power: ', power, ' W')
-                    self.__on_power_change.run_all(power)
+                    run_callbacks(self.__on_power_change, power)
                     self.__power = power
             elif header_str == 'CS':
                 status = STATUS_ON if int(str(payload, 'utf-8')) in (3,4,5,7,247) else STATUS_OFF
                 if status != self.__last_status:
                     self.__log.info('Status: ', status)
-                    self.__on_status_change.run_all(status)
+                    run_callbacks(self.__on_status_change, status)
                 self.__last_status = status
             elif header_str == 'H20':
                 energy = int(str(payload, 'utf-8')) * 10

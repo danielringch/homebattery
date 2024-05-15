@@ -7,7 +7,7 @@ from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
-from ..core.types import BatteryData, CallbackCollection
+from ..core.types import BatteryData, run_callbacks
 
 _DALY_CELL_FORMAT_STR = const('!HHHHHHHHHHHHHHHH')
 
@@ -22,7 +22,7 @@ class Daly8S24V60A(BatteryInterface):
         self.__ble = Singletons.ble
         self.__log = Singletons.log.create_logger(name)
 
-        self.__on_data = CallbackCollection()
+        self.__on_data = list()
 
         self.__device = None
         self.__receive_task = None
@@ -63,7 +63,7 @@ class Daly8S24V60A(BatteryInterface):
                 return
             
             print_battery(self.__log, self.__data)
-            self.__on_data.run_all(self.__data)
+            run_callbacks(self.__on_data, self.__data)
 
         except MicroBleTimeoutError as e:
             self.__log.error(str(e))

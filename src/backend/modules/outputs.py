@@ -26,17 +26,17 @@ class Outputs:
         self.__display = Singletons.display
         self.__leds = Singletons.leds
 
-        self.__mqtt.on_live_consumption.add(self.__on_live_consumption)
-        self.__mqtt.on_connect.add(self.__on_mqtt_connect)
-        self.__battery.on_battery_data.add(self.__on_battery_data)
-        self.__charger.on_energy.add(self.__on_charger_energy)
-        self.__charger.on_status.add(self.__on_charger_status)
-        self.__inverter.on_energy.add(self.__on_inverter_energy)
-        self.__inverter.on_power.add(self.__on_inverter_power)
-        self.__inverter.on_status.add(self.__on_inverter_status)
-        self.__solar.on_energy.add(self.__on_solar_energy)
-        self.__solar.on_power.add(self.__on_solar_power)
-        self.__solar.on_status.add(self.__on_solar_status)
+        self.__mqtt.on_live_consumption.append(self.__on_live_consumption)
+        self.__mqtt.on_connect.append(self.__on_mqtt_connect)
+        self.__battery.on_battery_data.append(self.__on_battery_data)
+        self.__charger.on_energy.append(self.__on_charger_energy)
+        self.__charger.on_status.append(self.__on_charger_status)
+        self.__inverter.on_energy.append(self.__on_inverter_energy)
+        self.__inverter.on_power.append(self.__on_inverter_power)
+        self.__inverter.on_status.append(self.__on_inverter_status)
+        self.__solar.on_energy.append(self.__on_solar_energy)
+        self.__solar.on_power.append(self.__on_solar_power)
+        self.__solar.on_status.append(self.__on_solar_status)
 
         self.__task = create_task(self.__run())
 

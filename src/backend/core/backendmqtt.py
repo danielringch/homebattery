@@ -2,7 +2,7 @@ from asyncio import sleep
 from struct import pack, unpack
 from .micromqtt import MicroMqtt
 from ssl import CERT_NONE
-from .types import BatteryData, CallbackCollection, MODE_PROTECT, STATUS_ON, STATUS_OFF, to_operation_mode
+from .types import BatteryData, MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, to_operation_mode
 
 class Mqtt():
     def __init__(self, config: dict):
@@ -44,14 +44,14 @@ class Mqtt():
             (self.__mode_set_topic, 0) #TODO change to 1 or 2
         ]
 
-        self.__connect_callback = CallbackCollection()
-        self.__live_consumption_callback = CallbackCollection()
-        self.__mode_callback = CallbackCollection()
+        self.__connect_callback = list()
+        self.__live_consumption_callback = list()
+        self.__mode_callback = list()
 
     async def __on_mqtt_connect(self):
         for subscription in self.__subscriptions:
             await self.__mqtt.subscribe(topic=subscription[0], qos=subscription[1])
-        self.__connect_callback.run_all()
+        run_callbacks(self.__connect_callback)
 
     def __del__(self):
         pass
@@ -129,14 +129,14 @@ class Mqtt():
 
     def __on_live_consumption(self, topic, payload):
         power = unpack('!H', payload)[0]
-        self.__live_consumption_callback.run_all(power)
+        run_callbacks(self.__live_consumption_callback, power)
 
     def __on_mode(self, topic, payload):
         try:
             mode = to_operation_mode(payload.decode('utf-8'))
         except:
             mode = MODE_PROTECT
-        self.__mode_callback.run_all(mode)
+        run_callbacks(self.__mode_callback, mode)
 
     @staticmethod
     def status_to_byte(status):
