@@ -121,7 +121,7 @@ class CustomLogger:
         self.__logger.__send(self.__sender, *msg)
 
     def error(self, *msg):
-        self.__logger.__send('error@', self.__sender, *msg)
+        self.__logger.__send('error@%s' % self.__sender, *msg)
 
 class TraceLogger(IOBase):
     def __init__(self, logger: Logging, prefix: str):
