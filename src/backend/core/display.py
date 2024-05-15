@@ -1,3 +1,4 @@
+from asyncio import create_task, Event
 from machine import Pin, I2C
 from micropython import const
 from .ssd1306 import SSD1306
@@ -8,6 +9,7 @@ class Display:
     def __init__(self):
         from .singletons import Singletons
         self.__log = Singletons.log.create_logger(_DISPLAY_LOG_NAME)
+        self.__update_event = Event()
         try:
 
             i2c = I2C(id=0, sda=Pin(0), scl=Pin(1))
@@ -16,6 +18,8 @@ class Display:
             self.__display.contrast(51)
 
             self.__display.show()
+
+            self.__display_task = create_task(self.__run())
         except OSError as e:
             self.__log.info('No display detected.')
             self.__display = None
@@ -29,27 +33,27 @@ class Display:
 
     def update_mode(self, mode: str):
         self.__mode = mode
-        self.__refresh()
+        self.__update_event.set()
 
     def update_lock(self, lock: str):
         self.__lock = lock
-        self.__refresh()
+        self.__update_event.set()
 
     def update_battery_capacity(self, capacity: float):
         self.__c_bat = f'{capacity:.1f}' if capacity is not None else None
-        self.__refresh()
+        self.__update_event.set()
 
     def update_solar_power(self, power: int):
         self.__p_sol = power
-        self.__refresh()
+        self.__update_event.set()
 
     def update_inverter_power(self, power: int):
         self.__p_inv = power
-        self.__refresh()
+        self.__update_event.set()
 
     def update_consumption(self, power: int):
         self.__p_grd = power
-        self.__refresh()
+        self.__update_event.set()
 
     def print(self, *lines: str):
         if self.__display is None:
@@ -63,6 +67,13 @@ class Display:
             self.__display.show()
         except OSError as e:
             self.__log.error(f'Update failed: {e}')
+
+    async def __run(self):
+        while True:
+            await self.__update_event.wait()
+            self.__update_event.clear()
+
+            self.__refresh()
 
     def __refresh(self):
         mode = f'Mode: {self.__mode if self.__mode else "unknown"}'
