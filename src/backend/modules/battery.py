@@ -1,9 +1,8 @@
 from asyncio import sleep
-from collections import deque
 from micropython import const
 from random import randrange
 from time import time
-from ..core.types import CallbackCollection, CommandBundle
+from ..core.types import CallbackCollection, CommandFiFo
 from .devices import Devices
 
 _BATTERY_LOG_NAME = const('battery')
@@ -16,7 +15,7 @@ class Battery:
 
 
     def __init__(self, config: dict, devices: Devices):
-        self.__commands = deque((), 10)
+        self.__commands = CommandFiFo()
 
         self.__on_battery_data = CallbackCollection()
 

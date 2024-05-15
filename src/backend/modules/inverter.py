@@ -1,11 +1,10 @@
 from asyncio import Event, Lock, TimeoutError, wait_for
-from collections import deque
 from micropython import const
 from sys import print_exception
 from time import time
 from ..core.backendmqtt import Mqtt
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
-from ..core.types import CallbackCollection, CommandBundle, MODE_DISCHARGE, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from ..core.types import CallbackCollection, CommandFiFo, MODE_DISCHARGE, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 from .devices import Devices
 from .netzero import NetZero
 
@@ -15,7 +14,7 @@ class Inverter:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
         from ..core.singletons import Singletons
         self.__lock = Lock()
-        self.__commands = deque((), 10)
+        self.__commands = CommandFiFo()
 
         self.__log = Singletons.log.create_logger(_INVERTER_LOG_NAME)
         self.__event = Event()
@@ -49,8 +48,8 @@ class Inverter:
             try:
                 now = time()
                 async with self.__lock:
-                    while len(self.__commands) > 0:
-                        await self.__commands.popleft().run()
+                    while not self.__commands.empty:
+                        await self.__commands.popleft()()
                     if now >= self.__next_energy_execution:
                         await self.__get_energy()
                         self.__next_energy_execution = get_energy_execution_timestamp()
@@ -59,10 +58,9 @@ class Inverter:
                 from ..core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
             try:
-                await wait_for(self.__event.wait(), timeout=1)
+                await wait_for(self.__commands.wait_and_clear(), timeout=1)
             except TimeoutError:
                 pass
-            self.__event.clear()
 
     def get_status(self):
         return self.__last_status if self.__last_status is not None else STATUS_SYNCING
@@ -72,8 +70,7 @@ class Inverter:
         status = merge_driver_statuses(driver_statuses)
 
         if status != self.__last_status :
-            self.__commands.append(CommandBundle(self.__handle_state_change, (status,)))
-            self.__event.set()
+            self.__commands.append(self.__handle_state_change)
             if status != STATUS_ON:
                 self.__on_power.run_all(0)
                 self.__netzero.clear()
@@ -99,19 +96,19 @@ class Inverter:
     def on_status(self):
         return self.__on_status
     
-    async def __handle_state_change(self, new_status):
-        if new_status == STATUS_FAULT:
+    async def __handle_state_change(self):
+        if self.__last_status == STATUS_FAULT:
             # fault recovery has better chances if other inverters produce minimal power
             await self.__set_power(0)
 
-    async def __update_netzero(self, timestamp, consumption):
+    async def __update_netzero(self):
         if len(self.__inverters) == 0:
             return
         status = await self.__get_status()
         power = await self.__get_power()
         if status != STATUS_ON or power is None:
             return
-        delta = self.__netzero.evaluate(timestamp, consumption)
+        delta = self.__netzero.evaluate()
         if delta != 0:
             await self.__set_power(power + delta)
 
@@ -149,13 +146,12 @@ class Inverter:
         self.__on_energy.run_all(round(energy))
 
     def __on_inverter_status(self, status):
-        self.__commands.append(CommandBundle(self.__get_status, ()))
-        self.__event.set()
+        self.__commands.append(self.__get_status)
 
     def __on_inverter_power(self, power):
-        self.__commands.append(CommandBundle(self.__get_power, ()))
-        self.__event.set()
+        self.__commands.append(self.__get_power)
 
     def __on_live_consumption(self, power):
-        self.__commands.append(CommandBundle(self.__update_netzero, (time(), power)))
-        self.__event.set()
+        if self.__last_status == STATUS_ON:
+            self.__netzero.update(time(), power)
+        self.__commands.append(self.__update_netzero)

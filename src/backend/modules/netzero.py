@@ -23,15 +23,11 @@ class NetZero:
         self.__step_down = -int(config['power_change_downwards'])
         self.__mature_interval = int(config['maturity_time_span'])
 
-    def evaluate(self, timestamp, consumption):
-        self.__update_data(timestamp, consumption)
-        return self.__evaluate_power()
-
     def clear(self):
         self.__data.clear()
         self.__last_data = time()
 
-    def __update_data(self, timestamp, consumption):
+    def update(self, timestamp, consumption):
         if timestamp < self.__last_data:
             self.__log.info('Omitting data consumption data, too old.')
         empty_items = min(self.__time_span, timestamp - self.__last_data) - 1
@@ -48,7 +44,7 @@ class NetZero:
 
         self.__last_data = timestamp
 
-    def __evaluate_power(self):
+    def evaluate(self):
         valid_items = 0
         smallest = 0xFFFF
         second_smallest = 0xFFFF

@@ -1,3 +1,4 @@
+from asyncio import Event
 from micropython import const
 from struct import pack_into, unpack_from
 from time import time
@@ -74,14 +75,6 @@ class CallbackCollection:
     def items(self):
         return tuple(self.__callbacks)
 
-class CommandBundle:
-    def __init__(self, callback, parameters):
-        self.__callback = callback
-        self.__parameters = parameters
-
-    async def run(self):
-        await self.__callback(*self.__parameters)
-
 class EnergyIntegral:
     def __init__(self):
         self.__value = 0.0
@@ -129,7 +122,51 @@ class InverterStatusValues:
 
     def from_string(self, str):
         return self.__dict[str]
+    
+class SimpleFiFo:
+    class Item:
+        def __init__(self, payload):
+            self.payload = payload
+            self.next = None
 
+    def __init__(self):
+        self.__right = None
+        self.__left = None
+
+    @property
+    def empty(self):
+        return self.__left is None
+    
+    def append(self, payload):
+        item = self.Item(payload)
+        if self.__right is not None:
+            self.__right.next = item
+        self.__right = item
+        if self.__left is None:
+            self.__left = item
+
+    def popleft(self):
+        assert self.__left is not None
+        item = self.__left
+        self.__left = item.next
+        if item.next is None:
+            self.__right = None
+        item.next = None
+        return item.payload
+    
+class CommandFiFo(SimpleFiFo):
+    def __init__(self):
+        super().__init__()
+        self.event = Event()
+
+    def append(self, payload):
+        self.event.set()
+        super().append(payload)
+
+    async def wait_and_clear(self):
+        await self.event.wait()
+        self.event.clear()
+    
 class PowerLut:
     def __init__(self, path):
         self.__lut_length = 0

@@ -1,10 +1,9 @@
 from asyncio import Event, Lock, TimeoutError, wait_for
-from collections import deque
 from micropython import const
 from sys import print_exception
 from time import time
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
-from ..core.types import CommandBundle, CallbackCollection, MODE_CHARGE, STATUS_ON, STATUS_OFF, STATUS_SYNCING
+from ..core.types import CallbackCollection, CommandFiFo, MODE_CHARGE, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 from .devices import Devices
 
 _CHARGER_LOG_NAME = const('charger')
@@ -13,10 +12,9 @@ class Charger:
     def __init__(self, config: dict, devices: Devices):
         from ..core.singletons import Singletons
         self.__lock = Lock()
-        self.__commands = deque((), 10)
+        self.__commands = CommandFiFo()
 
         self.__log = Singletons.log.create_logger(_CHARGER_LOG_NAME)
-        self.__event = Event()
 
         self.__last_status = None
 
@@ -38,8 +36,8 @@ class Charger:
             try:
                 now = time()
                 async with self.__lock:
-                    while len(self.__commands) > 0:
-                        await self.__commands.popleft().run()
+                    while not self.__commands.empty:
+                        await self.__commands.popleft()()
                     if now >= self.__next_energy_execution:
                         await self.__get_energy()
                         self.__next_energy_execution = get_energy_execution_timestamp()
@@ -48,10 +46,9 @@ class Charger:
                 from ..core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
             try:
-                await wait_for(self.__event.wait(), timeout=1)
+                await wait_for(self.__commands.wait_and_clear(), timeout=1)
             except TimeoutError:
                 pass
-            self.__event.clear()
 
     def get_status(self):
         return self.__last_status if self.__last_status is not None else STATUS_SYNCING
@@ -87,4 +84,4 @@ class Charger:
         self.__on_energy.run_all(round(energy))
 
     def __on_charger_status(self, status):
-        self.__commands.append(CommandBundle(self.__get_status, ()))
+        self.__commands.append(self.__get_status)
