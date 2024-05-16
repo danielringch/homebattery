@@ -106,7 +106,7 @@ class MicroMqtt():
         packet.length = subscribe_to_bytes(pid, topic, qos, buffer)
         packet.pid = pid
             
-        self.__log.info('Outgoing subscription, pid=', pid, ' qos=', qos, ': ', topic)
+        self.__log.info('TX SUBSCRIBE, pid=', pid, ' qos=', qos, ': ', topic)
         await self.__send_packet(packet)
 
     async def publish(self, topic, payload, qos, retain):
@@ -119,7 +119,7 @@ class MicroMqtt():
         packet.length = publish_to_bytes(pid, topic, payload, qos, retain, buffer)
         packet.pid = pid
 
-        self.__log.info('Outgoing message, pid=', pid, ' qos=', qos, ' topic=', topic)
+        self.__log.info('TX PUBLISH, pid=', pid, ' qos=', qos, ' topic=', topic)
         await self.__send_packet(packet)
         if qos == 0:
             packet.clear()
@@ -216,12 +216,12 @@ class MicroMqtt():
         async with self.__receive_lock:
             type = await read_packet(self.__socket, self.__rx_buffer)
             if type != PACKET_TYPE_CONNACK:
-                self.__log.error('Bad CONACK packet: wrong header: ', type)
+                self.__log.error('Bad CONACK: wrong header: ', type)
 
             error = bytes_to_connack(self.__rx_buffer)
 
             if error is not None:
-                self.__log.error('Bad CONACK packet: ', error)
+                self.__log.error('Bad CONACK: ', error)
                 return False
             
             return True
@@ -229,9 +229,9 @@ class MicroMqtt():
     def __receive_pingresp(self, buffer: bytes):
         valid = bytes_to_pingresp(buffer)
         if not valid:
-            self.__log.error('Bad PINGRESP packet.')
+            self.__log.error('Bad PINGRESP.')
             return
-        self.__log.info('Incoming PINGRESP.')
+        self.__log.info('RX PINGRESP.')
 
     def __receive_suback(self, buffer: bytes):
         error, pid, qos = bytes_to_suback(buffer)
@@ -242,9 +242,9 @@ class MicroMqtt():
                     packet.clear()
 
         if error is not None:
-            self.__log.error('Bad SUBACK packet: ', error, ', pid=', pid, ' qos=', qos)
+            self.__log.error('Bad SUBACK: ', error, ', pid=', pid, ' qos=', qos)
         else:
-            self.__log.info('Incoming SUBACK, pid=', pid, ' qos=', qos)        
+            self.__log.info('RX SUBACK, pid=', pid, ' qos=', qos)        
 
     def __receive_puback(self, buffer: bytes):
         error, pid = bytes_to_puback(buffer)
@@ -255,9 +255,9 @@ class MicroMqtt():
                     packet.clear()
 
         if error is not None:
-            self.__log.error('Bad PUBACK packet: ', error, ', pid=', pid)
+            self.__log.error('Bad PUBACK: ', error, ', pid=', pid)
         else:
-            self.__log.info('Incoming PUBACK, pid=', pid)  
+            self.__log.info('RX PUBACK, pid=', pid)  
 
     async def __receive_publish(self, buffer: bytes):
         pid, qos, topic, payload = bytes_to_publish(buffer)
@@ -270,9 +270,10 @@ class MicroMqtt():
 
         if qos > 0:
             buffer = puback_to_bytes(pid)
+            self.__log.info('TX PUBACK, pid=', pid)  
             await self.__send_buffer(buffer, len(buffer))
 
-        self.__log.info('Incoming message, pid=', pid, ' qos=', qos, ' topic=', topic)
+        self.__log.info('RX PUBLISH, pid=', pid, ' qos=', qos, ' topic=', topic)
         try:
             self.__message_callbacks[topic](topic, payload)
         except KeyError:

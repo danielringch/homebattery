@@ -23,7 +23,7 @@ def connect_to_bytes(id: bytes, keep_alive: int, user: str, password: str, buffe
     buffer[offset: offset + len(length_buffer)] = length_buffer
     offset += len(length_buffer)
     if offset + packet_length > len(buffer):
-        raise OverflowError(f'Connect packet is too big for internal buffer: {offset + packet_length} bytes requested, {len(buffer)} available.')
+        raise OverflowError(f'CONNECT too big for internal buffer: {offset + packet_length} / {len(buffer)} bytes.')
     # protocol
     offset += pack_string_into(buffer, offset, 'MQTT')
     # version
@@ -62,7 +62,7 @@ def subscribe_to_bytes(pid: int, topic: str, qos: int, buffer: bytearray):
     buffer[offset: offset + len(length_buffer)] = length_buffer
     offset += len(length_buffer)
     if offset + packet_length > len(buffer):
-        raise OverflowError(f'Subscribe packet is too big for internal buffer: {offset + packet_length} bytes requested, {len(buffer)} available.')
+        raise OverflowError(f'SUBSCRIBE too big for internal buffer: {offset + packet_length} / {len(buffer)} bytes.')
     # pid
     pack_into('!H', buffer, offset, pid)
     offset += 2
@@ -87,7 +87,7 @@ def publish_to_bytes(pid: int, topic: str, payload: bytes, qos: int, retain: boo
     buffer[offset: offset + len(length_buffer)] = length_buffer
     offset += len(length_buffer)
     if offset + packet_length > len(buffer):
-        raise OverflowError(f'Packet is too big for internal buffer: {offset + packet_length} bytes requested, {len(buffer)} available.')
+        raise OverflowError(f'PUBLISH too big for internal buffer: {offset + packet_length} / {len(buffer)} bytes.')
     # topic
     offset += pack_string_into(buffer, offset, topic)
     # pid
