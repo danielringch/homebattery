@@ -7,8 +7,6 @@ from .inverter import Inverter
 from .charger import Charger
 from .solar import Solar
 
-_MODESWITCHER_LOG_NAME = const('modeswitcher')
-
 class ModeSwitcher:
     def __init__(self, config: dict, mqtt: Mqtt, inverter: Inverter, charger: Charger, solar: Solar):
         from ..core.singletons import Singletons
@@ -16,7 +14,7 @@ class ModeSwitcher:
         self.__commands = CommandFiFo()
         self.__task = None
 
-        self.__log = Singletons.log.create_logger(_MODESWITCHER_LOG_NAME)
+        self.__log = Singletons.log.create_logger('modeswitcher')
         self.__display = Singletons.display
         self.__leds = Singletons.leds
 

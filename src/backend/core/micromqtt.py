@@ -16,7 +16,6 @@ from uerrno import EINPROGRESS, ETIMEDOUT, ECONNRESET
 class MQTTError(Exception):
     pass
 
-_MQTT_LOG_NAME = const('mqtt')
 
 BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT, -110]
 
@@ -46,7 +45,7 @@ class MicroMqtt():
 
     def __init__(self, connect_callback):
         from .singletons import Singletons
-        self.__log = Singletons.log.create_logger(_MQTT_LOG_NAME)
+        self.__log = Singletons.log.create_logger('mqtt')
         self.__leds = Singletons.leds
 
         self.__ip = None

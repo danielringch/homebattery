@@ -1,11 +1,8 @@
 from asyncio import sleep
-from micropython import const
 from random import randrange
 from time import time
 from ..core.types import CommandFiFo, run_callbacks
 from .devices import Devices
-
-_BATTERY_LOG_NAME = const('battery')
 
 class Battery:
     class BatteryBundle:
@@ -29,7 +26,7 @@ class Battery:
     async def run(self):
         from ..core.singletons import Singletons
         if len(self.__batteries) == 0:
-            Singletons.log.send(_BATTERY_LOG_NAME, 'No batteries found.')
+            Singletons.log.send('battery', 'No batteries found.')
             return
 
         while True:

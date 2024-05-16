@@ -7,10 +7,6 @@ from .microsocket import BUSY_ERRORS
 from .types import SimpleFiFo
 
 _UTF8 = const('utf-8')
-_COUNTER_PREFIX = const('%03d ')
-_ERROR_PREFIX = const('error@%s')
-_HEADER_TEMPLATE = const('%s [%s] ')
-_TIME_TEMPLATE = const('{:02d}:{:02d}:{:02d}')
 _NEWLINE = const('\n')
 
 class Logging:
@@ -58,9 +54,9 @@ class Logging:
         if self.__counter > 999:
             self.__counter = 0
         now = localtime()  # Get current time
-        formatted_time = _TIME_TEMPLATE.format(now[3], now[4], now[5])
-        self.__buffer.append(_COUNTER_PREFIX % self.__counter)
-        header = _HEADER_TEMPLATE % (formatted_time, channel)
+        formatted_time = '{:02d}:{:02d}:{:02d}'.format(now[3], now[4], now[5])
+        self.__buffer.append('%03d ' % self.__counter)
+        header = '%s [%s] ' % (formatted_time, channel)
         self.__buffer.append(header)
         print(header, end='')
         for part in msg:
@@ -116,7 +112,7 @@ class CustomLogger:
         self.__logger.__send(self.__sender, *msg)
 
     def error(self, *msg):
-        self.__logger.__send(_ERROR_PREFIX % self.__sender, *msg)
+        self.__logger.__send('error@%s' % self.__sender, *msg)
 
 class TraceLogger(IOBase):
     def __init__(self, logger: Logging, prefix: str):

@@ -1,5 +1,4 @@
 from asyncio import Event, Lock, TimeoutError, wait_for
-from micropython import const
 from sys import print_exception
 from time import time
 from ..core.backendmqtt import Mqtt
@@ -8,15 +7,13 @@ from ..core.types import CommandFiFo, MODE_DISCHARGE, run_callbacks, STATUS_FAUL
 from .devices import Devices
 from .netzero import NetZero
 
-_INVERTER_LOG_NAME = const('inverter')
-
 class Inverter:
     def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
         from ..core.singletons import Singletons
         self.__lock = Lock()
         self.__commands = CommandFiFo()
 
-        self.__log = Singletons.log.create_logger(_INVERTER_LOG_NAME)
+        self.__log = Singletons.log.create_logger('inverter')
         self.__event = Event()
 
         self.__mqtt = mqtt

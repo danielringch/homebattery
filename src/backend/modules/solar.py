@@ -1,12 +1,9 @@
 from asyncio import Event, Lock, TimeoutError, wait_for
-from micropython import const
 from sys import print_exception
 from time import time
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
 from ..core.types import CommandFiFo, MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 from .devices import Devices
-
-_SOLAR_LOG_NAME = const('solar')
 
 class Solar:
     def __init__(self, config: dict, devices: Devices):
@@ -14,7 +11,7 @@ class Solar:
         self.__lock = Lock()
         self.__commands = CommandFiFo()
 
-        self.__log = Singletons.log.create_logger(_SOLAR_LOG_NAME)
+        self.__log = Singletons.log.create_logger('solar')
 
         self.__on_energy = list()
         self.__on_power = list()

@@ -1,5 +1,4 @@
 from asyncio import create_task, Event
-from micropython import const
 from sys import print_exception
 from ..core.backendmqtt import Mqtt
 from ..core.types import CommandFiFo, STATUS_ON
@@ -9,13 +8,11 @@ from .charger import Charger
 from .inverter import Inverter
 from .solar import Solar
 
-_OUTPUT_LOG_NAME = const('output')
-
 class Outputs:
     def __init__(self, mqtt: Mqtt, supervisor: Supervisor, battery: Battery, charger: Charger, inverter: Inverter, solar: Solar):
         from ..core.singletons import Singletons
         self.__commands = CommandFiFo()
-        self.__log = Singletons.log.create_logger(_OUTPUT_LOG_NAME)
+        self.__log = Singletons.log.create_logger('output')
         self.__mqtt = mqtt
         self.__supervisor = supervisor
         self.__battery = battery

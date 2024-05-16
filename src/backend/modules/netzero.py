@@ -2,7 +2,6 @@ from micropython import const
 from time import time
 from ..core.byteringbuffer import ByteRingBuffer
 
-_NETZERO_LOG_NAME = const('netzero')
 _MAX_EVALUATION_TIME = const(120)
 _MIN_ITEMS = const(5)
 
@@ -11,7 +10,7 @@ class NetZero:
         config = config['netzero']
 
         from ..core.singletons import Singletons
-        self.__log = Singletons.log.create_logger(_NETZERO_LOG_NAME)
+        self.__log = Singletons.log.create_logger('netzero')
         
         self.__time_span = min(_MAX_EVALUATION_TIME, int(config['evaluated_time_span']))
         self.__data = ByteRingBuffer(2 * self.__time_span, ignore_overflow=True)

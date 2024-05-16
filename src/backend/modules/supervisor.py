@@ -1,5 +1,4 @@
 from asyncio import create_task, sleep
-from micropython import const
 from sys import print_exception
 from time import time
 from ..core.backendmqtt import Mqtt
@@ -14,14 +13,12 @@ from .supervisorchecks import TempLowChargeChecker, TempLowDischargeChecker, Tem
 from .supervisorchecks import LiveDataOfflineChargeChecker, LiveDataOfflineDischargeChecker, MqttOfflineChecker
 from .supervisorchecks import StartupChecker, LockedReason, PRIO_INTERNAL
 
-_SUPERVISOR_LOG_NAME = const('supervisor')
-
 class Supervisor:
     def __init__(self, config: dict, watchdog: Watchdog, mqtt: Mqtt, modeswitcher: ModeSwitcher, inverter: Inverter, charger: Charger, battery: Battery):
         from ..core.singletons import Singletons
         config = config['supervisor']
 
-        self.__log = Singletons.log.create_logger(_SUPERVISOR_LOG_NAME)
+        self.__log = Singletons.log.create_logger('supervisor')
         self.__display = Singletons.display
         self.__leds = Singletons.leds
 

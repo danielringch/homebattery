@@ -5,12 +5,10 @@ from time import sleep
 from uerrno import ETIMEDOUT
 from .watchdog import Watchdog
 
-_NETWORK_LOG_NAME = const('network')
-
 class Network():
     def __init__(self, config: dict):
         from .singletons import Singletons
-        self.__log = Singletons.log.create_logger(_NETWORK_LOG_NAME)
+        self.__log = Singletons.log.create_logger('network')
         self.__config = config["network"]
 
     def connect(self, watchdog: Watchdog):

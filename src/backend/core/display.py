@@ -1,14 +1,11 @@
 from asyncio import create_task, Event
 from machine import Pin, I2C
-from micropython import const
 from .ssd1306 import SSD1306
-
-_DISPLAY_LOG_NAME = const('display')
 
 class Display:
     def __init__(self):
         from .singletons import Singletons
-        self.__log = Singletons.log.create_logger(_DISPLAY_LOG_NAME)
+        self.__log = Singletons.log.create_logger('display')
         self.__update_event = Event()
         try:
 

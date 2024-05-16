@@ -1,6 +1,5 @@
 from asyncio import create_task, sleep
 from bluetooth import UUID as BT_UUID
-from micropython import const
 from ubinascii import unhexlify
 from struct import unpack
 from sys import print_exception
@@ -10,9 +9,6 @@ from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTime
 from ..core.types import BatteryData, run_callbacks
 
 # ressources:
-
-
-_JK_CELL_FORMAT_STR = const('<HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH')
 
 class JkBmsBd4(BatteryInterface):
     class MesssageDecoder:
@@ -148,7 +144,7 @@ class JkBmsBd4(BatteryInterface):
     
     def __parse(self, data):
         temps = tuple(x / 10 for x in unpack('<HH', data[156:160]))
-        cells = tuple(x / 1000 for x in unpack(_JK_CELL_FORMAT_STR, data[0:64]) if x > 0)
+        cells = tuple(x / 1000 for x in unpack('<HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH', data[0:64]) if x > 0)
 
         self.__data.update(
             v=unpack('<I', data[144:148])[0] / 1000,

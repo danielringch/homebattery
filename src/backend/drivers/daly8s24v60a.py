@@ -9,8 +9,6 @@ from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
 from ..core.types import BatteryData, run_callbacks
 
-_DALY_CELL_FORMAT_STR = const('!HHHHHHHHHHHHHHHH')
-
 class Daly8S24V60A(BatteryInterface):
     def __init__(self, name, config):
         from ..core.singletons import Singletons
@@ -107,7 +105,7 @@ class Daly8S24V60A(BatteryInterface):
         temp_1 = unpack('!B', data[94:95])[0] - 40
         temp_2 = unpack('!B', data[96:97])[0] - 40
         temps = (temp_1, temp_2)
-        cells = tuple(x / 1000 for x in unpack(_DALY_CELL_FORMAT_STR, data[3:35]) if x > 0)
+        cells = tuple(x / 1000 for x in unpack('!HHHHHHHHHHHHHHHH', data[3:35]) if x > 0)
 
         self.__data.update(
                 v=unpack('!H', data[83:85])[0] / 10,
