@@ -1,8 +1,7 @@
-from asyncio import create_task, Event
-from micropython import const
+from asyncio import create_task
 from sys import print_exception
 from ..core.backendmqtt import Mqtt
-from ..core.types import CommandFiFo, MODE_CHARGE, MODE_DISCHARGE, MODE_IDLE, MODE_PROTECT, TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
+from ..core.types import CommandFiFo, MODE_CHARGE, MODE_DISCHARGE, MODE_IDLE, MODE_PROTECT, to_operation_mode, TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
 from .inverter import Inverter
 from .charger import Charger
 from .solar import Solar
@@ -23,11 +22,15 @@ class ModeSwitcher:
         self.__solar = solar
 
         self.__locked_devices = set()
+        self.__locked_devices.add(TYPE_CHARGER)
+        self.__locked_devices.add(TYPE_INVERTER)
+        self.__locked_devices.add(TYPE_SOLAR)
+        self.__locked_devices.add(0) # ensure first update of locked devices has different set
 
         self.__mqtt = mqtt
         self.__mqtt.on_mode.append(self.__on_mode)
     
-        self.__requested_mode = MODE_IDLE
+        self.__requested_mode = to_operation_mode(config['general']['default_mode'])
         self.__current_modes = (MODE_PROTECT, MODE_PROTECT, MODE_PROTECT)
         self.__displayed_mode = None
 

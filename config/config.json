@@ -1,4 +1,8 @@
 {
+  "general":
+  {
+    "default_mode": "idle"
+  },
   "network":
   {
     "ssid": "",
