@@ -104,7 +104,7 @@ class VictronMppt(SolarInterface):
             header_str = str(header, 'utf-8')
             if header_str == 'PPV':
                 power = int(str(payload, 'utf-8'))
-                value_changed = abs(power - self.__power) >= self.__power_hysteresis
+                value_changed = (abs(power - self.__power) >= self.__power_hysteresis) or power == 0
                 if value_changed:
                     self.__log.info('Power: ', power, ' W')
                     run_callbacks(self.__on_power_change, power)
