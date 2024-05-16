@@ -47,7 +47,6 @@ async def homebattery():
     Singletons.display = Display()
     Singletons.addon_port_1 = AddonPort(1, 0)
     Singletons.addon_port_2 = AddonPort(0, 1)
-    Singletons.ble = MicroBleCentral()
 
     log = Singletons.log
     display = Singletons.display
@@ -68,6 +67,11 @@ async def homebattery():
         while True:
             await sleep(1)
 
+    log.debug('Configuring logging...')
+    display.print('Configuring', 'logging...')
+    log.configure(config)
+
+    Singletons.ble = MicroBleCentral()
     watchdog = Watchdog()
     
     from ..core.network import Network
@@ -76,10 +80,6 @@ async def homebattery():
     network = Network(config)
     network.connect(watchdog)
     network.get_network_time(watchdog)
-
-    log.debug('Configuring logging...')
-    display.print('Configuring', 'logging...')
-    log.configure(config)
 
     from ..core.backendmqtt import Mqtt
     log.debug('Configuring MQTT...')
