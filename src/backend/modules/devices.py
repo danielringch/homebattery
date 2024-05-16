@@ -1,16 +1,5 @@
 from gc import collect as gc_collect
 from micropython import const
-from sys import print_exception
-
-from ..drivers.ahoydtu import AhoyDtu
-from ..drivers.daly8s24v60a import Daly8S24V60A
-from ..drivers.jkbmsbd4 import JkBmsBd4
-from ..drivers.lltpowerbmsv4ble import LltPowerBmsV4Ble
-from ..drivers.mqttbattery import MqttBattery
-from ..drivers.shelly import Shelly
-from ..drivers.victronmppt import VictronMppt
-
-_DEVICES_LOG_NAME = const('devices')
 
 _AHOY_DTU = const('ahoydtu')
 _DALY_8S_24V_60A = const('daly8S24V60A')
@@ -19,16 +8,6 @@ _LLT_POWER_BMS_V4_BLE = const('lltPowerBmsV4Ble')
 _MQTT_BATTERY = const('mqttBattery')
 _SHELLY = const('shelly')
 _VICTRON_MPPT = const('victronmppt')
-
-drivers = {
-    _AHOY_DTU: AhoyDtu,
-    _DALY_8S_24V_60A: Daly8S24V60A,
-    _JK_BMS_BD4: JkBmsBd4,
-    _LLT_POWER_BMS_V4_BLE: LltPowerBmsV4Ble,
-    _MQTT_BATTERY : MqttBattery,
-    _SHELLY: Shelly,
-    _VICTRON_MPPT: VictronMppt
-}
 
 class Devices:
     def __init__(self, config, mqtt):
@@ -39,19 +18,37 @@ class Devices:
         log = Singletons.log
 
         for name, meta in config.items():
-            try:
-                driver_name = meta['driver']
-                driver = drivers[driver_name]
-                log.send(_DEVICES_LOG_NAME, 'Loading device ', name, ' with driver ', driver.__name__)
+            driver_name = meta['driver']
+            if driver_name == _AHOY_DTU:
+                from ..drivers.ahoydtu import AhoyDtu
                 gc_collect()
-                if driver_name == _MQTT_BATTERY:
-                    instance = driver(name, meta, mqtt) 
-                else:
-                    instance = driver(name, meta)
-                self.__devices.append(instance)
-            except Exception as e:
-                log.error('Failed to initialize device ', name, ': ', e)
-                print_exception(e, log.trace)
+                self.__load_device(log, name, AhoyDtu, meta)
+            elif driver_name == _DALY_8S_24V_60A:
+                from ..drivers.daly8s24v60a import Daly8S24V60A
+                gc_collect()
+                self.__load_device(log, name, Daly8S24V60A, meta)
+            elif driver_name == _JK_BMS_BD4:
+                from ..drivers.jkbmsbd4 import JkBmsBd4
+                gc_collect()
+                self.__load_device(log, name, JkBmsBd4, meta)
+            elif driver_name == _LLT_POWER_BMS_V4_BLE:
+                from ..drivers.lltpowerbmsv4ble import LltPowerBmsV4Ble
+                gc_collect()
+                self.__load_device(log, name, LltPowerBmsV4Ble, meta)
+            elif driver_name == _MQTT_BATTERY:
+                from ..drivers.mqttbattery import MqttBattery
+                gc_collect()
+                self.__load_device(log, name, MqttBattery, meta, mqtt)
+            elif driver_name == _SHELLY:
+                from ..drivers.shelly import Shelly
+                gc_collect()
+                self.__load_device(log, name, Shelly, meta)
+            elif driver_name == _VICTRON_MPPT:
+                from ..drivers.victronmppt import VictronMppt
+                gc_collect()
+                self.__load_device(log, name, VictronMppt, meta)
+            else:
+                log.error('Unknown driver for device ', name, ': ', driver_name)
 
     def get_by_type(self, type: str):
         return tuple(x for x in self.__devices if type in x.device_types)
@@ -59,3 +56,15 @@ class Devices:
     @property
     def devices(self):
         return self.__devices
+    
+    def __load_device(self, log, name, driver, config, *args):
+        try:
+            log.send('devices', 'Loading device ', name, ' with driver ', driver.__name__)
+            instance = driver(name, config, *args)
+            self.__devices.append(instance)
+            gc_collect()
+        except Exception as e:
+            from sys import print_exception
+            from ..core.singletons import Singletons
+            log.error('Failed to initialize device ', name, ': ', e)
+            print_exception(e, Singletons.log.trace)
