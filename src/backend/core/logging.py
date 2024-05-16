@@ -30,10 +30,10 @@ class Logging:
             self.info('Logging via UDP disabled.')
 
     def create_logger(self, sender: str):
-        return CustomLogger(self, sender)
-
-    def get_custom_logger(self, prefix):
-        return Customlogging(self, prefix)
+        if sender in self.__blacklist:
+            return IgnoreLogger(self, sender)
+        else:
+            return CustomLogger(self, sender)
 
     def debug(self, *msg):
         self.__send('debug', *msg)
@@ -48,8 +48,6 @@ class Logging:
         self.__send(sender, *msg)
 
     def __send(self, channel, *msg):
-        if channel in self.__blacklist:
-            return
         self.__counter += 1
         if self.__counter > 999:
             self.__counter = 0
@@ -95,14 +93,6 @@ class Logging:
                     socke.close()
                     socke = None
 
-class Customlogging:
-    def __init__(self, logger: Logging, prefix: str):
-        self.__logger = logger
-        self.__prefix = prefix
-
-    def send(self, *msg):
-        self.__logger.__send(self.__prefix, *msg)
-
 class CustomLogger:
     def __init__(self, logger: Logging, sender: str):
         self.__logger = logger
@@ -110,6 +100,17 @@ class CustomLogger:
 
     def info(self, *msg):
         self.__logger.__send(self.__sender, *msg)
+
+    def error(self, *msg):
+        self.__logger.__send('error@%s' % self.__sender, *msg)
+
+class IgnoreLogger:
+    def __init__(self, logger: Logging, sender: str):
+        self.__logger = logger
+        self.__sender = sender
+
+    def info(self, *_):
+        pass
 
     def error(self, *msg):
         self.__logger.__send('error@%s' % self.__sender, *msg)
