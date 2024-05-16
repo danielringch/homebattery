@@ -84,14 +84,17 @@ class Supervisor:
 
         locked_devices = set()
         for lock in self.__locks:
-            self.__log.info('System lock: ', lock.name)
             locked_devices.update(lock.locked_devices)
-
         top_priority_lock = sorted(self.__locks)[0] if len(self.__locks) else None
 
         if previous_locked != top_priority_lock:
+            for lock in self.__locks:
+                self.__log.info('System lock: ', lock.name)
+            if len(self.__locks) == 0:
+                self.__log.info('System lock: none')
             await self.__mqtt.send_locked(top_priority_lock.name if top_priority_lock is not None else None)
             self.__display.update_lock(top_priority_lock.name if top_priority_lock is not None else None)
+
         self.__modeswitcher.update_locked_devices(locked_devices)
 
         if not any(x.fatal for x in self.__locks):
