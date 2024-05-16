@@ -34,7 +34,6 @@
   },
   "supervisor":
   {
-    "check_interval": 0,
     "battery_offline":
     {
       "enabled": true,

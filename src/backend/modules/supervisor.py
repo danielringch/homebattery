@@ -27,8 +27,7 @@ class Supervisor:
 
         self.__mqtt = mqtt
 
-        self.__check_interval = int(config['check_interval'])
-        self.__next_check = 0
+        self.__task = None
 
         self.__internal_error = self.internal = LockedReason(
                 name='internal',
@@ -50,8 +49,6 @@ class Supervisor:
                 MqttOfflineChecker(config, mqtt),
                 StartupChecker(config, self.__locks))
 
-        self.__health_check_passed = time()
-
     def run(self):
         self.__task = create_task(self.__run())
     
@@ -62,20 +59,11 @@ class Supervisor:
             except Exception as e:
                 self.__log.error('Supervisor cycle failed: ', e)
                 from ..core.singletons import Singletons
-                print_exception(e, Singletons.log.trace)
-            
-            deadline = 3 * self.__check_interval
-            now = time()
-            if self.__health_check_passed + deadline > now:
-                self.__watchdog.feed()
-                self.__leds.notify_watchdog()
-            await sleep(0.5)
+                print_exception(e, Singletons.log.trace) 
+            await sleep(1)
 
     async def __tick(self):
         now = time()
-        if now < self.__next_check:
-            return
-        self.__next_check = now + self.__check_interval
 
         previous_locked = sorted(self.__locks)[0] if len(self.__locks) else None
 
@@ -107,7 +95,8 @@ class Supervisor:
         self.__modeswitcher.update_locked_devices(locked_devices)
 
         if not any(x.fatal for x in self.__locks):
-            self.__health_check_passed = now
+            self.__watchdog.feed()
+            self.__leds.notify_watchdog()
 
     def __clear_lock(self, lock):
         try:
