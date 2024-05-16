@@ -1,4 +1,4 @@
-from asyncio import Event, Lock, TimeoutError, wait_for
+from asyncio import Lock, TimeoutError, wait_for
 from sys import print_exception
 from time import time
 from ..core.backendmqtt import Mqtt
@@ -14,12 +14,16 @@ class Inverter:
         self.__commands = CommandFiFo()
 
         self.__log = Singletons.log.create_logger('inverter')
-        self.__event = Event()
 
-        self.__mqtt = mqtt
-        self.__mqtt.on_live_consumption.append(self.__on_live_consumption)
+        default_power = config['general']['inverter_power']
+        if default_power == 'netzero':
+            self.__netzero = NetZero(config)
+            mqtt.on_live_consumption.append(self.__on_live_consumption)
+            self.__requested_power = None
+        else:
+            self.__netzero = None
+            self.__requested_power = int(default_power)
 
-        self.__netzero = NetZero(config)
         self.__on_energy = list()
         self.__on_power = list()
         self.__on_status = list()
@@ -70,7 +74,8 @@ class Inverter:
             self.__commands.append(self.__handle_state_change)
             if status != STATUS_ON:
                 run_callbacks(self.__on_power, 0)
-                self.__netzero.clear()
+                if self.__netzero is not None:
+                    self.__netzero.clear()
             run_callbacks(self.__on_status, status)
             self.__last_status = status
         return status
@@ -97,6 +102,8 @@ class Inverter:
         if self.__last_status == STATUS_FAULT:
             # fault recovery has better chances if other inverters produce minimal power
             await self.__set_power(0)
+        elif self.__last_status == STATUS_ON and self.__requested_power is not None:
+            await self.__set_power(self.__requested_power)
 
     async def __update_netzero(self):
         if len(self.__inverters) == 0:
@@ -105,7 +112,7 @@ class Inverter:
         power = await self.__get_power()
         if status != STATUS_ON or power is None:
             return
-        delta = self.__netzero.evaluate()
+        delta = self.__netzero.evaluate() # type: ignore
         if delta != 0:
             await self.__set_power(power + delta)
 
@@ -118,7 +125,8 @@ class Inverter:
             power += inverter_power
 
         if power != self.__last_power:
-            self.__netzero.clear()
+            if self.__netzero is not None:
+                self.__netzero.clear()
             run_callbacks(self.__on_power, power)
             self.__last_power = power
         return power
@@ -150,5 +158,5 @@ class Inverter:
 
     def __on_live_consumption(self, power):
         if self.__last_status == STATUS_ON:
-            self.__netzero.update(time(), power)
+            self.__netzero.update(time(), power) # type: ignore
         self.__commands.append(self.__update_netzero)
