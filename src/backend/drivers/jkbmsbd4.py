@@ -47,7 +47,7 @@ class JkBmsBd4(BatteryInterface):
         
         @property
         def data(self):
-            return memoryview(self.__data) if self.__data is not None else None
+            return self.__data
 
     def __init__(self, name, config):
         from ..core.singletons import Singletons

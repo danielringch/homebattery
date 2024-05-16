@@ -72,7 +72,6 @@ class VictronMppt(SolarInterface):
 
     async def __receive(self):
         buffer = bytearray(42)
-        view = memoryview(buffer)
         pointer = 0
         split = 0
         
@@ -84,9 +83,7 @@ class VictronMppt(SolarInterface):
                     pass
                 elif byte == 10:
                     if pointer > 0:
-                        header = view[:split]
-                        payload = view[split:pointer] if pointer > split else None
-                        self.__parse(header, payload)
+                        self.__parse(buffer, split, pointer)
                         pointer = 0
                         split = 0
                 elif byte == 9:
@@ -99,17 +96,18 @@ class VictronMppt(SolarInterface):
             await self.__rx_trigger.wait()
             self.__rx_trigger.clear()
 
-    def __parse(self, header, payload):
+    def __parse(self, line: bytes, split: int, length: int):
         try:
-            header_str = str(header, 'utf-8')
-            if header_str == 'PPV':
+            header = line[:split].decode('utf-8')
+            payload = line[split:length] if length > split else None
+            if header == 'PPV':
                 power = int(str(payload, 'utf-8'))
                 value_changed = abs(power - self.__power) >= self.__power_hysteresis
                 if value_changed:
                     self.__log.info('Power: ', power, ' W')
                     run_callbacks(self.__on_power_change, power)
                     self.__power = power
-            elif header_str == 'CS':
+            elif header == 'CS':
                 status = STATUS_ON if int(str(payload, 'utf-8')) in (3,4,5,7,247) else STATUS_OFF
                 if status != self.__last_status:
                     self.__log.info('Status: ', status)
@@ -119,7 +117,7 @@ class VictronMppt(SolarInterface):
                         run_callbacks(self.__on_power_change, 0)
                         self.__power = 0
                 self.__last_status = status
-            elif header_str == 'H20':
+            elif header == 'H20':
                 energy = int(str(payload, 'utf-8')) * 10
                 if self.__energy_value is None: # first readout after startup
                     pass

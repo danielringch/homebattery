@@ -296,7 +296,10 @@ class MicroMqtt():
         assert self.__socket
 
         async with self.__send_lock:
-            await self.__socket.send(memoryview(buffer), length)
+            if length > 64:
+                await self.__socket.send(memoryview(buffer), length)
+            else:
+                await self.__socket.send(buffer, length)
         self.__leds.notify_mqtt()
 
     async def __get_free_buffer(self):
