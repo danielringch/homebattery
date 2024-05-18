@@ -27,6 +27,7 @@ class Mqtt():
         self.__mode_set_topic = f'{config["root"]}/mode/set'
         self.__mode_actual_topic = f'{config["root"]}/mode/actual'
         self.__locked_topic = f'{config["root"]}/locked'
+        self.__reset_topic = f'{config["root"]}/reset'
 
         self.__mqtt = MicroMqtt(self.__on_mqtt_connect)
 
@@ -38,10 +39,12 @@ class Mqtt():
 
         self.__mqtt.message_callback_add(self.__live_consumption_topic, self.__on_live_consumption)
         self.__mqtt.message_callback_add(self.__mode_set_topic, self.__on_mode)
+        self.__mqtt.message_callback_add(self.__reset_topic, self.__on_reset)
 
         self.__subscriptions = [
             (self.__live_consumption_topic, 0),
-            (self.__mode_set_topic, 0) #TODO change to 1 or 2
+            (self.__mode_set_topic, 0), #TODO change to 1 or 2
+            (self.__reset_topic, 0)
         ]
 
         self.__connect_callback = list()
@@ -137,6 +140,14 @@ class Mqtt():
         except:
             mode = MODE_PROTECT
         run_callbacks(self.__mode_callback, mode)
+
+    def __on_reset(self, topic, payload):
+        try:
+            if payload.decode('utf-8') == 'reset':
+                from machine import reset
+                reset()
+        except:
+            pass
 
     @staticmethod
     def status_to_byte(status):
