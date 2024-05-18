@@ -1,7 +1,8 @@
 {
   "general":
   {
-    "default_mode": "idle"
+    "default_mode": "idle",
+    "inverter_power": "netzero"
   },
   "network":
   {
@@ -55,6 +56,36 @@
       "threshold": 3.1,
       "hysteresis": 0.1
     },
+    "cell_high":
+    {
+      "enabled": true,
+      "threshold": 3.75,
+      "hysteresis": 0.25
+    },
+    "temp_low_charge":
+    {
+      "enabled": true,
+      "threshold": 10,
+      "hysteresis": 2
+    },
+    "temp_low_discharge":
+    {
+      "enabled": true,
+      "threshold": 0,
+      "hysteresis": 2
+    },
+    "temp_high_charge":
+    {
+      "enabled": true,
+      "threshold": 35,
+      "hysteresis": 2
+    },
+    "temp_high_discharge":
+    {
+      "enabled": true,
+      "threshold": 35,
+      "hysteresis": 2
+    },
     "live_data_lost_charge":
     {
       "enabled": true,
@@ -87,6 +118,13 @@
     {
       "driver": "jkBmsBd4",
       "mac": ""
+    },
+    "bat4":
+    {
+      "driver": "mqttBattery",
+      "root_topic": "<root>/bat/dev/<device>",
+      "cell_count": 0,
+      "temperature_count": 0
     },
     "sol1":
     {
