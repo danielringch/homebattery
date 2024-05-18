@@ -4,6 +4,7 @@ from ..core.byteringbuffer import ByteRingBuffer
 
 _MAX_EVALUATION_TIME = const(120)
 _MIN_ITEMS = const(5)
+_NO_DATA = const(0xFF)
 
 class NetZero:
     def __init__(self, config):
@@ -32,7 +33,7 @@ class NetZero:
         empty_items = min(self.__time_span, timestamp - self.__last_data) - 1
         if empty_items > 0 and len(self.__data) > 0:
             for _ in range(empty_items):
-                self.__data.append(0xFF)
+                self.__data.append(0xFF) # no data
                 self.__data.append(0xFF)
 
         if self.__last_data == timestamp and len(self.__data) > 0:
@@ -45,13 +46,13 @@ class NetZero:
 
     def evaluate(self):
         valid_items = 0
-        smallest = 0xFFFF
-        second_smallest = 0xFFFF
+        smallest = _NO_DATA
+        second_smallest = _NO_DATA
         oldest_age = 0
 
         for i in range(0, len(self.__data), 2):
             consumption = (self.__data[i] << 8) + self.__data[i + 1]
-            if consumption == 0xFFFF:
+            if consumption == _NO_DATA:
                 continue
 
             valid_items += 1
@@ -63,7 +64,7 @@ class NetZero:
             elif consumption < second_smallest:
                 second_smallest = consumption
 
-        if second_smallest == 0xFF: # not enough data point to do any evaluation
+        if second_smallest == _NO_DATA: # not enough data point to do any evaluation
             second_smallest = None # prevent misleading log data
             result = 0
         elif second_smallest == 0:
