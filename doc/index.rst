@@ -8,6 +8,8 @@ Introduction
 Hi there!
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
 
-   configuration
+   getting_started/index_getting_started
+   software/index_software
+   hardware/index_hardware

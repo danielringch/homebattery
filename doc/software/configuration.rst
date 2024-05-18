@@ -1,20 +1,32 @@
 Configuration
 =============
 
-Configuration is done using a json file, which is uploaded onto the Raspberry Pi Pico.
+Configuration is done using a json file ``config.json``, which is uploaded onto the Raspberry Pi Pico, see TODO.
 
-Location
---------
-
-This file must be named ``config.json`` and be located in the folder ``config`` on the Pico.
 
 Example
 -------
 
-A configuration template can be found in the repostiory in the `config folder <https://github.com/danielringch/homebattery/blob/main/config>`_.
+A template configuration file can be found in the repostiory in the `config folder <https://github.com/danielringch/homebattery/blob/main/config>`_ or can be found as part of every release.
 
 Description
 -----------
+
+General
+~~~~~~~
+
+Parent key: ``general``
+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``default_mode``       | string, -      | Mode of operation the system will switch to after startup when no mode request   | idle              |
+|                        |                | is received in the meanwhile.                                                    |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``inverter_power``     | | int, W       | | Inverter power when in operation mode discharge.                               | n.a.              |
+|                        | | or           | | The special value ``netzero`` activates the net zero algorithm, which adjusts  |                   |
+|                        | | string, -    |   inverter power automatically to have a energy consumption of (nearly) zero.    |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Network
 ~~~~~~~
@@ -32,15 +44,15 @@ Parent key: ``network``
 |                        |                | | If the system is not connected to the network after the timeout, the system    |                   |
 |                        |                |   restarts.                                                                      |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``ntp_server``         | string, -      | The host address of the ntp server.                                              | time.google.com   |
+| ``ntp_server``         | string, -      | Optional. The host address of the ntp server.                                    | time.google.com   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``timezone``           | integer, -     | | The UTC offset of your timezone.                                               | 1 for Berlin      |
+| ``timezone``           | integer, -     | | Optional. The UTC offset of your timezone.                                     | 1 for Berlin      |
 |                        |                | | The UTC offsets can be found here:                                             |                   |
 |                        |                |   https://en.wikipedia.org/wiki/List_of_UTC_offsets .                            |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``ntp_timeout``        | integer, s     | | The timeout for retriving time from the ntp server.                            | 10                |
+| ``ntp_timeout``        | integer, s     | | Optional. The timeout for retriving time from the ntp server.                  | 10                |
 |                        |                | | If no time was retrived from the ntp server after the timeout, the system      |                   |
-|                        |                |   restarts.                                                                      |                   |
+|                        |                |   continues without time sync.                                                   |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 MQTT
@@ -53,9 +65,9 @@ Parent key: ``mqtt``
 +============================+==========+==================================================================================+===================+
 | ``host``                   | string   | Host address of the MQTT broker. Expected format is ``1.2.3.4:1883``.            | n.a.              |
 +----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``ca``                     | string   | Optional. Absolute path of the TLS CA certificate.                               | n.a.              |
+| ``ca``                     | string   | Optional. File name of the TLS CA certificate.                                   | n.a.              |
 +----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``tls_insecure``           | boolean  | Optional. Turns on acception self-signed TLS certificates.                       | n.a.              |
+| ``tls_insecure``           | boolean  | Optional. Turns on accepting self-signed TLS certificates.                       | n.a.              |
 +----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | ``user``                   | string   | Optional. Username for authentification at the MQTT broker.                      | n.a.              |
 +----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
@@ -78,7 +90,7 @@ Parent key: ``logging``
 +------------------------+----------+-----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype | Description                                                                       | Recommended Value |
 +========================+==========+===================================================================================+===================+
-| ``host``               | string   | Host and port of the logger.py instance.                                          | n.a.              |
+| ``host``               | string   | Optional.  If given, the logging data will be send via UDP to this host.          | n.a.              |
 |                        |          | Expected format is ``1.2.3.4:1883.``                                              |                   |
 +------------------------+----------+-----------------------------------------------------------------------------------+-------------------+
 | ``ignore``             | list of  | | Logging sender that shall be ignored.                                           | mqtt, bluetooth   |
@@ -94,45 +106,25 @@ Parent key: ``netzero``
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                        | Datatype, Unit | Description                                                                      | Recommended Value |
 +============================+================+==================================================================================+===================+
-| ``evaluated_time_span``    | integer, s     | | Time span that will be evaluated, older data will be ignored.                  | 60                |
-|                            |                | | Larger values lead to slow adaption to higher energy consumption, smaller      |                   |
-|                            |                |   values lead to more frequent changes of the inverter output power.             |                   |
+| ``evaluated_time_span``    | integer, s     | | Time span that will be evaluated, older data will be ignored.                  | 30                |
+|                            |                | | The maximum value is 120.                                                      |                   |
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``maturity_time_span``     | integer, s     | | Time span after an inverter power change during which netzero will not trigger | 10                |
-|                            |                |   another inverter power change.                                                 |                   |
-|                            |                | | Larger values lead to prolonged periods without power control, smaller values  |                   |
-|                            |                |   can lead to swinging of the power control.                                     |                   |
+| ``maturity_time_span``     | integer, s     | | Time span after an inverter power change during which netzero will not         | 15                |
+|                            |                |   inverter power.                                                                |                   |
+|                            |                | | Independently from this value, netzero will not change inverter power with     |                   |
+|                            |                |   less than two data points.                                                     |                   |
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``power_offset``           | integer, W     | | Expected remaining energy consumption.                                         | 5 - 10            |
-|                            |                | | Larger values increase the average remaining energy consumption, smaller       |                   |
-|                            |                |   can lead to swinging of the power control.                                     |                   |
+| ``power_offset``           | integer, W     | Expected remaining minimum energy consumption.                                   | 10                |
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``power_hysteresis``       | integer, W     | | Hysteresis of the remaing energy consumption.                                  | 5 - 10            |
-|                            |                | | Larger values increase the average remaining energy consumption, smaller       |                   |
-|                            |                |   values lead to prolonged periods without power control or swinging of the      |                   |
-|                            |                |   power control.                                                                 |                   |
+| ``power_hysteresis``       | integer, W     | Hysteresis of the remaing minimum energy consumption.                            | 5                 |
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``power_change_upwards``   | integer, W     | | Maximum increase of the inverter power in a single inverter power change.      | 100 - 200         |
-|                            |                | | Larger values can lead to swinging of the power control, smaller values        |                   |
-|                            |                |   increase the average remaining energy consumption.                             |                   |
+| ``power_change_upwards``   | integer, W     | Maximum increase of the inverter power in a single inverter power change.        | 100 - 200         |
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``power_change_downwards`` | integer, W     | | Decrease of the inverter power in case of a backfeeding event.                 | 25 - 50           |
-|                            |                | | Larger values increase the average remaining energy consumption, smaller       |                   |
-|                            |                |   values increate losses due to backfeeding.                                     |                   |
+| ``power_change_downwards`` | integer, W     | Decrease of the inverter power in case of a backfeeding event.                   | 25 - 50           |
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Supervisor
 ~~~~~~~~~~~
-
-Parent key: ``supervisor```
-
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
-+========================+================+==================================================================================+===================+
-| ``check_interval``     | integer, s     | | Execution interval of the supervisor checks.                                   | 10                |
-|                        |                | | Larger values lead to slower detection and release of errors, smaller values   |                   |
-|                        |                |   increase CPU load.                                                             |                   |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery offline check
 '''''''''''''''''''''
@@ -149,10 +141,21 @@ Parent key: ``supervisor``, ``battery_offline``
 |                        |                |   smaller values can lead to transient system locks.                             |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
-Battery cell voltage high check
-'''''''''''''''''''''''''''''''
+Battery overcurrent check
+'''''''''''''''''''''''''
 
-Parent key: ``supervisor``, ``cell_high``
+Parent key: ``supervisor``, ``overcurrent``
+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+
+Battery offline check
+'''''''''''''''''''''
+
+Parent key: ``supervisor``, ``battery_offline``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -185,6 +188,82 @@ Parent key: ``supervisor``, ``cell_low``
 | ``hysteresis``         | float, V       | | Hysteresis of the threshold value.                                             | 0.1               |
 |                        |                | | Larger values can prevent discharing a partially charged battery, smaller      |                   |
 |                        |                |   values can lead to toggling between discharging and non-discharging state.     |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+
+Battery cell temperature low while charging check
+'''''''''''''''''''''''''''''''''''''''''''''''''
+
+Parent key: ``supervisor``, ``temp_low_charge``
+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``threshold``          | float, °C      | | Minimum temperature of a battery.                                              | 10                |
+|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
+|                        |                |   lead to faster aging of battery cells.                                         |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
+|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
+|                        |                |   lead to toggling between charging and non-charging state.                      |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+
+Battery cell temperature low while discharging check
+''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Parent key: ``supervisor``, ``temp_low_discharge``
+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``threshold``          | float, °C      | | Minimum temperature of a battery.                                              | 0                 |
+|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
+|                        |                |   lead to faster aging of battery cells.                                         |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
+|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
+|                        |                |   lead to toggling between discharging and non-discharging state.                |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+
+Battery cell temperature high while charging check
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Parent key: ``supervisor``, ``temp_high_charge``
+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``threshold``          | float, °C      | | Maximum temperature of a battery.                                              | 35                |
+|                        |                | | Smaller values lead to smaller usable temperature range, higher values can     |                   |
+|                        |                |   lead to faster aging of battery cells.                                         |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
+|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
+|                        |                |   lead to toggling between charging and non-charging state.                      |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+
+Battery cell temperature high while discharging check
+'''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Parent key: ``supervisor``, ``temp_high_discharge``
+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``threshold``          | float, °C      | | Maximum temperature of a battery.                                              | 35                |
+|                        |                | | Smaller values lead to smaller usable temperature range, higher values can     |                   |
+|                        |                |   lead to faster aging of battery cells.                                         |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
+|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
+|                        |                |   lead to toggling between discharging and non-discharging state.                |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Live consumption data lost while charging check
@@ -252,32 +331,64 @@ LLT Power BMS with Bluetooth
 
 Driver name: ``lltPowerBmsV4Ble``
 
-+------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype | Description                                                                      | Recommended Value |
-+========================+==========+==================================================================================+===================+
-| ``mac``                | string   | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
-+------------------------+----------+----------------------------------------------------------------------------------+-------------------+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Daly H-Series Smart BMS with Bluetooth
 ''''''''''''''''''''''''''''''''''''''
 
 Driver name: ``daly8S24V60A``
 
-+------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype | Description                                                                      | Recommended Value |
-+========================+==========+==================================================================================+===================+
-| ``mac``                | string   | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
-+------------------------+----------+----------------------------------------------------------------------------------+-------------------+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 JK BMS BD4-Series
 '''''''''''''''''
 
 Driver name: ``jkBmsBd4``
 
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+
+MQTT battery
+''''''''''''
+
+Driver name: ``mqttBattery``
+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``root_topic``         | string         | | MQTT root topic for the battery data sent from another homebattery controller. | n.a.              |
+|                        |                | | Value has the following scheme: ``<root>/bat/dev/<name>``, where ``root`` is   |                   |
+|                        |                |   the MQTT root topic of the other homebattery controller and ``name`` is the    |                   |
+|                        |                |   device name of the battery.                                                    |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``cells_count``        | int            | Number of cells of the battery.                                                  | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``temperature_count``  | int            | Number of temperature sensors of the battery.                                    | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+
+Victron SmartSolar MPPT / Victron BlueSolar MPPT
+''''''''''''''''''''''''''''''''''''''''''''''''
+
+Driver name: ``victronmppt``
+
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype | Description                                                                      | Recommended Value |
 +========================+==========+==================================================================================+===================+
-| ``mac``                | string   | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
+| ``port``               | string   | Expansion slot the addon board is connected to. Possible values are ``ext1``     | n.a.              |
+|                        |          | and ``ext2``.                                                                    |                   |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| ``power_hysteresis``   | integer  | Power hysteresis, power changes smaller than the hysteresis will be ignored.     | 2                 |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 Shelly smart switch
