@@ -8,6 +8,7 @@ class VictronMppt(SolarInterface):
     def __init__(self, name, config):
         from ..core.singletons import Singletons
         from ..core.types import TYPE_SOLAR
+        self.__name = name
         self.__device_types = (TYPE_SOLAR,)
         self.__log = Singletons.log.create_logger(name)
         port = config['port']
@@ -59,6 +60,10 @@ class VictronMppt(SolarInterface):
         self.__log.info(energy, ' Wh fed after last check')
         return energy
     
+    @property
+    def name(self):
+        return self.__name
+
     @property
     def device_types(self):
         return self.__device_types

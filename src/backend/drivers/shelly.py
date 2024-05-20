@@ -13,6 +13,7 @@ class Shelly(ChargerInterface):
         super(Shelly, self).__init__()
         from ..core.singletons import Singletons
         from ..core.types import TYPE_CHARGER
+        self.__name = name
         self.__device_types = (TYPE_CHARGER,)
         self.__log = Singletons.log.create_logger(name)
         self.__host, self.__port = config['host'].split(':')
@@ -54,6 +55,10 @@ class Shelly(ChargerInterface):
         _ = await self.__get(self.__energy_reset_request)
         self.__log.info(f'{energy:.1f}', ' Wh consumed since last check.')
         return energy
+
+    @property
+    def name(self):
+        return self.__name
 
     @property
     def device_types(self):
