@@ -154,7 +154,7 @@ class AhoyDtu(InverterInterface):
                 if not self.__is_status_synced or not self.__is_power_synced or now - self.__last_rx > 30:
                     await self.__sync_from_inverters()
             except Exception as e:
-                self.__log.error('Ahoydtu cycle failed: ', e)
+                self.__log.error('Cycle failed: ', e)
                 from ..core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
             await sleep(1.0)

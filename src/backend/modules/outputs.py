@@ -44,7 +44,7 @@ class Outputs:
                 while not self.__commands.empty:
                     await self.__commands.popleft()()
             except Exception as e:
-                self.__log.error('Charger cycle failed: ', e)
+                self.__log.error('Cycle failed: ', e)
                 from ..core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
 

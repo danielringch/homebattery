@@ -42,7 +42,7 @@ class Solar:
                         await self.__get_energy()
                         self.__next_energy_execution = get_energy_execution_timestamp()
             except Exception as e:
-                self.__log.error('Solar cycle failed: ', e)
+                self.__log.error('Cycle failed: ', e)
                 from ..core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
             try:
