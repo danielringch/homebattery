@@ -22,11 +22,12 @@ class Inverter:
         else:
             self.__log.send('Netzero disabled.')
             self.__netzero = None
-            self.__requested_power = int(default_power)
 
-        self.__on_energy = list()
-        self.__on_power = list()
-        self.__on_status = list()
+        self.__status_callbacks = list()
+        self.__power_callbacks = list()
+        self.__device_power_callbacks = list()
+        self.__energy_callbacks = list()
+        self.__device_energy_callbacks = list()
 
         self.__last_status = None
         self.__last_power = None
@@ -73,10 +74,10 @@ class Inverter:
         if status != self.__last_status :
             self.__commands.append(self.__handle_state_change)
             if status != STATUS_ON:
-                run_callbacks(self.__on_power, 0)
+                run_callbacks(self.__power_callbacks, 0)
                 if self.__netzero is not None:
                     self.__netzero.clear()
-            run_callbacks(self.__on_status, status)
+            run_callbacks(self.__status_callbacks, status)
             self.__last_status = status
         return status
 
@@ -87,16 +88,24 @@ class Inverter:
                 await inverter.switch_inverter(shall_on)
 
     @property
-    def on_energy(self):
-        return self.__on_energy
+    def on_status(self):
+        return self.__status_callbacks
     
     @property
     def on_power(self):
-        return self.__on_power
+        return self.__power_callbacks
     
     @property
-    def on_status(self):
-        return self.__on_status
+    def on_device_power(self):
+        return self.__device_power_callbacks
+    
+    @property
+    def on_energy(self):
+        return self.__energy_callbacks
+    
+    @property
+    def on_device_energy(self):
+        return self.__device_energy_callbacks
     
     async def __handle_state_change(self):
         if self.__last_status == STATUS_FAULT:
@@ -127,7 +136,7 @@ class Inverter:
         if power != self.__last_power:
             if self.__netzero is not None:
                 self.__netzero.clear()
-            run_callbacks(self.__on_power, power)
+            run_callbacks(self.__power_callbacks, power)
             self.__last_power = power
         return power
     
@@ -147,14 +156,17 @@ class Inverter:
     async def __get_energy(self):
         energy = 0.0
         for inverter in self.__inverters:
-            energy += inverter.get_inverter_energy()
-        run_callbacks(self.__on_energy, round(energy))
+            device_energy = inverter.get_inverter_energy()
+            energy += device_energy
+            run_callbacks(self.__device_energy_callbacks, inverter.name, round(device_energy))
+        run_callbacks(self.__energy_callbacks, round(energy))
 
-    def __on_inverter_status(self, status):
+    def __on_inverter_status(self, sender, status):
         self.__commands.append(self.__get_status)
 
-    def __on_inverter_power(self, power):
+    def __on_inverter_power(self, sender, power):
         self.__commands.append(self.__get_power)
+        run_callbacks(self.__device_power_callbacks, sender.name, power)
 
     def __on_live_consumption(self, power):
         if self.__last_status == STATUS_ON:

@@ -162,10 +162,13 @@ class AhoyDtu(InverterInterface):
     def __update(self, status, power_percent):
         last_status = self.__current_status
         if status != STATUS_ON \
-            and self.__shall_status == STATUS_ON \
-            and self.__current_status == STATUS_ON:
+                and self.__shall_status == STATUS_ON \
+                and self.__current_status == STATUS_ON:
             # inverter deactivated itself
             self.__current_status = STATUS_FAULT
+        elif status == None:
+            # currently no communication with ahoydtu
+            self.__current_status = STATUS_SYNCING
         else:
             self.__current_status = status
 
@@ -180,9 +183,9 @@ class AhoyDtu(InverterInterface):
         self.__log.info('State=', status_str, ' Power=', power_str, ' %')
 
         if last_status != self.__current_status:
-            run_callbacks(self.__on_status_change, self.__current_status)
-        if last_percent != self.__current_percent:
-            run_callbacks(self.__on_power_change, self.__current_power)
+            run_callbacks(self.__on_status_change, self, self.__current_status)
+        if (last_percent != self.__current_percent) and self.__current_power is not None:
+            run_callbacks(self.__on_power_change, self, self.__current_power)
 
     def __get_next_request(self):
         if self.__is_status_synced and self.__is_power_synced:

@@ -23,17 +23,26 @@ class Outputs:
         self.__display = Singletons.display
         self.__leds = Singletons.leds
 
-        self.__mqtt.on_live_consumption.append(self.__on_live_consumption)
         self.__mqtt.on_connect.append(self.__on_mqtt_connect)
-        self.__battery.on_battery_data.append(self.__on_battery_data)
-        self.__charger.on_energy.append(self.__on_charger_energy)
+        self.__mqtt.on_live_consumption.append(self.__on_live_consumption)
+
         self.__charger.on_status.append(self.__on_charger_status)
-        self.__inverter.on_energy.append(self.__on_inverter_energy)
-        self.__inverter.on_power.append(self.__on_inverter_power)
+        self.__charger.on_energy.append(self.__on_charger_energy)
+        self.__charger.on_device_energy.append(self.__on_charger_device_energy)
+
         self.__inverter.on_status.append(self.__on_inverter_status)
-        self.__solar.on_energy.append(self.__on_solar_energy)
-        self.__solar.on_power.append(self.__on_solar_power)
+        self.__inverter.on_power.append(self.__on_inverter_power)
+        self.__inverter.on_device_power.append(self.__on_inverter_device_power)
+        self.__inverter.on_energy.append(self.__on_inverter_energy)
+        self.__inverter.on_device_energy.append(self.__on_inverter_device_energy)
+
         self.__solar.on_status.append(self.__on_solar_status)
+        self.__solar.on_power.append(self.__on_solar_power)
+        self.__solar.on_device_power.append(self.__on_solar_device_power)
+        self.__solar.on_energy.append(self.__on_solar_energy)
+        self.__solar.on_device_energy.append(self.__on_solar_device_energy)
+        
+        self.__battery.on_battery_data.append(self.__on_battery_data)
 
         self.__task = create_task(self.__run())
 
@@ -48,49 +57,95 @@ class Outputs:
                 from ..core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
 
-    async def __send_battery_data(self):
-        name = self.__commands.popleft()
-        changed_battery = self.__battery.battery_data[name]
-        if changed_battery is not None and changed_battery.valid and not changed_battery.is_forwarded:
-            await self.__mqtt.send_battery(changed_battery)
-
-    async def __send_charger_energy(self):
-        energy = self.__commands.popleft()
-        await self.__mqtt.send_charger_energy(energy)
+# charger
 
     async def __send_charger_status(self):
         status = self.__commands.popleft()
         await self.__mqtt.send_charger_status(status)
 
-    async def __send_inverter_energy(self):
+    async def __send_charger_energy(self):
         energy = self.__commands.popleft()
-        await self.__mqtt.send_inverter_energy(energy)
+        await self.__mqtt.send_charger_energy(energy)
+
+    async def __send_charger_device_energy(self):
+        name = self.__commands.popleft()
+        energy = self.__commands.popleft()
+        await self.__mqtt.send_charger_device_energy(name, energy)
+
+# inverter
+
+    async def __send_inverter_status(self):
+        status = self.__commands.popleft()
+        await self.__mqtt.send_inverter_status(status)
 
     async def __send_inverter_power(self):
         power = self.__commands.popleft()
         self.__display.update_inverter_power(power)
         await self.__mqtt.send_inverter_power(power)
 
-    async def __send_inverter_status(self):
-        status = self.__commands.popleft()
-        await self.__mqtt.send_inverter_status(status)
-
-    async def __send_solar_energy(self):
-        energy = self.__commands.popleft()
-        await self.__mqtt.send_solar_energy(energy)
-
-    async def __send_solar_power(self):
+    async def __send_inverter_device_power(self):
+        name = self.__commands.popleft()
         power = self.__commands.popleft()
-        self.__display.update_solar_power(power)
+        await self.__mqtt.send_inverter_device_power(name, power)
+        
+    async def __send_inverter_energy(self):
+        energy = self.__commands.popleft()
+        await self.__mqtt.send_inverter_energy(energy)
+
+    async def __send_inverter_device_energy(self):
+        name = self.__commands.popleft()
+        energy = self.__commands.popleft()
+        await self.__mqtt.send_inverter_device_energy(name, energy)
+
+# solar
 
     async def __send_solar_status(self):
         status = self.__commands.popleft()
         await self.__mqtt.send_solar_status(status)
 
+    async def __send_solar_power(self):
+        power = self.__commands.popleft()
+        self.__display.update_solar_power(power)
+        await self.__mqtt.send_solar_power(power)
+
+    async def __send_solar_device_power(self):
+        name = self.__commands.popleft()
+        power = self.__commands.popleft()
+        await self.__mqtt.send_solar_device_power(name, power)
+
+    async def __send_solar_energy(self):
+        energy = self.__commands.popleft()
+        await self.__mqtt.send_solar_energy(energy)
+
+    async def __send_solar_device_energy(self):
+        name = self.__commands.popleft()
+        energy = self.__commands.popleft()
+        await self.__mqtt.send_solar_device_energy(name, energy)
+
+# battery
+
+    async def __send_battery_current(self):
+        current = self.__commands.popleft()
+        await self.__mqtt.send_battery_current(current)
+
+    async def __send_battery_capacity(self):
+        capacity = self.__commands.popleft()
+        await self.__mqtt.send_battery_capacity(capacity)
+
+    async def __send_battery_device(self):
+        name = self.__commands.popleft()
+        changed_battery = self.__battery.battery_data[name]
+        if changed_battery is not None and changed_battery.valid and not changed_battery.is_forwarded:
+            await self.__mqtt.send_battery_device(changed_battery)
+
+# other
+
     async def __send_all_status(self):
         await self.__mqtt.send_inverter_status(self.__inverter.get_status())
         await self.__mqtt.send_solar_status(self.__solar.get_status())
         await self.__mqtt.send_charger_status(self.__charger.get_status())
+
+# callback handlers
 
     def __on_mqtt_connect(self):
         self.__commands.append(self.__send_all_status)
@@ -98,49 +153,80 @@ class Outputs:
     def __on_live_consumption(self, power):
         self.__display.update_consumption(power)
 
-    def __on_battery_data(self, name):
-        self.__commands.append(self.__send_battery_data)
-        self.__commands.append(name)
-
-        total_capacity = 0
-        for battery in self.__battery.battery_data.values():
-            if battery is None or not battery.valid:
-                break
-            total_capacity += battery.c
-        else:
-            self.__display.update_battery_capacity(total_capacity)
-
-    def __on_charger_energy(self, energy):
-        self.__commands.append(self.__send_charger_energy)
-        self.__commands.append(energy)
-
     def __on_charger_status(self, status):
         self.__leds.switch_charger_on(status == STATUS_ON)
         self.__commands.append(self.__send_charger_status)
         self.__commands.append(status)
 
-    def __on_inverter_energy(self, energy):
-        self.__commands.append(self.__send_inverter_energy)
+    def __on_charger_energy(self, energy: int):
+        self.__commands.append(self.__send_charger_energy)
         self.__commands.append(energy)
 
-    def __on_inverter_power(self, power):
-        self.__commands.append(self.__send_inverter_power)
-        self.__commands.append(power)
+    def __on_charger_device_energy(self, name: str, energy: int):
+        self.__commands.append(self.__send_charger_device_energy)
+        self.__commands.append(name)
+        self.__commands.append(energy)
 
     def __on_inverter_status(self, status):
         self.__leds.switch_inverter_on(status == STATUS_ON)
         self.__commands.append(self.__send_inverter_status)
         self.__commands.append(status)
 
-    def __on_solar_energy(self, energy):
-        self.__commands.append(self.__send_solar_energy)
+    def __on_inverter_power(self, power):
+        self.__commands.append(self.__send_inverter_power)
+        self.__commands.append(power)
+
+    def __on_inverter_device_power(self, name, power):
+        self.__commands.append(self.__send_inverter_device_power)
+        self.__commands.append(name)
+        self.__commands.append(power)
+
+    def __on_inverter_energy(self, energy):
+        self.__commands.append(self.__send_inverter_energy)
         self.__commands.append(energy)
 
-    def __on_solar_power(self, power):
-        self.__commands.append(self.__send_solar_power)
-        self.__commands.append(power)
+    def __on_inverter_device_energy(self, name, energy):
+        self.__commands.append(self.__send_inverter_device_energy)
+        self.__commands.append(name)
+        self.__commands.append(energy)
 
     def __on_solar_status(self, status):
         self.__leds.switch_solar_on(status == STATUS_ON)
         self.__commands.append(self.__send_solar_status)
         self.__commands.append(status)
+
+    def __on_solar_power(self, power):
+        self.__commands.append(self.__send_solar_power)
+        self.__commands.append(power)
+
+    def __on_solar_device_power(self, name, power):
+        self.__commands.append(self.__send_solar_device_power)
+        self.__commands.append(name)
+        self.__commands.append(power)
+
+    def __on_solar_energy(self, energy):
+        self.__commands.append(self.__send_solar_energy)
+        self.__commands.append(energy)
+
+    def __on_solar_device_energy(self, name, energy):
+        self.__commands.append(self.__send_solar_device_energy)
+        self.__commands.append(name)
+        self.__commands.append(energy)
+
+    def __on_battery_data(self, name):
+        self.__commands.append(self.__send_battery_device)
+        self.__commands.append(name)
+
+        total_current = 0
+        total_capacity = 0
+        for battery in self.__battery.battery_data.values():
+            if battery is None or not battery.valid:
+                break
+            total_current += battery.i
+            total_capacity += battery.c
+        else:
+            self.__display.update_battery_capacity(total_capacity)
+            self.__commands.append(self.__send_battery_current)
+            self.__commands.append(total_current)
+            self.__commands.append(self.__send_battery_capacity)
+            self.__commands.append(total_capacity)

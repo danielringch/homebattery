@@ -15,8 +15,9 @@ class Charger:
 
         self.__last_status = None
 
-        self.__on_energy = list()
-        self.__on_status = list()
+        self.__status_callbacks = list()
+        self.__energy_callbacks = list()
+        self.__device_energy_callbacks = list()
 
         from ..core.types import TYPE_CHARGER
         self.__chargers = devices.get_by_type(TYPE_CHARGER)
@@ -58,18 +59,22 @@ class Charger:
 
     @property
     def on_energy(self):
-        return self.__on_energy
+        return self.__energy_callbacks
+    
+    @property
+    def on_device_energy(self):
+        return self.__device_energy_callbacks
     
     @property
     def on_status(self):
-        return self.__on_status
+        return self.__status_callbacks
 
     async def __get_status(self):
         driver_statuses = tuple(x.get_charger_status() for x in self.__chargers)
         status = merge_driver_statuses(driver_statuses)
 
         if status != self.__last_status:
-            run_callbacks(self.__on_status, status)
+            run_callbacks(self.__status_callbacks, status)
             self.__last_status = status
 
     async def __get_energy(self):
@@ -78,7 +83,8 @@ class Charger:
             charger_energy = await charger.get_charger_energy()
             if charger_energy is not None:
                 energy += charger_energy
-        run_callbacks(self.__on_energy, round(energy))
+                run_callbacks(self.__device_energy_callbacks, charger.name, charger_energy)
+        run_callbacks(self.__energy_callbacks, round(energy))
 
     def __on_charger_status(self, status):
         self.__commands.append(self.__get_status)

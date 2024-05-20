@@ -111,16 +111,16 @@ class VictronMppt(SolarInterface):
                 value_changed = abs(power - self.__power) >= self.__power_hysteresis
                 if value_changed:
                     self.__log.info('Power: ', power, ' W')
-                    run_callbacks(self.__on_power_change, power)
+                    run_callbacks(self.__on_power_change, self, power)
                     self.__power = power
             elif header == 'CS':
                 status = STATUS_ON if int(str(payload, 'utf-8')) in (3,4,5,7,247) else STATUS_OFF
                 if status != self.__last_status:
                     self.__log.info('Status: ', status)
-                    run_callbacks(self.__on_status_change, status)
+                    run_callbacks(self.__on_status_change, self, status)
                     if status == STATUS_OFF:
                         self.__log.info('Power: 0 W')
-                        run_callbacks(self.__on_power_change, 0)
+                        run_callbacks(self.__on_power_change, self, 0)
                         self.__power = 0
                 self.__last_status = status
             elif header == 'H20':
