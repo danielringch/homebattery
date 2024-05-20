@@ -2,7 +2,7 @@
   "general":
   {
     "default_mode": "idle",
-    "inverter_power": "netzero"
+    "inverter_power": 0
   },
   "network":
   {
@@ -30,6 +30,7 @@
   },
   "netzero":
   {
+    "enabled": true,
     "evaluated_time_span": 0,
     "maturity_time_span": 0,
     "power_offset": 0,

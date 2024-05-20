@@ -15,12 +15,12 @@ class Inverter:
 
         self.__log = Singletons.log.create_logger('inverter')
 
-        default_power = config['general']['inverter_power']
-        if default_power == 'netzero':
+        self.__default_power = int(config['general']['inverter_power'])
+        if config['netzero']['enabled'] == True:
             self.__netzero = NetZero(config)
             mqtt.on_live_consumption.append(self.__on_live_consumption)
-            self.__requested_power = None
         else:
+            self.__log.send('Netzero disabled.')
             self.__netzero = None
             self.__requested_power = int(default_power)
 
@@ -102,8 +102,8 @@ class Inverter:
         if self.__last_status == STATUS_FAULT:
             # fault recovery has better chances if other inverters produce minimal power
             await self.__set_power(0)
-        elif self.__last_status == STATUS_ON and self.__requested_power is not None:
-            await self.__set_power(self.__requested_power)
+        elif self.__last_status == STATUS_ON and self.__netzero is None:
+            await self.__set_power(self.__default_power)
 
     async def __update_netzero(self):
         if len(self.__inverters) == 0:

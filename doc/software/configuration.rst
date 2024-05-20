@@ -23,9 +23,8 @@ Parent key: ``general``
 | ``default_mode``       | string, -      | Mode of operation the system will switch to after startup when no mode request   | idle              |
 |                        |                | is received in the meanwhile.                                                    |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``inverter_power``     | | int, W       | | Inverter power when in operation mode discharge.                               | n.a.              |
-|                        | | or           | | The special value ``netzero`` activates the net zero algorithm, which adjusts  |                   |
-|                        | | string, -    |   inverter power automatically to have a energy consumption of (nearly) zero.    |                   |
+| ``inverter_power``     | int, W         | | Inverter power when in operation mode discharge.                               | n.a.              |
+|                        |                | | This valud is currently only used if netzero is disabled.                      |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Network
@@ -106,6 +105,8 @@ Parent key: ``netzero``
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                        | Datatype, Unit | Description                                                                      | Recommended Value |
 +============================+================+==================================================================================+===================+
+| ``enabled``                | boolean, -     | Enables the netzero algorithm.                                                   | n.a.              |
++----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``evaluated_time_span``    | integer, s     | | Time span that will be evaluated, older data will be ignored.                  | 30                |
 |                            |                | | The maximum value is 120.                                                      |                   |
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
