@@ -103,6 +103,7 @@ class VictronMppt(SolarInterface):
 
     def __parse(self, line: bytes, split: int, length: int):
         try:
+            header = None
             header = line[:split].decode('utf-8')
             payload = line[split:length] if length > split else None
             if header == 'PPV':
@@ -132,4 +133,4 @@ class VictronMppt(SolarInterface):
                     self.__energy_delta += energy - self.__energy_value
                 self.__energy_value = energy
         except:
-            self.__log.error('Invalid packet received: ', bytes(header) , bytes(payload) if payload is not None else None)
+            self.__log.error('Invalid packet received: header=', header if header is not None else None, 'payload=', payload if payload is not None else None)
