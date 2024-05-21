@@ -53,7 +53,7 @@ class MicroBleDevice:
     def __init__(self, central: MicroBleCentral):
         from .singletons import Singletons
         self.__log = Singletons.log.create_logger(_BLUETOOTH_LOG_NAME)
-        self.__leds = Singletons.leds
+        self.__ui = Singletons.ui
 
         self.__central = central
         self.__ble = central.__ble
@@ -87,7 +87,7 @@ class MicroBleDevice:
             self.__central.__current_device = self
             self.__log.info('Connecting to ', self.__printable_address)
             self.__ble.gap_connect(self.__address_type, self.__address)
-            self.__leds.notify_bluetooth()
+            self.__ui.notify_bluetooth()
             for _ in range (timeout // 100):
                 if self.__handle is not None:
                     break
@@ -97,7 +97,7 @@ class MicroBleDevice:
                 raise MicroBleTimeoutError('connect')
 
             self.__ble.gattc_exchange_mtu(self.__handle)
-            self.__leds.notify_bluetooth()
+            self.__ui.notify_bluetooth()
             for _ in range (timeout // 100):
                 if self.__mtu is not None:
                     break
@@ -118,7 +118,7 @@ class MicroBleDevice:
             if self.__handle is None:
                 return
             self.__ble.gap_disconnect(self.__handle)
-            self.__leds.notify_bluetooth()
+            self.__ui.notify_bluetooth()
             for _ in range (timeout // 100):
                 if self.__central.__current_device is None and self.__handle is None:
                     return
@@ -171,7 +171,7 @@ class MicroBleDevice:
 
     async def __write(self, target_handle, data, is_request, timeout):
         self.__write_event.clear()
-        self.__leds.notify_bluetooth()
+        self.__ui.notify_bluetooth()
         self.__ble.gattc_write(self.__handle, target_handle, data, 1 if is_request else 0)
         if not is_request:
             return
@@ -186,7 +186,7 @@ class MicroBleDevice:
 
     async def __read(self, target_handle, timeout):
         self.__read_event.clear()
-        self.__leds.notify_bluetooth()
+        self.__ui.notify_bluetooth()
         self.__ble.gattc_read(self.__handle, target_handle)
         for _ in range (timeout // 100):
             await sleep(0.1)
@@ -289,7 +289,7 @@ class MicroBleCentral:
     def __init__(self):
         from .singletons import Singletons
         self.__log = Singletons.log.create_logger(_BLUETOOTH_LOG_NAME)
-        self.__leds = Singletons.leds
+        self.__ui = Singletons.ui
 
         self.__ble = BLE()
         self.__buffer = MicroBleBuffer(512)
@@ -304,7 +304,7 @@ class MicroBleCentral:
         self.__ble.active(False)
             
     def __on_irq(self, event, data):
-        self.__leds.notify_bluetooth()
+        self.__ui.notify_bluetooth()
         try:
             if event == _IRQ_PERIPHERAL_CONNECT:
                 conn_handle, addr_type, addr = data

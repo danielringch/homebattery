@@ -19,8 +19,7 @@ class Supervisor:
         config = config['supervisor']
 
         self.__log = Singletons.log.create_logger('supervisor')
-        self.__display = Singletons.display
-        self.__leds = Singletons.leds
+        self.__ui = Singletons.ui
 
         self.__watchdog = watchdog
         self.__modeswitcher = modeswitcher
@@ -93,13 +92,13 @@ class Supervisor:
             if len(self.__locks) == 0:
                 self.__log.info('System lock: none')
             await self.__mqtt.send_locked(top_priority_lock.name if top_priority_lock is not None else None)
-            self.__display.update_lock(top_priority_lock.name if top_priority_lock is not None else None)
+            self.__ui.update_lock(top_priority_lock.name if top_priority_lock is not None else None)
 
         self.__modeswitcher.update_locked_devices(locked_devices)
 
         if not any(x.fatal for x in self.__locks):
             self.__watchdog.feed()
-            self.__leds.notify_watchdog()
+            self.__ui.notify_watchdog()
 
     def __clear_lock(self, lock):
         try:

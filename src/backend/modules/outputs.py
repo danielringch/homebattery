@@ -20,8 +20,7 @@ class Outputs:
         self.__inverter = inverter
         self.__solar = solar
 
-        self.__display = Singletons.display
-        self.__leds = Singletons.leds
+        self.__ui = Singletons.ui
 
         self.__mqtt.on_connect.append(self.__on_mqtt_connect)
         self.__mqtt.on_live_consumption.append(self.__on_live_consumption)
@@ -80,7 +79,7 @@ class Outputs:
 
     async def __send_inverter_power(self):
         power = self.__commands.popleft()
-        self.__display.update_inverter_power(power)
+        self.__ui.update_inverter_power(power)
         await self.__mqtt.send_inverter_power(power)
 
     async def __send_inverter_device_power(self):
@@ -105,7 +104,7 @@ class Outputs:
 
     async def __send_solar_power(self):
         power = self.__commands.popleft()
-        self.__display.update_solar_power(power)
+        self.__ui.update_solar_power(power)
         await self.__mqtt.send_solar_power(power)
 
     async def __send_solar_device_power(self):
@@ -151,10 +150,10 @@ class Outputs:
         self.__commands.append(self.__send_all_status)
 
     def __on_live_consumption(self, power):
-        self.__display.update_consumption(power)
+        self.__ui.update_consumption(power)
 
     def __on_charger_status(self, status):
-        self.__leds.switch_charger_on(status == STATUS_ON)
+        self.__ui.switch_charger_on(status == STATUS_ON)
         self.__commands.append(self.__send_charger_status)
         self.__commands.append(status)
 
@@ -168,7 +167,7 @@ class Outputs:
         self.__commands.append(energy)
 
     def __on_inverter_status(self, status):
-        self.__leds.switch_inverter_on(status == STATUS_ON)
+        self.__ui.switch_inverter_on(status == STATUS_ON)
         self.__commands.append(self.__send_inverter_status)
         self.__commands.append(status)
 
@@ -191,7 +190,7 @@ class Outputs:
         self.__commands.append(energy)
 
     def __on_solar_status(self, status):
-        self.__leds.switch_solar_on(status == STATUS_ON)
+        self.__ui.switch_solar_on(status == STATUS_ON)
         self.__commands.append(self.__send_solar_status)
         self.__commands.append(status)
 
@@ -225,7 +224,7 @@ class Outputs:
             total_current += battery.i
             total_capacity += battery.c
         else:
-            self.__display.update_battery_capacity(total_capacity)
+            self.__ui.update_battery_capacity(total_capacity)
             self.__commands.append(self.__send_battery_current)
             self.__commands.append(total_current)
             self.__commands.append(self.__send_battery_capacity)

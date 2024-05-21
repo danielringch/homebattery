@@ -28,7 +28,7 @@ class AhoyDtu(InverterInterface):
         self.__host, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
 
-        self.__leds = Singletons.leds
+        self.__ui = Singletons.ui
 
         self.__on_status_change = list()
         self.__on_power_change = list()
@@ -281,7 +281,7 @@ class AhoyDtu(InverterInterface):
                status = response.status
                if status >= 200 and status <= 299:
                    json = await response.json()
-                   self.__leds.notify_control()
+                   self.__ui.notify_control()
                    return json
                else:
                    self.__log.error('Inverter query ', query, ' failed with code ', status, ', ', i, ' retries left.')
@@ -299,7 +299,7 @@ class AhoyDtu(InverterInterface):
                 if status >= 200 and status <= 299:
                     json = await response.json()
                     if json["success"] in (True, "true"):
-                        self.__leds.notify_control()
+                        self.__ui.notify_control()
                         return json
                 self.__log.error('Inverter command ', query, ' failed with code ', status)
             except Exception as e:

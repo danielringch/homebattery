@@ -46,7 +46,7 @@ class MicroMqtt():
     def __init__(self, connect_callback):
         from .singletons import Singletons
         self.__log = Singletons.log.create_logger('mqtt')
-        self.__leds = Singletons.leds
+        self.__ui = Singletons.ui
 
         self.__ip = None
         self.__port = None
@@ -197,7 +197,7 @@ class MicroMqtt():
         async with self.__receive_lock:
             type = await read_packet(self.__socket, self.__rx_buffer)
 
-            self.__leds.notify_mqtt()
+            self.__ui.notify_mqtt()
 
             if type == PACKET_TYPE_PINGRESP:
                 self.__receive_pingresp(self.__rx_buffer)
@@ -300,7 +300,7 @@ class MicroMqtt():
                 await self.__socket.send(memoryview(buffer), length)
             else:
                 await self.__socket.send(buffer, length)
-        self.__leds.notify_mqtt()
+        self.__ui.notify_mqtt()
 
     async def __get_free_buffer(self):
         while True:

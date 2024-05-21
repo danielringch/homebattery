@@ -20,7 +20,7 @@ class Shelly(ChargerInterface):
         self.__port = int(self.__port)
         self.__relay_id = int(config['relay_id'])
 
-        self.__leds = Singletons.leds
+        self.__ui = Singletons.ui
 
         self.__shall_on = False
         self.__last_status = STATUS_SYNCING
@@ -108,7 +108,7 @@ class Shelly(ChargerInterface):
                     status = response.status
                     if (status >= 200 and status <= 299):
                         json = await response.json()
-                        self.__leds.notify_control()
+                        self.__ui.notify_control()
                         return json
                     else:
                         self.__log.error('Charger query ', query, ' for ', self.__host, ' failed with code ', status, ', ', i, ' retries left.')

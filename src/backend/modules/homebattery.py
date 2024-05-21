@@ -6,13 +6,11 @@ from micropython import const
 gc_collect()
 from ..core.addonport import AddonPort
 gc_collect()
-from ..core.display import Display
-gc_collect()
 from ..core.microblecentral import MicroBleCentral
 gc_collect()
-from ..core.leds import Leds
-gc_collect()
 from ..core.logging import Logging
+gc_collect()
+from ..core.userinterface import UserInterface
 gc_collect()
 from ..core.watchdog import Watchdog
 gc_collect()
@@ -43,15 +41,14 @@ async def homebattery():
 
     from ..core.singletons import Singletons
     Singletons.log = Logging()
-    Singletons.leds = Leds()
-    Singletons.display = Display()
+    Singletons.ui = UserInterface()
     Singletons.addon_port_1 = AddonPort(1, 0)
     Singletons.addon_port_2 = AddonPort(0, 1)
 
     log = Singletons.log
-    display = Singletons.display
+    ui = Singletons.ui
     log.debug('Homebattery ', _VERSION)
-    display.print('Homebattery', _VERSION)
+    ui.print('Homebattery', _VERSION)
 
     gc_collect()
     print_memory(log)
@@ -63,12 +60,12 @@ async def homebattery():
             config = load_json(stream)
     except:
         log.error('Invalid configuration.')
-        display.print('Invalid', 'configuration.')
+        ui.print('Invalid', 'configuration.')
         while True:
             await sleep(1)
 
     log.debug('Configuring logging...')
-    display.print('Configuring', 'logging...')
+    ui.print('Configuring', 'logging...')
     log.configure(config)
 
     Singletons.ble = MicroBleCentral()
@@ -76,20 +73,20 @@ async def homebattery():
     
     from ..core.network import Network
     log.debug('Connecting to network...')
-    display.print('Connecting to', 'network...')
+    ui.print('Connecting to', 'network...')
     network = Network(config)
     network.connect(watchdog)
     network.get_network_time(watchdog)
 
     from ..core.backendmqtt import Mqtt
     log.debug('Configuring MQTT...')
-    display.print('Configuring', 'MQTT...')
+    ui.print('Configuring', 'MQTT...')
     mqtt = Mqtt(config)
 
     watchdog.feed()
     gc_collect()
 
-    display.print('Configuring', 'modules...')
+    ui.print('Configuring', 'modules...')
     devices = Devices(config, mqtt)
     gc_collect()
     battery = Battery(config, devices)
@@ -104,7 +101,7 @@ async def homebattery():
     gc_collect()
 
     log.debug('Connecting to MQTT broker...')
-    display.print('Connecting to', 'MQTT broker...')
+    ui.print('Connecting to', 'MQTT broker...')
     await mqtt.connect()
     watchdog.feed()
 

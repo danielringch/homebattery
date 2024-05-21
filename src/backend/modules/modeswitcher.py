@@ -14,8 +14,7 @@ class ModeSwitcher:
         self.__task = None
 
         self.__log = Singletons.log.create_logger('modeswitcher')
-        self.__display = Singletons.display
-        self.__leds = Singletons.leds
+        self.__ui = Singletons.ui
 
         self.__inverter = inverter
         self.__charger = charger
@@ -54,9 +53,9 @@ class ModeSwitcher:
             return
         self.__locked_devices.clear()
         self.__locked_devices.update(devices)
-        self.__leds.switch_charger_locked(TYPE_CHARGER in self.__locked_devices)
-        self.__leds.switch_inverter_locked(TYPE_INVERTER in self.__locked_devices)
-        self.__leds.switch_solar_locked(TYPE_SOLAR in self.__locked_devices)
+        self.__ui.switch_charger_locked(TYPE_CHARGER in self.__locked_devices)
+        self.__ui.switch_inverter_locked(TYPE_INVERTER in self.__locked_devices)
+        self.__ui.switch_solar_locked(TYPE_SOLAR in self.__locked_devices)
         self.__commands.append(self.__update)
 
     async def __try_set_mode(self):
@@ -78,7 +77,7 @@ class ModeSwitcher:
         displayed_mode = self.__get_displayed_mode(modes)
         if displayed_mode != self.__displayed_mode:
             self.__displayed_mode = displayed_mode
-            self.__display.update_mode(self.__displayed_mode)
+            self.__ui.update_mode(self.__displayed_mode)
             await self.__mqtt.send_mode(self.__displayed_mode)
 
     def __get_effective_mode(self, mode: str):
