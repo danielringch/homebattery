@@ -2,110 +2,81 @@ from micropython import const
 from struct import pack_into, unpack
 from .microsocket import MicroSocket, MicroSocketTimeoutException
 
-_CONNECT_FIXED_LENGTH = const(6 + 1 + 1 + 2 + 1 + 2) # protocol + version + connect flags + keep alive + properties + id length
-_SUBSCRIBE_FIXED_LENGTH = const(2 + 1 + 2 + 1) # pid + properties + topic length + options
-_PUBLISH_FIXED_LENGTH = const(2 + 1) # topic length + properties
-
+PACKET_TYPE_CONNECT = const(0x10)
 PACKET_TYPE_CONNACK = const(0x20)
 PACKET_TYPE_PUBLISH = const(0x30)
 PACKET_TYPE_PUBACK = const(0x40)
 PACKET_TYPE_SUBACK = const(0x90)
 PACKET_TYPE_PINGRESP = const(0xD0)
 
+
 def connect_to_bytes(id: bytes, keep_alive: int, user: str, password: str, buffer: bytearray):
-    packet_length = _CONNECT_FIXED_LENGTH + \
-            len(id) + ((2 + len(user)) if user is not None else 0) + ((2 + len(password)) if password is not None else 0)
-    # packet type
-    buffer[0] = 0x10
-    offset = 1
-    # size
-    length_buffer = to_variable_integer(packet_length)
-    buffer[offset: offset + len(length_buffer)] = length_buffer
-    offset += len(length_buffer)
-    if offset + packet_length > len(buffer):
-        raise OverflowError(f'CONNECT too big for internal buffer: {offset + packet_length} / {len(buffer)} bytes.')
-    # protocol
-    offset += pack_string_into(buffer, offset, 'MQTT')
-    # version
-    buffer[offset] = 0x05
-    offset += 1
-    # connect flags
-    buffer[offset] = 0x02 + ((1 << 7) if user is not None else 0) + ((1 << 6) if password is not None else 0)
-    offset += 1
-    # keep alive
-    pack_into('!H', buffer, offset, keep_alive)
-    offset += 2   
-    # properties
-    buffer[offset] = 0x00
-    offset += 1     
-    # id
-    id_length = len(id)
-    pack_into('!H', buffer, offset, id_length)
-    offset += 2
-    buffer[offset: offset + id_length] = id
-    offset += id_length
-    # user
-    if user is not None:
-        offset += pack_string_into(buffer, offset, user)
+    start = len(buffer)
     # password
     if password is not None:
-        offset += pack_string_into(buffer, offset, password) 
-    return offset       
+        start = pack_string_into(buffer, start, password) 
+    # user
+    if user is not None:
+        start = pack_string_into(buffer, start, user)
+    # id
+    id_length = len(id)
+    buffer[start - id_length: start] = id
+    start -= id_length + 2
+    pack_into('!H', buffer, start, id_length)
+    # properties
+    start -= 1
+    buffer[start] = 0x00
+    # keep alive
+    start -= 2 
+    pack_into('!H', buffer, start, keep_alive)
+    # connect flags
+    start -= 1
+    buffer[start] = 0x02 + ((1 << 7) if user is not None else 0) + ((1 << 6) if password is not None else 0)
+    # version
+    start -= 1
+    buffer[start] = 0x05
+    # protocol
+    start = pack_string_into(buffer, start, 'MQTT')
+    # fixed header
+    return add_fixed_header(buffer, start, PACKET_TYPE_CONNECT)
 
 def subscribe_to_bytes(pid: int, topic: str, qos: int, buffer: bytearray):
-    packet_length = _SUBSCRIBE_FIXED_LENGTH + len(topic)
-    # packet type
-    buffer[0] = 0x82
-    offset = 1
-    # size
-    length_buffer = to_variable_integer(packet_length)
-    buffer[offset: offset + len(length_buffer)] = length_buffer
-    offset += len(length_buffer)
-    if offset + packet_length > len(buffer):
-        raise OverflowError(f'SUBSCRIBE too big for internal buffer: {offset + packet_length} / {len(buffer)} bytes.')
-    # pid
-    pack_into('!H', buffer, offset, pid)
-    offset += 2
-    # properties
-    buffer[offset] = 0
-    offset += 1
-    # topic
-    offset += pack_string_into(buffer, offset, topic)
+    start = len(buffer)
     # options
-    pack_into('!B', buffer, offset, 1 << 5 | qos) # options
-    offset += 1
-    return offset
+    start -= 1
+    pack_into('!B', buffer, start, 1 << 5 | qos) # options
+    # topic
+    start = pack_string_into(buffer, start, topic)
+    # properties
+    start -= 1
+    buffer[start] = 0
+    # pid
+    start -= 2
+    pack_into('!H', buffer, start, pid)
+    # fixed header
+    return add_fixed_header(buffer, start, 0x82)
 
 def publish_to_bytes(pid: int, topic: str, payload: bytes, qos: int, retain: bool, buffer: bytearray):
-    payload_length = len(payload) if payload is not None else 0
-    packet_length = _PUBLISH_FIXED_LENGTH + len(topic) + (2 if qos > 0 else 0) + payload_length
-    # packet type
-    buffer[0] = 0x30 | qos << 1 | retain # duplicate flag is not set here
-    offset = 1
-    # size
-    length_buffer = to_variable_integer(packet_length)
-    buffer[offset: offset + len(length_buffer)] = length_buffer
-    offset += len(length_buffer)
-    if offset + packet_length > len(buffer):
-        raise OverflowError(f'PUBLISH too big for internal buffer: {offset + packet_length} / {len(buffer)} bytes.')
-    # topic
-    offset += pack_string_into(buffer, offset, topic)
+    start = len(buffer)
+    # data
+    if payload is not None and len(payload) > 0:
+        start = pack_before(buffer, start, payload)
+    # properties
+    start -= 1
+    buffer[start] = 0
     # pid
     if qos > 0:
-        pack_into('!H', buffer, offset, pid)
-        offset += 2
-    # properties
-    buffer[offset] = 0
-    offset += 1
-    # data
-    if payload_length > 0:
-        buffer[offset:offset + payload_length] = payload
-    offset += payload_length
-    return offset
+        start -= 2
+        pack_into('!H', buffer, start, pid)
+    # topic
+    start = pack_string_into(buffer, start, topic)
+    # fixed header
+    type = PACKET_TYPE_PUBLISH | qos << 1 | retain # duplicate flag is not set here
+    return add_fixed_header(buffer, start, type)
 
-def mark_as_duplicate(buffer: bytearray, is_duplicate: bool):
-    if is_duplicate and (buffer[0] & 0x30 == 0x30):
-        buffer[0] |= 1 << 3
+def mark_as_duplicate(buffer: bytearray, index: int, is_duplicate: bool):
+    if is_duplicate and (buffer[index] & 0xF0 == PACKET_TYPE_PUBLISH):
+        buffer[index] |= 1 << 3
 
 def puback_to_bytes(pid: int):
     buffer = bytearray(4)
@@ -257,8 +228,23 @@ async def receive_variable_integer(sock: MicroSocket, buffer: bytearray, offset:
         sh += 7
     return 0, offset
 
-def pack_string_into(buffer, offset: int, string: str):
-    length = len(string)
-    pack_into('!H', buffer, offset, length)
-    buffer[offset + 2: offset + 2 + length] = string.encode('utf-8')
-    return length + 2
+def add_fixed_header(buffer: bytearray, end: int, type: int):
+    packet_length = len(buffer) - end
+    start = -1 + pack_before(buffer, end, to_variable_integer(packet_length))
+    buffer[start] = type
+    return start
+
+def pack_string_into(buffer, end: int, string: str):
+    if string is None or len(string) == 0:
+        start = end - 2
+        pack_into('!H', buffer, start, 0)
+        return start
+    encoded = string.encode('utf-8')
+    start = -2 + pack_before(buffer, end, encoded)
+    pack_into('!H', buffer, start, len(encoded))
+    return start
+
+def pack_before(buffer: bytearray, end, payload: bytes):
+    start = end - len(payload)
+    buffer[start:end] = payload
+    return start

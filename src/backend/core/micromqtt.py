@@ -32,13 +32,13 @@ class MicroMqtt():
             self.clear()
 
         def clear(self):
-            self.length = 0
+            self.start = _MAX_PACKET_SIZE
             self.pid = 0
             self.timestamp = 0
 
         @property
         def empty(self):
-            return self.length == 0
+            return self.start == _MAX_PACKET_SIZE
             
         def is_overdue(self, now):
             return self.timestamp + _OVERDUE_TIMEOUT < now
@@ -103,7 +103,7 @@ class MicroMqtt():
         packet = await self.__get_free_buffer()
         buffer = packet.payload
 
-        packet.length = subscribe_to_bytes(pid, topic, qos, buffer)
+        packet.start = subscribe_to_bytes(pid, topic, qos, buffer)
         packet.pid = pid
             
         self.__log.info('TX SUBSCRIBE, pid=', pid, ' qos=', qos, ': ', topic)
@@ -116,7 +116,7 @@ class MicroMqtt():
         packet = await self.__get_free_buffer()
         buffer = packet.payload
 
-        packet.length = publish_to_bytes(pid, topic, payload, qos, retain, buffer)
+        packet.start = publish_to_bytes(pid, topic, payload, qos, retain, buffer)
         packet.pid = pid
 
         self.__log.info('TX PUBLISH, pid=', pid, ' qos=', qos, ' topic=', topic)
@@ -181,7 +181,7 @@ class MicroMqtt():
         packet = await self.__get_free_buffer()
         buffer = packet.payload
 
-        packet.length = connect_to_bytes(self.__id, _KEEPALIVE, self.__user, self.__password, buffer)
+        packet.start = connect_to_bytes(self.__id, _KEEPALIVE, self.__user, self.__password, buffer)
         packet.pid = 0 # not used
         await self.__send_packet(packet)
         packet.clear()
@@ -271,7 +271,7 @@ class MicroMqtt():
         if qos > 0:
             buffer = puback_to_bytes(pid)
             self.__log.info('TX PUBACK, pid=', pid)  
-            await self.__send_buffer(buffer, len(buffer))
+            await self.__send_buffer(buffer, 0)
 
         self.__log.info('RX PUBLISH, pid=', pid, ' qos=', qos, ' topic=', topic)
         try:
@@ -287,19 +287,19 @@ class MicroMqtt():
     async def __send_packet(self, packet: OutputMessage):
         assert self.__socket
 
-        mark_as_duplicate(packet.payload, packet.timestamp > 0) # publish message has been sent before
+        mark_as_duplicate(packet.payload, packet.start, packet.timestamp > 0) # publish message has been sent before
 
-        await self.__send_buffer(packet.payload, packet.length)
+        await self.__send_buffer(packet.payload, packet.start)
         packet.timestamp = time()
 
-    async def __send_buffer(self, buffer: bytes, length: int):
+    async def __send_buffer(self, buffer: bytes, start: int):
         assert self.__socket
 
         async with self.__send_lock:
-            if length > 64:
-                await self.__socket.send(memoryview(buffer), length)
+            if (len(buffer) - start) > 64:
+                await self.__socket.send(memoryview(buffer)[start:])
             else:
-                await self.__socket.send(buffer, length)
+                await self.__socket.send(buffer[start:])
         self.__ui.notify_mqtt()
 
     async def __get_free_buffer(self):
