@@ -6,8 +6,14 @@ PACKET_TYPE_CONNECT = const(0x10)
 PACKET_TYPE_CONNACK = const(0x20)
 PACKET_TYPE_PUBLISH = const(0x30)
 PACKET_TYPE_PUBACK = const(0x40)
+PACKET_TYPE_PUBREC = const(0x50)
+PACKET_TYPE_PUBREL = const(0x62)
+PACKET_TYPE_PUBCOMP = const(0x70)
+PACKET_TYPE_SUBSCRIBE = const(0x82)
 PACKET_TYPE_SUBACK = const(0x90)
+PACKET_TYPE_PINGREQ = const(0xC0)
 PACKET_TYPE_PINGRESP = const(0xD0)
+PACKET_TYPE_DISCONNECT = const(0xE0)
 
 
 def connect_to_bytes(id: bytes, keep_alive: int, user: str, password: str, buffer: bytearray):
@@ -54,9 +60,9 @@ def subscribe_to_bytes(pid: int, topic: str, qos: int, buffer: bytearray):
     start -= 2
     pack_into('!H', buffer, start, pid)
     # fixed header
-    return add_fixed_header(buffer, start, 0x82)
+    return add_fixed_header(buffer, start, PACKET_TYPE_SUBSCRIBE)
 
-def publish_to_bytes(pid: int, topic: str, payload: bytes, qos: int, retain: bool, buffer: bytearray):
+def publish_to_bytes(pid: int, topic_root: bytes, topic: str, payload: bytes, qos: int, retain: bool, buffer: bytearray):
     start = len(buffer)
     # data
     if payload is not None and len(payload) > 0:
@@ -69,18 +75,18 @@ def publish_to_bytes(pid: int, topic: str, payload: bytes, qos: int, retain: boo
         start -= 2
         pack_into('!H', buffer, start, pid)
     # topic
-    start = pack_string_into(buffer, start, topic)
+    start = pack_byteblob_into(buffer, start, topic.encode('utf-8'), topic_root)
     # fixed header
     type = PACKET_TYPE_PUBLISH | qos << 1 | retain # duplicate flag is not set here
     return add_fixed_header(buffer, start, type)
 
-def mark_as_duplicate(buffer: bytearray, index: int, is_duplicate: bool):
-    if is_duplicate and (buffer[index] & 0xF0 == PACKET_TYPE_PUBLISH):
-        buffer[index] |= 1 << 3
+def mark_as_duplicate(buffer: bytearray, is_duplicate: bool):
+    if is_duplicate and (buffer[0] & 0xF0 == PACKET_TYPE_PUBLISH):
+        buffer[0] |= 1 << 3
 
-def puback_to_bytes(pid: int):
+def pubx_to_bytes(type: int, pid: int):
     buffer = bytearray(4)
-    buffer[0] = PACKET_TYPE_PUBACK
+    buffer[0] = type
     buffer[1] = 0x02
     pack_into('!H', buffer, 2, pid)
     return buffer
@@ -108,7 +114,7 @@ async def read_packet(sock: MicroSocket, buffer: bytearray):
     if length > 0:
         offset = await sock.receive_into(buffer, offset, length)
 
-    return type & 0xF0
+    return type
 
 def bytes_to_connack(buffer: bytes):
     payload_length, offset = from_variable_interger(buffer, 1)
@@ -152,7 +158,7 @@ def bytes_to_suback(buffer: bytes):
     
     return None, pid, None
 
-def bytes_to_puback(buffer: bytes):
+def bytes_to_pubx(buffer: bytes):
     payload_length, offset = from_variable_interger(buffer, 1)
 
     if payload_length < 2:
@@ -163,7 +169,7 @@ def bytes_to_puback(buffer: bytes):
 
     reason = buffer[offset] if payload_length > 2 else 0
 
-    if reason != 0 and reason != 0x10:
+    if reason >= 0x80:
         return f'error reason {reason}', pid
     
     return None, pid
@@ -244,7 +250,24 @@ def pack_string_into(buffer, end: int, string: str):
     pack_into('!H', buffer, start, len(encoded))
     return start
 
+def pack_byteblob_into(buffer: bytearray, end: int, *blobs: bytes):
+    start = end
+    size = 0
+    for blob in blobs:
+        if blob is None or len(blob) == 0:
+            continue
+        size += len(blob)
+        start = pack_before(buffer, start, blob)
+    start -= 2
+    pack_into('!H', buffer, start, size)
+    return start
+
 def pack_before(buffer: bytearray, end, payload: bytes):
     start = end - len(payload)
     buffer[start:end] = payload
     return start
+
+def filter_to_regex(filter:str):
+    filter = filter.replace('/#', '.*')
+    filter = filter.replace('#', '.*')
+    return filter.replace('+', '[a-zA-Z0-9]*')

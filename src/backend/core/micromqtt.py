@@ -1,14 +1,19 @@
 from asyncio import create_task, Event, Lock, sleep, wait_for, TimeoutError
 from gc import collect as gc_collect
+from re import match
 from ubinascii import hexlify
 from machine import unique_id
 from micropython import const
 
 from .microsocket import MicroSocket, MicroSocketTimeoutException, MicroSocketClosedExecption
-from .mqtttools import connect_to_bytes, publish_to_bytes, puback_to_bytes, subscribe_to_bytes, pingreq_to_bytes, disconnect_to_bytes
-from .mqtttools import mark_as_duplicate
-from .mqtttools import read_packet, bytes_to_pingresp, bytes_to_suback, bytes_to_puback, bytes_to_publish, bytes_to_connack
+from .mqtttools import connect_to_bytes, bytes_to_connack, disconnect_to_bytes
+from .mqtttools import publish_to_bytes, bytes_to_publish
+from .mqtttools import pubx_to_bytes, bytes_to_pubx
+from .mqtttools import subscribe_to_bytes, bytes_to_suback
+from .mqtttools import pingreq_to_bytes, bytes_to_pingresp
+from .mqtttools import mark_as_duplicate, read_packet, filter_to_regex
 from .mqtttools import PACKET_TYPE_CONNACK, PACKET_TYPE_PUBLISH, PACKET_TYPE_PUBACK, PACKET_TYPE_SUBACK, PACKET_TYPE_PINGRESP
+from .mqtttools import PACKET_TYPE_PUBREC, PACKET_TYPE_PUBREL, PACKET_TYPE_PUBCOMP
 
 from utime import time
 from uerrno import EINPROGRESS, ETIMEDOUT, ECONNRESET
@@ -16,34 +21,55 @@ from uerrno import EINPROGRESS, ETIMEDOUT, ECONNRESET
 class MQTTError(Exception):
     pass
 
-
 BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT, -110]
 
 _KEEPALIVE = const(60)
 _PING_INTERVAL = const(30)
+_SEND_LOOP_INTERVAL = const(4)
 _MAX_PACKET_SIZE = const(256)
 _OVERDUE_TIMEOUT = const(10)
-_OUTPUT_BUFFER_SIZE = const(10)
+_OUTPUT_BUFFER_SIZE = const(24)
 
 class MicroMqtt():
-    class OutputMessage:
+    class InputMessage:
         def __init__(self):
-            self.payload = bytearray(_MAX_PACKET_SIZE)
-            self.clear()
+            self.pid = None
+            self.topic = None
+            self.payload = None
+
+        def fill(self, pid: int, topic: str, payload: str):
+            self.pid = pid
+            self.topic = topic
+            self.payload = payload
 
         def clear(self):
-            self.start = _MAX_PACKET_SIZE
-            self.pid = 0
+            self.pid = None
+            self.topic = None
+            self.payload = None
+
+        @property
+        def empty(self):
+            return self.pid == None
+
+    class OutputMessage:
+        def __init__(self):
+            self.clear()
+
+        def fill(self, builder: bytearray, start: int):
+            self.payload = builder[start:]
+
+        def clear(self):
+            self.payload = None
             self.timestamp = 0
 
         @property
         def empty(self):
-            return self.start == _MAX_PACKET_SIZE
+            return self.payload == None
             
         def is_overdue(self, now):
             return self.timestamp + _OVERDUE_TIMEOUT < now
 
-    def __init__(self, connect_callback):
+    def __init__(self, topic_root: str, connect_callback):
         from .singletons import Singletons
         self.__log = Singletons.log.create_logger('mqtt')
         self.__ui = Singletons.ui
@@ -55,28 +81,27 @@ class MicroMqtt():
         self.__user = None
         self.__password = None
 
-        self.__socket = None
+        self.__topic_root = topic_root.encode('utf-8')
 
-        self.__tx_event = Event()
+        self.__socket = None
 
         self.__id = hexlify(unique_id())
 
         self.__connected = False
         self.__on_connect = connect_callback
-        self.__message_callbacks = {}
+        self.__message_callbacks = list()
 
-        self.__current_pid = 0
-
+        self.__tx_builder = bytearray(_MAX_PACKET_SIZE)
+        self.__tx_builder_lock = Lock()
         self.__tx_buffer = tuple(self.OutputMessage() for _ in range(_OUTPUT_BUFFER_SIZE))
         self.__rx_buffer = bytearray(_MAX_PACKET_SIZE)
+        self.__rx_pids = set()
 
         self.__send_task = None
         self.__receive_task = None
         self.__supervisor_task = None
 
-
         self.__lock = Lock()
-        self.__send_lock = Lock()
         self.__receive_lock = Lock()
 
     def tls_set(self, ca_certs, cert_reqs):
@@ -97,35 +122,29 @@ class MicroMqtt():
         return self.__connected and self.__socket and self.__socket.is_connected
 
     async def subscribe(self, topic, qos):
-        self.__check_qos(qos)
-        pid = self.__get_next_pid()
+        async with self.__tx_builder_lock:
+            pid, packet = await self.__get_free_buffer()
 
-        packet = await self.__get_free_buffer()
-        buffer = packet.payload
-
-        packet.start = subscribe_to_bytes(pid, topic, qos, buffer)
-        packet.pid = pid
+            start = subscribe_to_bytes(pid, topic, qos, self.__tx_builder)
+            packet.fill(self.__tx_builder, start)
             
         self.__log.info('TX SUBSCRIBE, pid=', pid, ' qos=', qos, ': ', topic)
         await self.__send_packet(packet)
 
     async def publish(self, topic, payload, qos, retain):
-        self.__check_qos(qos)
-        pid = self.__get_next_pid()
+        async with self.__tx_builder_lock:
+            pid, packet = await self.__get_free_buffer()
 
-        packet = await self.__get_free_buffer()
-        buffer = packet.payload
+            start = publish_to_bytes(pid, self.__topic_root, topic, payload, qos, retain, self.__tx_builder)
+            packet.fill(self.__tx_builder, start)
 
-        packet.start = publish_to_bytes(pid, topic, payload, qos, retain, buffer)
-        packet.pid = pid
-
-        self.__log.info('TX PUBLISH, pid=', pid, ' qos=', qos, ' topic=', topic)
+        self.__log.info('TX PUBLISH, pid=', pid, ' qos=', qos, ' topic=~/', topic)
         await self.__send_packet(packet)
         if qos == 0:
             packet.clear()
 
     def message_callback_add(self, topic, callback):
-        self.__message_callbacks[topic] = callback
+        self.__message_callbacks.append((filter_to_regex(topic), callback))
 
     async def __connect(self):
         self.__log.info("Connecting to broker.")
@@ -178,11 +197,12 @@ class MicroMqtt():
     async def __send_connect_message(self):
         assert self.__socket is not None
 
-        packet = await self.__get_free_buffer()
-        buffer = packet.payload
+        async with self.__tx_builder_lock:
+            _, packet = await self.__get_free_buffer()
 
-        packet.start = connect_to_bytes(self.__id, _KEEPALIVE, self.__user, self.__password, buffer)
-        packet.pid = 0 # not used
+            start = connect_to_bytes(self.__id, _KEEPALIVE, self.__user, self.__password, self.__tx_builder)
+            packet.fill(self.__tx_builder, start)
+
         await self.__send_packet(packet)
         packet.clear()
 
@@ -199,14 +219,20 @@ class MicroMqtt():
 
             self.__ui.notify_mqtt()
 
-            if type == PACKET_TYPE_PINGRESP:
-                self.__receive_pingresp(self.__rx_buffer)
-            elif type == PACKET_TYPE_SUBACK:
-                self.__receive_suback(self.__rx_buffer)
+            if type & 0xF0 == PACKET_TYPE_PUBLISH:
+                await self.__receive_publish(self.__rx_buffer)
             elif type == PACKET_TYPE_PUBACK:
                 self.__receive_puback(self.__rx_buffer)
-            elif type == PACKET_TYPE_PUBLISH:
-                await self.__receive_publish(self.__rx_buffer)
+            elif type == PACKET_TYPE_PUBREC:
+                await self.__receive_pubrec(self.__rx_buffer)
+            elif type == PACKET_TYPE_PUBREL:
+                await self.__receive_pubrel(self.__rx_buffer)
+            elif type == PACKET_TYPE_PUBCOMP:
+                self.__receive_pubcomp(self.__rx_buffer)
+            elif type == PACKET_TYPE_SUBACK:
+                self.__receive_suback(self.__rx_buffer)
+            elif type == PACKET_TYPE_PINGRESP:
+                self.__receive_pingresp(self.__rx_buffer)
             else:
                 self.__log.error('Unkown MQTT code: ', type)
 
@@ -225,57 +251,28 @@ class MicroMqtt():
                 return False
             
             return True
-    
-    def __receive_pingresp(self, buffer: bytes):
-        valid = bytes_to_pingresp(buffer)
-        if not valid:
-            self.__log.error('Bad PINGRESP.')
-            return
-        self.__log.info('RX PINGRESP.')
-
-    def __receive_suback(self, buffer: bytes):
-        error, pid, qos = bytes_to_suback(buffer)
-
-        if pid is not None:
-            for packet in self.__tx_buffer:
-                if not packet.empty and packet.pid == pid:
-                    packet.clear()
-
-        if error is not None:
-            self.__log.error('Bad SUBACK: ', error, ', pid=', pid, ' qos=', qos)
-        else:
-            self.__log.info('RX SUBACK, pid=', pid, ' qos=', qos)        
-
-    def __receive_puback(self, buffer: bytes):
-        error, pid = bytes_to_puback(buffer)
-
-        if pid is not None:
-            for packet in self.__tx_buffer:
-                if not packet.empty and packet.pid == pid:
-                    packet.clear()
-
-        if error is not None:
-            self.__log.error('Bad PUBACK: ', error, ', pid=', pid)
-        else:
-            self.__log.info('RX PUBACK, pid=', pid)  
-
+        
     async def __receive_publish(self, buffer: bytes):
         pid, qos, topic, payload = bytes_to_publish(buffer)
 
-        try:
-            self.__check_qos(qos)
-        except:
-            self.__log.error('Invalid qos at topic ', topic, ', qos=', qos)
-            raise
-
-        if qos > 0:
-            buffer = puback_to_bytes(pid)
+        if qos == 1:
             self.__log.info('TX PUBACK, pid=', pid)  
-            await self.__send_buffer(buffer, 0)
+            await self.__send_buffer(pubx_to_bytes(PACKET_TYPE_PUBACK, pid))
+        elif qos == 2:
+            self.__log.info('TX PUBREC, pid=', pid)
+            await self.__send_buffer(pubx_to_bytes(PACKET_TYPE_PUBREC, pid))
+
+        if qos == 2 and pid in self.__rx_pids:
+            self.__log.info('RX PUBLISH duplicate, pid=', pid, ' qos=', qos, ' topic=', topic)
+            return
 
         self.__log.info('RX PUBLISH, pid=', pid, ' qos=', qos, ' topic=', topic)
         try:
-            self.__message_callbacks[topic](topic, payload)
+            callback = self.__get_message_callback(topic)
+            if callback is not None:
+                callback(topic, payload)
+            else:
+                self.__log.error('No callback for topic ', topic)
         except KeyError:
             pass
         except Exception as e:
@@ -284,51 +281,116 @@ class MicroMqtt():
             from ..core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
 
+    def __receive_puback(self, buffer: bytes):
+        error, pid = bytes_to_pubx(buffer)
+
+        if error is not None:
+            self.__log.error('Bad PUBACK: ', error, ', pid=', pid)
+        else:
+            self.__log.info('RX PUBACK, pid=', pid)
+
+        if pid is not None and pid > 0:
+            self.__tx_buffer[pid - 1].clear()
+
+    async def __receive_pubrec(self, buffer: bytes):
+        error, pid = bytes_to_pubx(buffer)
+
+        if error is not None:
+            self.__log.error('Bad PUBREC: ', error, ', pid=', pid)
+        else:
+            self.__log.info('RX PUBREC, pid=', pid)
+
+        if pid is not None and pid > 0:
+            packet = self.__tx_buffer[pid - 1]
+            packet.clear()
+            packet.fill(pubx_to_bytes(PACKET_TYPE_PUBREL, pid), 0)
+            self.__log.info('TX PUBREL, pid=', pid)  
+            await self.__send_packet(packet)
+
+    async def __receive_pubrel(self, buffer: bytes):
+        error, pid = bytes_to_pubx(buffer)
+
+        if error is not None:
+            self.__log.error('Bad PUBREL: ', error, ', pid=', pid)
+        else:
+            self.__log.info('RX PUBREL, pid=', pid)
+
+        if pid is not None and pid > 0:
+            self.__rx_pids.discard(pid)
+            self.__log.info('TX PUBCOMP, pid=', pid)  
+            await self.__send_buffer(pubx_to_bytes(PACKET_TYPE_PUBCOMP, pid))
+
+    def __receive_pubcomp(self, buffer: bytes):
+        error, pid = bytes_to_pubx(buffer)
+
+        if error is not None:
+            self.__log.error('Bad PUBCOMP: ', error, ', pid=', pid)
+        else:
+            self.__log.info('RX PUBCOMP, pid=', pid)
+
+        if pid is not None and pid > 0:
+            self.__tx_buffer[pid - 1].clear()
+
+    def __receive_suback(self, buffer: bytes):
+        error, pid, qos = bytes_to_suback(buffer)
+
+        if error is not None:
+            self.__log.error('Bad SUBACK: ', error, ', pid=', pid, ' qos=', qos)
+        else:
+            self.__log.info('RX SUBACK, pid=', pid, ' qos=', qos)
+
+        if pid is not None and pid > 0:
+            self.__tx_buffer[pid - 1].clear()
+
+    def __receive_pingresp(self, buffer: bytes):
+        valid = bytes_to_pingresp(buffer)
+        if not valid:
+            self.__log.error('Bad PINGRESP.')
+            return
+        self.__log.info('RX PINGRESP.')
+
     async def __send_packet(self, packet: OutputMessage):
         assert self.__socket
 
-        mark_as_duplicate(packet.payload, packet.start, packet.timestamp > 0) # publish message has been sent before
+        mark_as_duplicate(packet.payload, packet.timestamp > 0) # publish message has been sent before
 
-        await self.__send_buffer(packet.payload, packet.start)
+        await self.__send_buffer(packet.payload)
         packet.timestamp = time()
 
-    async def __send_buffer(self, buffer: bytes, start: int):
+    async def __send_buffer(self, buffer: bytes):
         assert self.__socket
-
-        async with self.__send_lock:
-            if (len(buffer) - start) > 64:
-                await self.__socket.send(memoryview(buffer)[start:])
-            else:
-                await self.__socket.send(buffer[start:])
+        await self.__socket.send(buffer)
         self.__ui.notify_mqtt()
 
     async def __get_free_buffer(self):
         while True:
-            for buffer in self.__tx_buffer:
+            for i in range(_OUTPUT_BUFFER_SIZE):
+                buffer = self.__tx_buffer[i]
                 if buffer.empty:
-                    return buffer
+                    return i + 1, buffer
             await sleep(0.1)
 
-    async def __send_loop(self):
-        while True:
-            try:
-                await wait_for(self.__tx_event.wait(), _PING_INTERVAL)
-                self.__tx_event.clear()
-            except TimeoutError:
-                pass
+    def __get_message_callback(self, topic):
+        for regex, callback in self.__message_callbacks:
+            if match(regex, topic) is not None:
+                return callback
+        return None
 
+    async def __send_loop(self):
+        last_ping = 0
+        while True:
+            await sleep(_SEND_LOOP_INTERVAL)
             try:
                 now = time()
-                packet_sent = False
 
                 for packet in self.__tx_buffer:
                     if packet.empty or not packet.is_overdue(now):
                         continue
                     await self.__send_packet(packet)
-                    packet_sent = True
 
-                if not packet_sent:
+                if last_ping + _PING_INTERVAL < now:
                     await self.__ping()
+                    last_ping = now
 
             except Exception as e:
                 self.__log.error('Send loop error: ', e)
@@ -364,13 +426,4 @@ class MicroMqtt():
                 self.__log.info('Disconnected by supervisor.')
             await self.__connect()
             self.__log.info('Connected by supervisor.')
-            await sleep(20)
-
-    def __get_next_pid(self):
-        self.__current_pid = self.__current_pid + 1 if self.__current_pid < 65536 else 1
-        return self.__current_pid    
-
-    @staticmethod
-    def __check_qos(value):
-        if not (value == 0 or value == 1):
-            raise ValueError(f"Unsupported qos value: {value}.")
+            await sleep(20)  
