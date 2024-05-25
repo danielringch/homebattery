@@ -9,8 +9,9 @@ from ..core.types import BatteryData, run_callbacks
 
 class MqttBattery(BatteryInterface):
     class Parser():
-        def __init__(self, name, log, cell_count, temp_count):
+        def __init__(self, name, root, log, cell_count, temp_count):
             self.__log = log
+            self.__root = root
             self.data = BatteryData(name, is_forwarded=True)
             self.data_event = Event()
             self.temps = list(None for _ in range(temp_count))
@@ -27,35 +28,39 @@ class MqttBattery(BatteryInterface):
                     and None not in self.temps\
                     and None not in self.cells
 
-        def parse(self, topic, payload):
+        def parse(self, topic: str, payload: bytes):
             now = time()
             if self.timestamp + 10 < now:
                 self.__clear()
 
             try:
-                parts = topic.split('/')
-                topic = parts[-1]
-                if topic == 'v':
+                length = len(topic)
+                topic = topic.replace(self.__root, '', 1)
+                if length == len(topic): # no match
+                    raise Exception
+
+                if topic == '/v':
                     self.v=unpack('!H', payload)[0] / 100
-                elif topic == 'i':
+                elif topic == '/i':
                     self.i=unpack('!h', payload)[0] / 10
-                elif topic == 'soc':
+                elif topic == '/soc':
                     self.soc=unpack('!B', payload)[0]
-                elif topic == 'c':
+                elif topic == '/c':
                     self.c=unpack('!H', payload)[0] / 10
-                elif topic == 'n':
+                elif topic == '/n':
                     self.n=unpack('!H', payload)[0]
                 else:
-                    topic = parts[-2]
-                    i = int(parts[-1])
-                    if topic == 'temp':
+                    parts = topic.split('/', 2)
+                    cat = parts[1]
+                    i = int(parts[2])
+                    if cat == 'temp':
                         self.temps[i] = unpack('!h', payload)[0] / 10
-                    elif topic == 'cell':
+                    elif cat == 'cell':
                         self.cells[i] = unpack('!H', payload)[0] / 1000
                     else:
                         raise Exception()
             except:
-                self.__log.error('Invalid battery data: topic=', topic, ' payload=', hexlify(payload, " "))
+                self.__log.error('Ignoring non matching battery data: topic=', topic, ' payload=', hexlify(payload, " "))
                 return
             
             if self.timestamp == 0:
@@ -95,11 +100,11 @@ class MqttBattery(BatteryInterface):
         self.__device_types = (TYPE_BATTERY,)
         self.__log = Singletons.log.create_logger(name)
 
-        self.__root = config['root_topic']
+        self.__topic_root = config['root_topic']
         self.__cell_count = int(config['cell_count'])
         self.__temp_count = int(config['temperature_count'])
 
-        self.__parser = self.Parser(self.__name, self.__log, self.__cell_count, self.__temp_count)
+        self.__parser = self.Parser(self.__name, self.__topic_root, self.__log, self.__cell_count, self.__temp_count)
 
         self.__on_data = list()
 
@@ -109,15 +114,7 @@ class MqttBattery(BatteryInterface):
         pass
 
     async def __receive(self, mqtt: Mqtt):
-        await mqtt.subscribe(f'{self.__root}/v', 0, self.__parser.parse)
-        await mqtt.subscribe(f'{self.__root}/i', 0, self.__parser.parse)
-        await mqtt.subscribe(f'{self.__root}/soc', 0, self.__parser.parse)
-        await mqtt.subscribe(f'{self.__root}/c', 0, self.__parser.parse)
-        await mqtt.subscribe(f'{self.__root}/n', 0, self.__parser.parse)
-        for i in range(self.__temp_count):
-            await mqtt.subscribe(f'{self.__root}/temp/{i}', 0, self.__parser.parse)
-        for i in range(self.__cell_count):
-            await mqtt.subscribe(f'{self.__root}/cell/{i}', 0, self.__parser.parse)
+        await mqtt.subscribe(self.__topic_root + '/#', 0, self.__parser.parse)
 
         while True:
             await self.__parser.data_event.wait()
