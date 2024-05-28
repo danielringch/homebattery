@@ -5,3 +5,6 @@ Hardware
    :maxdepth: 1
 
    hardware_variants
+   baseboard
+   vedirect
+   rs485
