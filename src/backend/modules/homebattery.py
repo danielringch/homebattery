@@ -118,8 +118,8 @@ async def homebattery():
 
     i = 0
     while True:
-        gc_collect()
         await sleep(1)
+        gc_collect()
         i += 1
         if i >= 60:
             i = 0
