@@ -42,7 +42,7 @@ class ModeSwitcher:
             #await asyncio.sleep(0.1)
             try:
                 while not self.__commands.empty:
-                    await self.__commands.popleft()()
+                    await self.__commands.pop()()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
                 from ..core.singletons import Singletons

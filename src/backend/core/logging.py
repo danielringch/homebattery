@@ -66,7 +66,7 @@ class Logging:
 
         if self.__task is None:
             while not self.__buffer.empty:
-                _ = self.__buffer.popleft()
+                _ = self.__buffer.pop()
         else:
             self.__event.set()
     
@@ -82,7 +82,7 @@ class Logging:
                     self.__event.clear()
                     while not self.__buffer.empty:
                         try:
-                            socke.sendto(self.__buffer.popleft().encode(_UTF8), address)
+                            socke.sendto(self.__buffer.pop().encode(_UTF8), address)
                         except OSError as e:
                             if e.args[0] in BUSY_ERRORS:
                                 await sleep(0.05)                 

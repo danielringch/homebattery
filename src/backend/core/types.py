@@ -116,31 +116,69 @@ class SimpleFiFo:
     class Item:
         def __init__(self, payload):
             self.payload = payload
-            self.next = None
+            self.newer = None
+
+    class Iter:
+        def __init__(self, start):
+            self.__item = start
+
+        def __iter__(self):
+            return self
+        
+        def __next__(self):
+            if self.__item is None:
+                raise StopIteration
+            payload = self.__item.payload
+            self.__item = self.__item.newer
+            return payload
 
     def __init__(self):
-        self.__right = None
-        self.__left = None
+        self.__newest = None
+        self.__oldest = None
+        self.__length = 0
+
+    def __len__(self):
+        return self.__length
+    
+    def __iter__(self):
+        return self.Iter(self.__oldest)
 
     @property
     def empty(self):
-        return self.__left is None
+        return self.__oldest is None
+    
+    def clear(self):
+        self.__length = 0
+        if self.__oldest is not None:
+            item = self.__oldest
+            while item is not None:
+                next = item.newer
+                item.newer = None
+                item = next
+        self.__newest = None
+        self.__oldest = None
     
     def append(self, payload):
+        self.__length += 1
         item = self.Item(payload)
-        if self.__right is not None:
-            self.__right.next = item
-        self.__right = item
-        if self.__left is None:
-            self.__left = item
+        if self.__newest is not None:
+            self.__newest.newer = item
+        self.__newest = item
+        if self.__oldest is None:
+            self.__oldest = item
 
-    def popleft(self):
-        assert self.__left is not None
-        item = self.__left
-        self.__left = item.next
-        if item.next is None:
-            self.__right = None
-        item.next = None
+    def peek(self):
+        assert self.__oldest is not None
+        return self.__oldest.payload
+
+    def pop(self):
+        assert self.__oldest is not None
+        self.__length -= 1
+        item = self.__oldest
+        self.__oldest = item.newer
+        if item.newer is None:
+            self.__newest = None
+        item.newer = None
         return item.payload
     
 class CommandFiFo(SimpleFiFo):

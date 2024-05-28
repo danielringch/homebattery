@@ -31,6 +31,7 @@
   "netzero":
   {
     "enabled": true,
+    "signed": false,
     "evaluated_time_span": 0,
     "maturity_time_span": 0,
     "power_offset": 0,

@@ -35,7 +35,7 @@ class Charger:
                 now = time()
                 async with self.__lock:
                     while not self.__commands.empty:
-                        await self.__commands.popleft()()
+                        await self.__commands.pop()()
                     if now >= self.__next_energy_execution:
                         await self.__get_energy()
                         self.__next_energy_execution = get_energy_execution_timestamp()
