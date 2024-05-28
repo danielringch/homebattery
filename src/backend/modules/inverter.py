@@ -1,14 +1,14 @@
 from asyncio import Lock, TimeoutError, wait_for
 from sys import print_exception
 from time import time
-from ..core.backendmqtt import Mqtt
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
 from ..core.types import CommandFiFo, MODE_DISCHARGE, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from .consumption import Consumption
 from .devices import Devices
 from .netzero import NetZero
 
 class Inverter:
-    def __init__(self, config: dict, devices: Devices, mqtt: Mqtt):
+    def __init__(self, config: dict, devices: Devices, consumption: Consumption):
         from ..core.singletons import Singletons
         self.__lock = Lock()
         self.__commands = CommandFiFo()
@@ -18,7 +18,7 @@ class Inverter:
         self.__default_power = int(config['general']['inverter_power'])
         if config['netzero']['enabled'] == True:
             self.__netzero = NetZero(config)
-            mqtt.on_live_consumption.append(self.__on_live_consumption)
+            consumption.on_power.append(self.__on_live_consumption)
         else:
             self.__log.send('Netzero disabled.')
             self.__netzero = None

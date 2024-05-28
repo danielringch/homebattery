@@ -3,18 +3,21 @@ from sys import print_exception
 from ..core.backendmqtt import Mqtt
 from ..core.types import CommandFiFo, STATUS_ON
 from .supervisor import Supervisor
+from .consumption import Consumption
 from .battery import Battery
 from .charger import Charger
 from .inverter import Inverter
 from .solar import Solar
 
 class Outputs:
-    def __init__(self, mqtt: Mqtt, supervisor: Supervisor, battery: Battery, charger: Charger, inverter: Inverter, solar: Solar):
+    def __init__(self, mqtt: Mqtt, supervisor: Supervisor, consumption: Consumption, \
+                 battery: Battery, charger: Charger, inverter: Inverter, solar: Solar):
         from ..core.singletons import Singletons
         self.__commands = CommandFiFo()
         self.__log = Singletons.log.create_logger('output')
         self.__mqtt = mqtt
         self.__supervisor = supervisor
+        self.__consumption = consumption
         self.__battery = battery
         self.__charger = charger
         self.__inverter = inverter
@@ -23,7 +26,8 @@ class Outputs:
         self.__ui = Singletons.ui
 
         self.__mqtt.on_connect.append(self.__on_mqtt_connect)
-        self.__mqtt.on_live_consumption.append(self.__on_live_consumption)
+
+        self.__consumption.on_power.append(self.__on_live_consumption)
 
         self.__charger.on_status.append(self.__on_charger_status)
         self.__charger.on_energy.append(self.__on_charger_energy)

@@ -10,6 +10,7 @@ MODE_PROTECT = const('protect')
 
 TYPE_BATTERY = const('battery')
 TYPE_CHARGER = const('charger')
+TYPE_CONSUMPTION = const('consumption')
 TYPE_INVERTER = const('inverter')
 TYPE_SOLAR = const('solar')
 

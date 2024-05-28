@@ -4,8 +4,7 @@ from time import time
 from ..core.backendmqtt import Mqtt
 from ..core.types import TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
 from ..core.watchdog import Watchdog
-from .inverter import Inverter
-from .charger import Charger
+from .consumption import Consumption
 from .battery import Battery
 from .modeswitcher import ModeSwitcher
 from .supervisorchecks import BatteryOfflineChecker, CellLowChecker, CellHighChecker
@@ -14,7 +13,10 @@ from .supervisorchecks import LiveDataOfflineChargeChecker, LiveDataOfflineDisch
 from .supervisorchecks import StartupChecker, LockedReason, PRIO_INTERNAL
 
 class Supervisor:
-    def __init__(self, config: dict, watchdog: Watchdog, mqtt: Mqtt, modeswitcher: ModeSwitcher, inverter: Inverter, charger: Charger, battery: Battery):
+    def __init__(self, \
+                 config: dict, watchdog: Watchdog,\
+                 mqtt: Mqtt, modeswitcher: ModeSwitcher,\
+                 consumption: Consumption, battery: Battery):
         from ..core.singletons import Singletons
         config = config['supervisor']
 
@@ -43,8 +45,8 @@ class Supervisor:
                 TempLowDischargeChecker(config, battery),
                 TempHighChargeChecker(config, battery),
                 TempHighDischargeChecker(config, battery),
-                LiveDataOfflineChargeChecker(config, mqtt),
-                LiveDataOfflineDischargeChecker(config, mqtt),
+                LiveDataOfflineChargeChecker(config, consumption),
+                LiveDataOfflineDischargeChecker(config, consumption),
                 MqttOfflineChecker(config, mqtt),
                 StartupChecker(config, self.__locks))
 

@@ -16,6 +16,8 @@ from ..core.watchdog import Watchdog
 gc_collect()
 from .devices import Devices
 gc_collect()
+from .consumption import Consumption
+gc_collect()
 from .battery import Battery
 gc_collect()
 from .charger import Charger
@@ -89,13 +91,14 @@ async def homebattery():
     ui.print('Configuring', 'modules...')
     devices = Devices(config, mqtt)
     gc_collect()
+    consumption = Consumption(devices)
     battery = Battery(config, devices)
     charger = Charger(config, devices)
-    inverter = Inverter(config, devices, mqtt)
+    inverter = Inverter(config, devices, consumption)
     solar = Solar(config, devices)
     modeswitcher = ModeSwitcher(config, mqtt, inverter, charger, solar)
-    supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, inverter, charger, battery)
-    outputs = Outputs(mqtt, supervisor, battery, charger, inverter, solar)
+    supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, consumption, battery)
+    outputs = Outputs(mqtt, supervisor, consumption, battery, charger, inverter, solar)
     watchdog.feed()
 
     gc_collect()

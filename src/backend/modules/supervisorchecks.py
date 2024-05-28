@@ -235,36 +235,28 @@ class TempHighDischargeChecker(SubChecker):
         return (self.__threshold_exceeded, self._lock)
         
 class LiveDataOfflineChargeChecker(SubChecker):
-    def __init__(self, config, mqtt):
+    def __init__(self, config, consumption):
         super().__init__(config, 'live_data_lost_charge', _PRIO_LIVE_DATA_LOST_CHARGE, (TYPE_CHARGER,))
         self.__threshold = int(config[self.__name]['threshold'])
-        self.__last_data = 0
-        mqtt.on_live_consumption.append(self.__on_live_consumption)
+        self.__consumption = consumption
 
     def check(self, now):
         if self._lock is None:
             return None
-        active = bool((now - self.__last_data) > self.__threshold)
+        active = bool((now - self.__consumption.last_seen) > self.__threshold)
         return (active, self._lock)
-        
-    def __on_live_consumption(self, _):
-        self.__last_data = time()
 
 class LiveDataOfflineDischargeChecker(SubChecker):
-    def __init__(self, config, mqtt):
+    def __init__(self, config, consumption):
         super().__init__(config, 'live_data_lost_discharge', _PRIO_LIVE_DATA_LOST_DISCHARGE, (TYPE_INVERTER,))
         self.__threshold = int(config[self.__name]['threshold'])
-        self.__last_data = 0
-        mqtt.on_live_consumption.append(self.__on_live_consumption)
+        self.__consumption = consumption
 
     def check(self, now):
         if self._lock is None:
             return None
-        active = bool((now - self.__last_data) > self.__threshold)
+        active = bool((now - self.__consumption.last_seen) > self.__threshold)
         return (active, self._lock)
-        
-    def __on_live_consumption(self, _):
-        self.__last_data = time()
 
 class MqttOfflineChecker(SubChecker):
     def __init__(self, config, mqtt):

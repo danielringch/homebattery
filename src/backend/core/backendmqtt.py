@@ -1,5 +1,5 @@
 from asyncio import sleep
-from struct import pack, unpack
+from struct import pack
 from .micromqtt import MicroMqtt
 from ssl import CERT_NONE
 from .types import BatteryData, MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, to_operation_mode
@@ -29,8 +29,6 @@ class Mqtt():
         self.__locked_topic = 'locked'
         self.__reset_topic = f'{self.__topic_root}reset'
 
-        self.__live_consumption_topic = config["live_consumption_topic"]
-
         self.__cha_state = 'cha/state'
         self.__cha_energy = 'cha/e'
         self.__cha_dev_root = 'cha/dev/%s/%s'
@@ -51,18 +49,15 @@ class Mqtt():
         self.__bat_dev_temp_root = 'bat/dev/%s/temp/%i'
         self.__bat_dev_cell_root = 'bat/dev/%s/cell/%i'
 
-        self.__mqtt.message_callback_add(self.__live_consumption_topic, self.__on_live_consumption)
         self.__mqtt.message_callback_add(self.__mode_set_topic, self.__on_mode)
         self.__mqtt.message_callback_add(self.__reset_topic, self.__on_reset)
 
         self.__subscriptions = [
-            (self.__live_consumption_topic, 0),
             (self.__mode_set_topic, 2),
             (self.__reset_topic, 1)
         ]
 
         self.__connect_callback = list()
-        self.__live_consumption_callback = list()
         self.__mode_callback = list()
 
     async def __on_mqtt_connect(self):
@@ -163,8 +158,6 @@ class Mqtt():
             await self.__mqtt.publish(self.__bat_dev_cell_root % (name, i), pack('!H', round(cell * 1000)), qos=0, retain=False)
             i += 1
 
-
-
     @property
     def connected(self):
         return self.__mqtt.connected
@@ -172,18 +165,10 @@ class Mqtt():
     @property
     def on_connect(self):
         return self.__connect_callback
-
-    @property
-    def on_live_consumption(self):
-        return self.__live_consumption_callback
     
     @property
     def on_mode(self):
         return self.__mode_callback
-
-    def __on_live_consumption(self, topic, payload):
-        power = unpack('!H', payload)[0]
-        run_callbacks(self.__live_consumption_callback, power)
 
     def __on_mode(self, topic, payload):
         try:

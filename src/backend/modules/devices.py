@@ -6,6 +6,7 @@ _DALY_8S_24V_60A = const('daly8S24V60A')
 _JK_BMS_BD4 = const('jkBmsBd4')
 _LLT_POWER_BMS_V4_BLE = const('lltPowerBmsV4Ble')
 _MQTT_BATTERY = const('mqttBattery')
+_MQTT_CONSUMPTION = const('mqttConsumption')
 _SHELLY = const('shelly')
 _VICTRON_MPPT = const('victronmppt')
 
@@ -39,6 +40,10 @@ class Devices:
                 from ..drivers.mqttbattery import MqttBattery
                 gc_collect()
                 self.__load_device(log, name, MqttBattery, meta, mqtt)
+            elif driver_name == _MQTT_CONSUMPTION:
+                from ..drivers.mqttconsumption import MqttConsumption
+                gc_collect()
+                self.__load_device(log, name, MqttConsumption, meta, mqtt)
             elif driver_name == _SHELLY:
                 from ..drivers.shelly import Shelly
                 gc_collect()
