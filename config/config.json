@@ -129,19 +129,19 @@
     },
     "sol1":
     {
-      "driver": "victronmppt",
+      "driver": "victronMppt",
       "port": "ext1"
     },
     "chrg1":
     {
-      "driver": "shelly",
+      "driver": "shellyCharger",
       "host": "",
       "power_correction_factor": 0.0,
       "relay_id": 0
     },
     "inv1":
     {
-      "driver": "ahoydtu",
+      "driver": "ahoyDtu",
       "host": "",
       "id": 0,
       "power_lut": ""

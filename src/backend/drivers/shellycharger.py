@@ -8,9 +8,9 @@ from ..core.types import run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, S
 _REFRESH_INTERVAL = const(120)
 _TIMER_INTERVAL = const(300)
 
-class Shelly(ChargerInterface):
+class ShellyCharger(ChargerInterface):
     def __init__(self, name, config):
-        super(Shelly, self).__init__()
+        super(ShellyCharger, self).__init__()
         from ..core.singletons import Singletons
         from ..core.types import TYPE_CHARGER
         self.__name = name
