@@ -53,18 +53,19 @@ The mode of operation is set via MQTT:
 Connecting devices
 ------------------
 
-There are four device classes:
+There are five device classes:
 
 * battery
 * solar
 * charger
 * inverter
+* power consumption measuring device
 
 homebattery offers high flexibility regarding its connected devices:
 
 * all device classes are optional (e.g. you can have a system without a grid charger)
 * there can be multiple devices per class
-* devices can be distributes across several controllers (see TODO multi controller setups)
+* batteries, solar and charger devices can be distributed across several controllers (see TODO multi controller setups)
 * devices can be a combination of device classes (e.g. a hybrid inverter is usally solar, charger and inverter)
 
 There are several ways to connect devices:

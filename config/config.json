@@ -45,12 +45,6 @@
       "enabled": true,
       "threshold": 300
     },
-    "cell_high":
-    {
-      "enabled": true,
-      "threshold": 3.75,
-      "hysteresis": 0.25
-    },
     "cell_low":
     {
       "enabled": true,
@@ -130,13 +124,13 @@
     "sol1":
     {
       "driver": "victronMppt",
-      "port": "ext1"
+      "port": "ext1",
+      "power_hysteresis": 2
     },
     "chrg1":
     {
       "driver": "shellyCharger",
       "host": "",
-      "power_correction_factor": 0.0,
       "relay_id": 0
     },
     "inv1":

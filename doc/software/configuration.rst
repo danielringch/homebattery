@@ -9,11 +9,8 @@ Example
 
 A template configuration file can be found in the repostiory in the `config folder <https://github.com/danielringch/homebattery/blob/main/config>`_ or can be found as part of every release.
 
-Description
------------
-
 General
-~~~~~~~
+-------
 
 Parent key: ``general``
 
@@ -28,7 +25,7 @@ Parent key: ``general``
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Network
-~~~~~~~
+-------
 
 Parent key: ``network``
 
@@ -55,7 +52,7 @@ Parent key: ``network``
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 MQTT
-~~~~
+----
 
 Parent key: ``mqtt``
 
@@ -74,15 +71,11 @@ Parent key: ``mqtt``
 +----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | ``root``                   | string   | | MQTT root topic.                                                               | homebattery       | 
 |                            |          | | All MQTT topics the system is using will be sub-topics of this root topic      |                   |
-|                            |          |   (except for live energy consumption).                                          |                   |
-+----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``live_consumption_topic`` | string   | | MQTT topic where live energy consumption data is published.                    | n.a.              |
-|                            |          | | The system will subscribe to this topic and will expect a 16 bit unsigned      |                   |
-|                            |          |   integer value representing the current energy consumtion in watts.             |                   |
+|                            |          |   (except for drivers using MQTT).                                               |                   |
 +----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 Logging
-~~~~~~~
+-------
 
 Parent key: ``logging``
 
@@ -92,13 +85,13 @@ Parent key: ``logging``
 | ``host``               | string   | Optional.  If given, the logging data will be send via UDP to this host.          | n.a.              |
 |                        |          | Expected format is ``1.2.3.4:1883.``                                              |                   |
 +------------------------+----------+-----------------------------------------------------------------------------------+-------------------+
-| ``ignore``             | list of  | | Logging sender that shall be ignored.                                           | mqtt, bluetooth   |
-|                        | strings  | | Some parts of the system have a very verbose logging output for debug purposes. |                   |
+| ``ignore``             | list of  | | Logging sender that shall be ignored.                                           | mqtt, bluetooth,  |
+|                        | strings  | | Some parts of the system have a very verbose logging output for debug purposes. | consumption       |
 |                        |          |   It can make sense to disable them in order to get a more readable log.          |                   |
 +------------------------+----------+-----------------------------------------------------------------------------------+-------------------+
 
 Netzero
-~~~~~~~
+-------
 
 Parent key: ``netzero``
 
@@ -106,6 +99,9 @@ Parent key: ``netzero``
 | Key                        | Datatype, Unit | Description                                                                      | Recommended Value |
 +============================+================+==================================================================================+===================+
 | ``enabled``                | boolean, -     | Enables the netzero algorithm.                                                   | n.a.              |
++----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``signed``                 | boolean, -     | Set to ``true``, if your power consumption measurement equipment can measure     | n.a.              |
+|                            |                | power fed into grid (which results in negative values for power consumption).    |                   |
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``evaluated_time_span``    | integer, s     | | Time span that will be evaluated, older data will be ignored.                  | 30                |
 |                            |                | | The maximum value is 120.                                                      |                   |
@@ -125,10 +121,10 @@ Parent key: ``netzero``
 +----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Supervisor
-~~~~~~~~~~~
+----------
 
 Battery offline check
-'''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~
 
 Parent key: ``supervisor``, ``battery_offline``
 
@@ -137,43 +133,11 @@ Parent key: ``supervisor``, ``battery_offline``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | integer, s     | | Maximum time span with no successful communication to any battery.             | 120               |
-|                        |                | | Larger values lead to slower detection of malfunctioning battery BMS,          |                   |
-|                        |                |   smaller values can lead to transient system locks.                             |                   |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-
-Battery overcurrent check
-'''''''''''''''''''''''''
-
-Parent key: ``supervisor``, ``overcurrent``
-
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
-+========================+================+==================================================================================+===================+
-| ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-
-Battery offline check
-'''''''''''''''''''''
-
-Parent key: ``supervisor``, ``battery_offline``
-
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
-+========================+================+==================================================================================+===================+
-| ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, V       | | Maximum voltage of a battery cell.                                             | 3.65              |
-|                        |                | | Larger values can lead to faster aging of battery cells, smaller values lead   |                   |
-|                        |                |   to smaller usable battery capacity and can prevent cell balancing.             |                   |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``hysteresis``         | float, V       | | Hysteresis of the threshold value.                                             | 0.25              |
-|                        |                | | Larger values can prevent charing a partially discharged battery, smaller      |                   |
-|                        |                |   values can lead to toggling between charging and non-charging state.           |                   |
+| ``threshold``          | integer, s     | Maximum time span with no successful communication to any battery.               | 120               |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery cell voltage low check
-''''''''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parent key: ``supervisor``, ``cell_low``
 
@@ -182,17 +146,28 @@ Parent key: ``supervisor``, ``cell_low``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, V       | | Minimum voltage of a battery cell.                                             | 3.1               |
-|                        |                | | Larger values lead to smaller usable battery capacity, smaller values can lead |                   |
-|                        |                |   to faster aging of battery cells.                                              |                   |
+| ``threshold``          | float, V       | Minimum voltage of a battery cell.                                               | 3.1 for LiFePo4   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``hysteresis``         | float, V       | | Hysteresis of the threshold value.                                             | 0.1               |
-|                        |                | | Larger values can prevent discharing a partially charged battery, smaller      |                   |
-|                        |                |   values can lead to toggling between discharging and non-discharging state.     |                   |
+| ``hysteresis``         | float, V       | Hysteresis of the threshold value.                                               | >= 0.1            |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+
+Battery cell voltage high check
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Parent key: ``supervisor``, ``cell_high``
+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``threshold``          | float, V       | | Maximum voltage of a battery cell.                                             | 3.65 for LiFePo4  |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``hysteresis``         | float, V       | | Hysteresis of the threshold value.                                             | >= 0.2            |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery cell temperature low while charging check
-'''''''''''''''''''''''''''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parent key: ``supervisor``, ``temp_low_charge``
 
@@ -201,17 +176,13 @@ Parent key: ``supervisor``, ``temp_low_charge``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, °C      | | Minimum temperature of a battery.                                              | 10                |
-|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
-|                        |                |   lead to faster aging of battery cells.                                         |                   |
+| ``threshold``          | float, °C      | | Minimum temperature of a battery.                                              | 10 for LiFePo4    |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
-|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
-|                        |                |   lead to toggling between charging and non-charging state.                      |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery cell temperature low while discharging check
-''''''''''''''''''''''''''''''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parent key: ``supervisor``, ``temp_low_discharge``
 
@@ -220,17 +191,13 @@ Parent key: ``supervisor``, ``temp_low_discharge``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, °C      | | Minimum temperature of a battery.                                              | 0                 |
-|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
-|                        |                |   lead to faster aging of battery cells.                                         |                   |
+| ``threshold``          | float, °C      | | Minimum temperature of a battery.                                              | 0 for LiFePo4     |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
-|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
-|                        |                |   lead to toggling between discharging and non-discharging state.                |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery cell temperature high while charging check
-''''''''''''''''''''''''''''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parent key: ``supervisor``, ``temp_high_charge``
 
@@ -239,17 +206,13 @@ Parent key: ``supervisor``, ``temp_high_charge``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, °C      | | Maximum temperature of a battery.                                              | 35                |
-|                        |                | | Smaller values lead to smaller usable temperature range, higher values can     |                   |
-|                        |                |   lead to faster aging of battery cells.                                         |                   |
+| ``threshold``          | float, °C      | | Maximum temperature of a battery.                                              | 40 for LiFePo4    |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
-|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
-|                        |                |   lead to toggling between charging and non-charging state.                      |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery cell temperature high while discharging check
-'''''''''''''''''''''''''''''''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parent key: ``supervisor``, ``temp_high_discharge``
 
@@ -258,49 +221,39 @@ Parent key: ``supervisor``, ``temp_high_discharge``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, °C      | | Maximum temperature of a battery.                                              | 35                |
-|                        |                | | Smaller values lead to smaller usable temperature range, higher values can     |                   |
-|                        |                |   lead to faster aging of battery cells.                                         |                   |
+| ``threshold``          | float, °C      | | Maximum temperature of a battery.                                              | 40 for LiFePo4    |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
-|                        |                | | Larger values lead to smaller usable temperature range, smaller values can     |                   |
-|                        |                |   lead to toggling between discharging and non-discharging state.                |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Live consumption data lost while charging check
-'''''''''''''''''''''''''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parent key: ``supervisor``, ``live_data_lost_charge``
 
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                     | Datatype, Unit | Description                                                                      | Recommended Value |
 +=========================+================+==================================================================================+===================+
-| ``enabled``             | boolean, -     | Enables the check.                                                               | true              |
+| ``enabled``             | boolean, -     | Enables the check.                                                               | n.a.              |
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``threshold``           | integer, s     | | Maximum time span without live consumption data in charge state.               | 300               |
-|                         |                | | Larger values can lead to incorrect billing of the electricity consumption     |                   |
-|                         |                |   used for charging, smaller values can lead to toggling between charging and    |                   |
-|                         |                |   non-charging state.                                                            |                   |
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Live consumption data lost while discharging check
-''''''''''''''''''''''''''''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Parent key: ``supervisor``, ``live_data_lost_discharge``
 
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                     | Datatype, Unit | Description                                                                      | Recommended Value |
 +=========================+================+==================================================================================+===================+
-| ``enabled``             | boolean, -     | Enables the check.                                                               | true              |
+| ``enabled``             | boolean, -     | Enables the check.                                                               | n.a.              |
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``threshold``           | integer, s     | | Maximum time span without live consumption data in discharge state.            | 60                |
-|                         |                | | Larger values can lead to incorrect billing of the electricity consumption     |                   |
-|                         |                |   reduced by the inverter and to inverter over- or underproduction, smaller      |                   |
-|                         |                |   values can lead to toggling between discharging and non-discharging state.     |                   |
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 MQTT offline check
-''''''''''''''''''
+~~~~~~~~~~~~~~~~~~
 
 Parent key: ``supervisor``, ``mqtt_offline``
 
@@ -310,12 +263,10 @@ Parent key: ``supervisor``, ``mqtt_offline``
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``threshold``          | integer, s     | | Maximum time span without connection to the MQTT broker.                       | 60                |
-|                        |                | | Larger values delay a system reset in case the connection can not be restored, |                   |
-|                        |                |   smaller values may lead to unnecessary system resets.                          |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Device drivers
-~~~~~~~~~~~~~~
+--------------
 
 Parent key: ``devices``, ``<device name>``
 
@@ -326,6 +277,9 @@ Parent key: ``devices``, ``<device name>``
 +========================+==========+==================================================================================+===================+
 | ``driver``             | string   | Device driver. Values are given in the sub-sections below.                       | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+
+Battery
+~~~~~~~
 
 LLT Power BMS with Bluetooth
 ''''''''''''''''''''''''''''
@@ -378,10 +332,13 @@ Driver name: ``mqttBattery``
 | ``temperature_count``  | int            | Number of temperature sensors of the battery.                                    | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
+Solar charger
+~~~~~~~~~~~~~
+
 Victron SmartSolar MPPT / Victron BlueSolar MPPT
 ''''''''''''''''''''''''''''''''''''''''''''''''
 
-Driver name: ``victronmppt``
+Driver name: ``victronMppt``
 
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype | Description                                                                      | Recommended Value |
@@ -392,10 +349,13 @@ Driver name: ``victronmppt``
 | ``power_hysteresis``   | integer  | Power hysteresis, power changes smaller than the hysteresis will be ignored.     | 2                 |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
+Grid charger
+~~~~~~~~~~~~
+
 Shelly smart switch
 '''''''''''''''''''
 
-Driver name: ``shelly``
+Driver name: ``shellyCharger``
 
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype | Description                                                                      | Recommended Value |
@@ -406,10 +366,13 @@ Driver name: ``shelly``
 |                        |          | dual switch models.                                                              |                   |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
+Inverter
+~~~~~~~~
+
 AhoyDTU
 '''''''
 
-Driver name: ``ahoydtu``
+Driver name: ``ahoyDtu``
 
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype | Description                                                                      | Recommended Value |
@@ -421,3 +384,20 @@ Driver name: ``ahoydtu``
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | ``power_lut``          | string   | Absolute path to the inverter power lookup table.                                | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+
+Power consumption measurement
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+MQTT consumption
+''''''''''''''''
+
+Driver name: ``mqttConsumption``
+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``topic``              | string         | | MQTT topic where live consumption data is published.                           | n.a.              |
+|                        |                | | The published data at this topic must be a 16 or 32 bit signed integer and     |                   |
+|                        |                |   must have the unit watt (W). Positive values stand for power taken from grid,  |                   |
+|                        |                |   negative values stand for power fed into grid.                                 |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
