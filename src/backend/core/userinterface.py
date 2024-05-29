@@ -51,11 +51,11 @@ class UserInterface:
 
     @property
     def sw1(self):
-        return bool(self.__sw1.value())
+        return not bool(self.__sw1.value())
     
     @property
     def sw2(self):
-        return bool(self.__sw2.value())
+        return not bool(self.__sw2.value())
 
 # display
 

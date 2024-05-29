@@ -7,7 +7,7 @@ class Watchdog:
 
     def __init__(self):
         from .singletons import Singletons
-        enabled = Singletons.ui.sw2
+        enabled = not Singletons.ui.sw2
         Singletons.log.info('Watchdog enabled=', enabled)
         self.__wdt = WDT(timeout=5000) if enabled else self.Stub()
 

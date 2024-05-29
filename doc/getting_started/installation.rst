@@ -22,7 +22,7 @@ See TODO for a detailed description of all configuration parameters.
     * without baseboard, connect ``GP9`` (Pin 12) with ``GND`` (Pin 13)
     * with baseboard, connect a jumper to ``SW1``
 * turn on the Raspberry Pico W
-* connect to the WLAN ``homebattery_controller``
+* connect to the WLAN ``homebattery_cfg``
     * passphrase is ``webinterface``
 * open ``http://192.168.0.1`` in your browser
 * upload your ``config.json`` file

@@ -1,9 +1,12 @@
-from network import WLAN, STA_IF
+from network import WLAN, AP_IF, STA_IF
 from micropython import const
 from ntptime import settime as setntptime
 from time import sleep
 from uerrno import ETIMEDOUT
 from .watchdog import Watchdog
+
+AP_SSID = const('homebattery_cfg')
+AP_PASSWORD = const('webinterface')
 
 class Network():
     def __init__(self, config: dict):
@@ -46,3 +49,14 @@ class Network():
                     countdown -= 1
                 sleep(2)
         self.__log.info('Clock synchronized.')
+
+    def create_hotspot(self):
+        wlan = WLAN(AP_IF)
+        wlan.config(ssid=AP_SSID, password=AP_PASSWORD)
+        wlan.active(True)
+        wlan.ifconfig(('192.168.4.1', '255.255.255.0', '192.168.4.1', '192.168.4.1'))
+        ip, _, _, _ = wlan.ifconfig()
+        self.__log.info('Hotspot: ', AP_SSID)
+        self.__log.info('Password: ', AP_PASSWORD)
+        self.__log.info('Own IP address: ', ip)
+        return ip

@@ -57,6 +57,15 @@ async def homebattery():
 
     await sleep(3.0)
 
+    if ui.sw1:
+        from ..core.network import Network, AP_SSID, AP_PASSWORD
+        from ..core.webserver import Webserver
+        log.debug('Entering configuration mode.')
+
+        ip = Network({'network':None}).create_hotspot()
+        ui.print('Connect to SSID:', AP_SSID, 'Password:', AP_PASSWORD, 'Open:', ip)
+        Webserver().run()
+
     try:
         with open("/config.json", "r") as stream:
             config = load_json(stream)
