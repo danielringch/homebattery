@@ -1,0 +1,149 @@
+{
+  "general":
+  {
+    "default_mode": "idle",
+    "inverter_power": 0
+  },
+  "network":
+  {
+    "ssid": "",
+    "password": "",
+    "timeout": 0,
+    "ntp_server": "",
+    "timezone": 0,
+    "ntp_timeout": 0
+  },
+  "mqtt":
+  {
+    "host": "",
+    "ca": "",
+    "tls_insecure": false,
+    "user": "",
+    "password": "",
+    "root": ""
+  },
+  "logging":
+  {
+    "host": "",
+    "ignore": []
+  },
+  "netzero":
+  {
+    "enabled": true,
+    "signed": false,
+    "evaluated_time_span": 0,
+    "maturity_time_span": 0,
+    "power_offset": 0,
+    "power_hysteresis": 0,
+    "power_change_upwards": 0,
+    "power_change_downwards": 0
+  },
+  "supervisor":
+  {
+    "battery_offline":
+    {
+      "enabled": true,
+      "threshold": 300
+    },
+    "cell_low":
+    {
+      "enabled": true,
+      "threshold": 3.1,
+      "hysteresis": 0.1
+    },
+    "cell_high":
+    {
+      "enabled": true,
+      "threshold": 3.75,
+      "hysteresis": 0.25
+    },
+    "temp_low_charge":
+    {
+      "enabled": true,
+      "threshold": 10,
+      "hysteresis": 2
+    },
+    "temp_low_discharge":
+    {
+      "enabled": true,
+      "threshold": 0,
+      "hysteresis": 2
+    },
+    "temp_high_charge":
+    {
+      "enabled": true,
+      "threshold": 35,
+      "hysteresis": 2
+    },
+    "temp_high_discharge":
+    {
+      "enabled": true,
+      "threshold": 35,
+      "hysteresis": 2
+    },
+    "live_data_lost_charge":
+    {
+      "enabled": true,
+      "threshold": 180
+    },
+    "live_data_lost_discharge":
+    {
+      "enabled": true,
+      "threshold": 60
+    },
+    "mqtt_offline":
+    {
+      "enabled": true,
+      "threshold": 60
+    }
+  },
+  "devices":
+  {
+    "bat1":
+    {
+      "driver": "lltPowerBmsV4Ble",
+      "mac": ""
+    },
+    "bat2":
+    {
+      "driver": "daly8S24V60A",
+      "mac": ""
+    },
+    "bat3":
+    {
+      "driver": "jkBmsBd4",
+      "mac": ""
+    },
+    "bat4":
+    {
+      "driver": "mqttBattery",
+      "root_topic": "<root>/bat/dev/<device>",
+      "cell_count": 0,
+      "temperature_count": 0
+    },
+    "sol1":
+    {
+      "driver": "victronMppt",
+      "port": "ext1",
+      "power_hysteresis": 2
+    },
+    "chrg1":
+    {
+      "driver": "shellyCharger",
+      "host": "",
+      "relay_id": 0
+    },
+    "inv1":
+    {
+      "driver": "ahoyDtu",
+      "host": "",
+      "id": 0,
+      "power_lut": ""
+    },
+    "power1":
+    {
+      "driver": "mqttConsumption",
+      "topic": "foo/bar"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+
+
+Burst 1
+00 dd | frame start
+01 03 | command
+02 00 | status
+03 1b | length
+04 0a04 - 2564 | Voltage
+05 0000 - 0000 | Current
+06 0483 - 1154 | Capacity remaining
+10 1838 - 6200 | Capacity full
+12 001c - 0028 | Cycles
+14 2c94 | production date
+16 0000 | balance low
+18 0000 | balance high
+
+Burst 2
+20 0000 | protection
+16 | version
+13 - 19 | SoC
+03 | MOS status
+08 | number of cells
+02 | number of temperature probes
+0b77 | temperature 1
+0b78 | temperature 2
+fce9 | calibration code
+77 | frame end
+
+Burst 3
+dd | frame start
+04 | command
+00 | status
+10 | length
+0c85 - 3205 | Cell 1
+0c86 - 3206 | Cell 2
+0c84 - 3204 | Cell 3
+0c83 - 3203 | Cell 4
+0c84 - 3204 | Cell 5
+0c87 - 3207 | Cell 6
+0c86 - 3206 | Cell 7
+0c8a - 3210 | Cell 8
+
+Burst 4
+fb63 | calibration code
+77 | frame end
