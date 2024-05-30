@@ -3,6 +3,7 @@ from os import ilistdir, remove, sync
 from machine import reset
 from socket import getaddrinfo, socket, SOL_SOCKET, SO_REUSEADDR
 from sys import print_exception
+from time import sleep
 
 CSS_STYLE = b'''html {font-family: Arial}
 table {width: 100%; border-collapse: collapse;}
@@ -67,7 +68,11 @@ fetchFiles();
 
 HEADER_200 = 'HTTP/1.0 200 OK\r\nContent-type: %s\r\n\r\n'
 HEADER_200_EMPTY = b'HTTP/1.0 200 OK\r\nContent-Length: 0'
+HEADER_400 = b'HTTP/1.0 400 Bad Request\r\nContent-Length: 0'
 HEADER_404 = b'HTTP/1.0 404 Not Found\r\nContent-Length: 0'
+
+class PayloadIncompleteError(Exception):
+    pass
 
 class Webserver:
     def __init__(self):
@@ -105,6 +110,8 @@ class Webserver:
                 else:
                     self.__log.error('Unknown request: ', path)
                     conn.send(HEADER_404)
+            except PayloadIncompleteError:
+                conn.send(HEADER_400)
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
                 from ..core.singletons import Singletons
@@ -132,7 +139,15 @@ class Webserver:
                         length = int(parts[-1].rstrip())
                 payload = None
                 if length > 0:
-                    payload = connection.recv(length)
+                    payload = b''
+                    for _ in range(10):
+                        payload += connection.recv(length - len(payload))
+                        if len(payload) == length:
+                            break
+                        sleep(1)
+                    else:
+                        self.__log.error('Incomplete payload, ', length, ' Bytes expected, ', len(payload), ' Bytes received.')
+                        raise PayloadIncompleteError()
                 return path, payload
             raise NotImplementedError()
         except Exception as e:
