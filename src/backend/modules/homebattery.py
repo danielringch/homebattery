@@ -33,7 +33,7 @@ gc_collect()
 from .outputs import Outputs
 gc_collect()
 
-_VERSION = const('0.1.0')
+_VERSION = const('0.2.0')
 
 prefix = '[homebattery] {0}'
 
