@@ -1,5 +1,5 @@
-Getting started
-===============
+Handbook
+========
 
 .. toctree::
    :maxdepth: 1

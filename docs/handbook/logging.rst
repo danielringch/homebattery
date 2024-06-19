@@ -23,17 +23,20 @@ Connection parameters are:
 
 You can use any terminal emulation program that supports serial connections, like `PuTTY <https://www.putty.org>`_ or `picocom <https://github.com/npat-efault/picocom>`_.
 
+.. warning::
+   If the baseboard is used, it is strongly recommended to disconnect all other cables from the baseboard while using USB. Otherwise the Pico might get damaged due to ESD.
+
 UDP data stream
 ---------------
 
-Logging data is sent via a UDP port, if a host is set in the logging configuration, see TODO.
+Logging data can be sent via a UDP port, if a host is set in the logging configuration. For configuration, see the :doc:`software reference <../software/configuration>`
 
-Log data is then send in plain text to this host. Homebattery comes with its own small application to receive this log data and store it as a file for every day, see https://github.com/danielringch/homebattery/releases.
+Log data is then sent as plain text to this host. Homebattery comes with its own small application to receive this log data and store it as a file for every day, see https://github.com/danielringch/homebattery/releases.
 
 The logger application takes the following arguments:
 
 * ``--host``: address to receive data from. This is usually set to ``0.0.0.0``.
-* ``--port``: port to receive data from. This value must match the homebattery configuration.
+* ``--port``: port to receive data from. This value must match the value in the homebattery configuration.
 * ``--file``: path and name of the file the log will be written to
 * ``--backup``: limits the number of files kept. So a value of 10 means that only data log data from the last 10 days will be kept.
 

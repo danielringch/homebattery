@@ -9,8 +9,12 @@ There are a few things that you need when using homebattery:
 
 Depending on your hardware, you might also need:
 
-* a baseboard (necessary for using add-on boards)
-* add-on boards (see drivers TODO section whether your devices need one)
+* a :ref:`baseboard <handbook_baseboard>` (necessary for using add-on boards)
+* :ref:`add-on boards <handbook_addonboards>` (see drivers in the :doc:`software reference <../software/drivers>` for more information)
+
+For usage of the netzero algorithm, you need:
+
+* a supported power measurement device
 
 Recommended, but not necessary are:
 
@@ -18,3 +22,11 @@ Recommended, but not necessary are:
 
 .. note::
    homebattery does not require an internet connection, everything can be hosted on your local network.
+
+For the initial setup and adapting the configuration, you will also need a computer with:
+
+* USB
+* WLAN
+* file browser
+* text editor
+* web browser

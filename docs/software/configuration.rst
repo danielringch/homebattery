@@ -1,13 +1,13 @@
 Configuration
 =============
 
-Configuration is done using a json file ``config.json``, which is uploaded onto the Raspberry Pi Pico, see TODO.
+Configuration is done using a json file ``config.json``, which is uploaded onto the Raspberry Pi Pico, see  :doc:`installation <../handbook/installation>`.
 
 
 Example
 -------
 
-A template configuration file can be found in the repostiory in the `config folder <https://github.com/danielringch/homebattery/blob/main/config>`_ or can be found as part of every release.
+A template configuration file can be found in the repostiory in the `config folder <https://github.com/danielringch/homebattery/blob/main/config>`_ or as part of every release.
 
 General
 -------
@@ -18,10 +18,12 @@ Parent key: ``general``
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
 +========================+================+==================================================================================+===================+
 | ``default_mode``       | string, -      | Mode of operation the system will switch to after startup when no mode request   | idle              |
+|                        |                |                                                                                  |                   |
 |                        |                | is received in the meanwhile.                                                    |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``inverter_power``     | int, W         | | Inverter power when in operation mode discharge.                               | n.a.              |
-|                        |                | | This valud is currently only used if netzero is disabled.                      |                   |
+| ``inverter_power``     | int, W         | Inverter power when in operation mode discharge.                                 | n.a.              |
+|                        |                |                                                                                  |                   |
+|                        |                | This value is only used if the netzero algorithm is not used.                    |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Network
@@ -36,19 +38,25 @@ Parent key: ``network``
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``password``           | string, -      | The password of your WLAN network.                                               | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``timeout``            | integer, s     | | The timeout for connecting to the network.                                     | 15                |
-|                        |                | | If the system is not connected to the network after the timeout, the system    |                   |
-|                        |                |   restarts.                                                                      |                   |
+| ``timeout``            | integer, s     | The timeout for connecting to the network.                                       | 15                |
+|                        |                |                                                                                  |                   |
+|                        |                | If the system is not connected to the network after the timeout, the system      |                   |
+|                        |                |                                                                                  |                   |
+|                        |                | restarts.                                                                        |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``ntp_server``         | string, -      | Optional. The host address of the ntp server.                                    | time.google.com   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``timezone``           | integer, -     | | Optional. The UTC offset of your timezone.                                     | 1 for Berlin      |
-|                        |                | | The UTC offsets can be found here:                                             |                   |
-|                        |                |   https://en.wikipedia.org/wiki/List_of_UTC_offsets .                            |                   |
+| ``timezone``           | integer, -     | Optional. The UTC offset of your timezone.                                       | 1 for Berlin      |
+|                        |                |                                                                                  |                   |
+|                        |                | The UTC offsets can be found here:                                               |                   |
+|                        |                |                                                                                  |                   |
+|                        |                | https://en.wikipedia.org/wiki/List_of_UTC_offsets .                              |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``ntp_timeout``        | integer, s     | | Optional. The timeout for retriving time from the ntp server.                  | 10                |
-|                        |                | | If no time was retrived from the ntp server after the timeout, the system      |                   |
-|                        |                |   continues without time sync.                                                   |                   |
+| ``ntp_timeout``        | integer, s     | Optional. The timeout for retriving time from the ntp server.                    | 10                |
+|                        |                |                                                                                  |                   |
+|                        |                | If no time was retrived from the ntp server after the timeout, the system        |                   |
+|                        |                |                                                                                  |                   |
+|                        |                | continues without time sync.                                                     |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 MQTT
@@ -56,69 +64,81 @@ MQTT
 
 Parent key: ``mqtt``
 
-+----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| Key                        | Datatype | Description                                                                      | Recommended Value |
-+============================+==========+==================================================================================+===================+
-| ``host``                   | string   | Host address of the MQTT broker. Expected format is ``1.2.3.4:1883``.            | n.a.              |
-+----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``ca``                     | string   | Optional. File name of the TLS CA certificate.                                   | n.a.              |
-+----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``tls_insecure``           | boolean  | Optional. Turns on accepting self-signed TLS certificates.                       | n.a.              |
-+----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``user``                   | string   | Optional. Username for authentification at the MQTT broker.                      | n.a.              |
-+----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``password``               | string   | Optional. Password for authentification at the MQTT broker.                      | n.a.              |
-+----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``root``                   | string   | | MQTT root topic.                                                               | homebattery       | 
-|                            |          | | All MQTT topics the system is using will be sub-topics of this root topic      |                   |
-|                            |          |   (except for drivers using MQTT).                                               |                   |
-+----------------------------+----------+----------------------------------------------------------------------------------+-------------------+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype       | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``host``               | string         | Host address of the MQTT broker. Expected format is ``1.2.3.4:1883``.            | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``ca``                 | string         | Optional. File name of the TLS CA certificate.                                   | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``tls_insecure``       | boolean        | Optional. Turns on accepting self-signed TLS certificates.                       | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``user``               | string         | Optional. Username for authentification at the MQTT broker.                      | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``password``           | string         | Optional. Password for authentification at the MQTT broker.                      | n.a.              |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``root``               | string         | MQTT root topic.                                                                 | homebattery       | 
+|                        |                |                                                                                  |                   |
+|                        |                | All MQTT topics the system is using will be sub-topics of this root topic        |                   |
+|                        |                |                                                                                  |                   |
+|                        |                | (except for drivers using MQTT).                                                 |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Logging
 -------
 
 Parent key: ``logging``
 
-+------------------------+----------+-----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype | Description                                                                       | Recommended Value |
-+========================+==========+===================================================================================+===================+
-| ``host``               | string   | Optional.  If given, the logging data will be send via UDP to this host.          | n.a.              |
-|                        |          | Expected format is ``1.2.3.4:1883.``                                              |                   |
-+------------------------+----------+-----------------------------------------------------------------------------------+-------------------+
-| ``ignore``             | list of  | | Logging sender that shall be ignored.                                           | mqtt, bluetooth,  |
-|                        | strings  | | Some parts of the system have a very verbose logging output for debug purposes. | consumption       |
-|                        |          |   It can make sense to disable them in order to get a more readable log.          |                   |
-+------------------------+----------+-----------------------------------------------------------------------------------+-------------------+
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype       | Description                                                                      | Recommended Value |
++========================+================+==================================================================================+===================+
+| ``host``               | string         | Optional.  If given, the logging data will be send via UDP to this host.         | n.a.              |
+|                        |                |                                                                                  |                   |
+|                        |                | Expected format is ``1.2.3.4:1883.``                                             |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
+| ``ignore``             | list of        | Logging sender that shall be ignored.                                            | mqtt, bluetooth,  |
+|                        |                |                                                                                  |                   |
+|                        | strings        | Some parts of the system have a very verbose logging output for debug purposes.  | consumption       |
+|                        |                |                                                                                  |                   |
+|                        |                | It can make sense to disable them in order to get a more readable log.           |                   |
++------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Netzero
 -------
 
 Parent key: ``netzero``
 
-+----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| Key                        | Datatype, Unit | Description                                                                      | Recommended Value |
-+============================+================+==================================================================================+===================+
-| ``enabled``                | boolean, -     | Enables the netzero algorithm.                                                   | n.a.              |
-+----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``signed``                 | boolean, -     | Set to ``true``, if your power consumption measurement equipment can measure     | n.a.              |
-|                            |                | power fed into grid (which results in negative values for power consumption).    |                   |
-+----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``evaluated_time_span``    | integer, s     | | Time span that will be evaluated, older data will be ignored.                  | 30                |
-|                            |                | | The maximum value is 120.                                                      |                   |
-+----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``maturity_time_span``     | integer, s     | | Time span after an inverter power change during which netzero will not         | 15                |
-|                            |                |   inverter power.                                                                |                   |
-|                            |                | | Independently from this value, netzero will not change inverter power with     |                   |
-|                            |                |   less than two data points.                                                     |                   |
-+----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``power_offset``           | integer, W     | Expected remaining minimum energy consumption.                                   | 10                |
-+----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``power_hysteresis``       | integer, W     | Hysteresis of the remaing minimum energy consumption.                            | 5                 |
-+----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``power_change_upwards``   | integer, W     | Maximum increase of the inverter power in a single inverter power change.        | 100 - 200         |
-+----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``power_change_downwards`` | integer, W     | Decrease of the inverter power in case of a backfeeding event.                   | 25 - 50           |
-+----------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| Key                        | Datatype, Unit | Description                                                                  | Recommended Value |
++============================+================+==============================================================================+===================+
+| ``enabled``                | boolean, -     | Enables the netzero algorithm.                                               | n.a.              |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| ``signed``                 | boolean, -     | Set to ``true``, if your power consumption measurement equipment can         | n.a.              |
+|                            |                |                                                                              |                   |
+|                            |                | measure power fed into grid (which results in negative values for power      |                   |
+|                            |                |                                                                              |                   |
+|                            |                | consumption).                                                                |                   |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| ``evaluated_time_span``    | integer, s     | Time span that will be evaluated, older data will be ignored.                | 30                |
+|                            |                |                                                                              |                   |
+|                            |                | The maximum value is 120.                                                    |                   |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| ``maturity_time_span``     | integer, s     | Time span after an inverter power change during which netzero will not       | 15                |
+|                            |                |                                                                              |                   |
+|                            |                | increase inverter power.                                                     |                   |
+|                            |                |                                                                              |                   |
+|                            |                | Independently from this value, netzero will not change inverter power with   |                   |
+|                            |                |                                                                              |                   |
+|                            |                | less than two data points.                                                   |                   |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| ``power_offset``           | integer, W     | Expected remaining minimum energy consumption.                               | 10                |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| ``power_hysteresis``       | integer, W     | Hysteresis of the remaing minimum energy consumption.                        | 5                 |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| ``power_change_upwards``   | integer, W     | Maximum increase of the inverter power in a single inverter power change.    | 100 - 200         |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| ``power_change_downwards`` | integer, W     | Decrease of the inverter power in case of a backfeeding event.               | 25 - 50           |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
 
 Supervisor
 ----------
@@ -161,9 +181,9 @@ Parent key: ``supervisor``, ``cell_high``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, V       | | Maximum voltage of a battery cell.                                             | 3.65 for LiFePo4  |
+| ``threshold``          | float, V       | Maximum voltage of a battery cell.                                               | 3.65 for LiFePo4  |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``hysteresis``         | float, V       | | Hysteresis of the threshold value.                                             | >= 0.2            |
+| ``hysteresis``         | float, V       | Hysteresis of the threshold value.                                               | >= 0.2            |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery cell temperature low while charging check
@@ -176,9 +196,9 @@ Parent key: ``supervisor``, ``temp_low_charge``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, °C      | | Minimum temperature of a battery.                                              | 10 for LiFePo4    |
+| ``threshold``          | float, °C      | Minimum temperature of a battery.                                                | 10 for LiFePo4    |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
+| ``hysteresis``         | float, °C      | Hysteresis of the threshold value.                                               | 2                 |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery cell temperature low while discharging check
@@ -191,9 +211,9 @@ Parent key: ``supervisor``, ``temp_low_discharge``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, °C      | | Minimum temperature of a battery.                                              | 0 for LiFePo4     |
+| ``threshold``          | float, °C      | Minimum temperature of a battery.                                                | 0 for LiFePo4     |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
+| ``hysteresis``         | float, °C      | Hysteresis of the threshold value.                                               | 2                 |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery cell temperature high while charging check
@@ -206,9 +226,9 @@ Parent key: ``supervisor``, ``temp_high_charge``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, °C      | | Maximum temperature of a battery.                                              | 40 for LiFePo4    |
+| ``threshold``          | float, °C      | Maximum temperature of a battery.                                                | 40 for LiFePo4    |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
+| ``hysteresis``         | float, °C      | Hysteresis of the threshold value.                                               | 2                 |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Battery cell temperature high while discharging check
@@ -221,9 +241,9 @@ Parent key: ``supervisor``, ``temp_high_discharge``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | float, °C      | | Maximum temperature of a battery.                                              | 40 for LiFePo4    |
+| ``threshold``          | float, °C      | Maximum temperature of a battery.                                                | 40 for LiFePo4    |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``hysteresis``         | float, °C      | | Hysteresis of the threshold value.                                             | 2                 |
+| ``hysteresis``         | float, °C      | Hysteresis of the threshold value.                                               | 2                 |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Live consumption data lost while charging check
@@ -236,7 +256,7 @@ Parent key: ``supervisor``, ``live_data_lost_charge``
 +=========================+================+==================================================================================+===================+
 | ``enabled``             | boolean, -     | Enables the check.                                                               | n.a.              |
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``           | integer, s     | | Maximum time span without live consumption data in charge state.               | 300               |
+| ``threshold``           | integer, s     | Maximum time span without live consumption data in charge state.                 | 300               |
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Live consumption data lost while discharging check
@@ -249,7 +269,7 @@ Parent key: ``supervisor``, ``live_data_lost_discharge``
 +=========================+================+==================================================================================+===================+
 | ``enabled``             | boolean, -     | Enables the check.                                                               | n.a.              |
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``           | integer, s     | | Maximum time span without live consumption data in discharge state.            | 60                |
+| ``threshold``           | integer, s     | Maximum time span without live consumption data in discharge state.              | 60                |
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 MQTT offline check
@@ -262,7 +282,7 @@ Parent key: ``supervisor``, ``mqtt_offline``
 +========================+================+==================================================================================+===================+
 | ``enabled``            | boolean, -     | Enables the check.                                                               | true              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``threshold``          | integer, s     | | Maximum time span without connection to the MQTT broker.                       | 60                |
+| ``threshold``          | integer, s     | Maximum time span without connection to the MQTT broker.                         | 60                |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
 Device drivers
@@ -281,6 +301,7 @@ Parent key: ``devices``, ``<device name>``
 Battery
 ~~~~~~~
 
+.. _confiuration_llt_power_bms_v4_ble:
 LLT Power BMS with Bluetooth
 ''''''''''''''''''''''''''''
 
@@ -292,6 +313,7 @@ Driver name: ``lltPowerBmsV4Ble``
 | ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
+.. _confiuration_daly_8s_24v_60a:
 Daly H-Series Smart BMS with Bluetooth
 ''''''''''''''''''''''''''''''''''''''
 
@@ -303,6 +325,7 @@ Driver name: ``daly8S24V60A``
 | ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
+.. _confiuration_jk_bms_bd4:
 JK BMS BD4-Series
 '''''''''''''''''
 
@@ -314,6 +337,7 @@ Driver name: ``jkBmsBd4``
 | ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
+.. _confiuration_mqtt_battery:
 MQTT battery
 ''''''''''''
 
@@ -322,10 +346,13 @@ Driver name: ``mqttBattery``
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
 +========================+================+==================================================================================+===================+
-| ``root_topic``         | string         | | MQTT root topic for the battery data sent from another homebattery controller. | n.a.              |
-|                        |                | | Value has the following scheme: ``<root>/bat/dev/<name>``, where ``root`` is   |                   |
-|                        |                |   the MQTT root topic of the other homebattery controller and ``name`` is the    |                   |
-|                        |                |   device name of the battery.                                                    |                   |
+| ``root_topic``         | string         | MQTT root topic for the battery data sent from another homebattery controller.   | n.a.              |
+|                        |                |                                                                                  |                   |
+|                        |                | Value has the following scheme: ``<root>/bat/dev/<name>``, where ``root`` is     |                   |
+|                        |                |                                                                                  |                   |
+|                        |                | the MQTT root topic of the other homebattery controller and ``name`` is the      |                   |
+|                        |                |                                                                                  |                   |
+|                        |                | device name of the battery.                                                      |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``cells_count``        | int            | Number of cells of the battery.                                                  | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
@@ -335,6 +362,7 @@ Driver name: ``mqttBattery``
 Solar charger
 ~~~~~~~~~~~~~
 
+.. _confiuration_victron_mppt:
 Victron SmartSolar MPPT / Victron BlueSolar MPPT
 ''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -344,6 +372,7 @@ Driver name: ``victronMppt``
 | Key                    | Datatype | Description                                                                      | Recommended Value |
 +========================+==========+==================================================================================+===================+
 | ``port``               | string   | Expansion slot the addon board is connected to. Possible values are ``ext1``     | n.a.              |
+|                        |          |                                                                                  |                   |
 |                        |          | and ``ext2``.                                                                    |                   |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | ``power_hysteresis``   | integer  | Power hysteresis, power changes smaller than the hysteresis will be ignored.     | 2                 |
@@ -352,6 +381,7 @@ Driver name: ``victronMppt``
 Grid charger
 ~~~~~~~~~~~~
 
+.. _confiuration_shelly_charger:
 Shelly smart switch
 '''''''''''''''''''
 
@@ -363,12 +393,14 @@ Driver name: ``shellyCharger``
 | ``host``               | string   | Host address of the device. Expected format is ``1.2.3.4:80``                    | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | ``relay_id``           | integer  | Relay id of the used output. Value is 0 for single switch models, 0 and 1 for    | n.a.              |
+|                        |          |                                                                                  |                   |
 |                        |          | dual switch models.                                                              |                   |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 Inverter
 ~~~~~~~~
 
+.. _confiuration_ahoy_dtu:
 AhoyDTU
 '''''''
 
@@ -380,14 +412,16 @@ Driver name: ``ahoyDtu``
 | ``host``               | string   | Host address of the device. Expected format is ``1.2.3.4:80``                    | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | ``id``                 | integer  | Id of the used inverter. Value can be taken from the AhoyDTU web interface start | n.a.              |
+|                        |          |                                                                                  |                   |
 |                        |          | page.                                                                            |                   |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``power_lut``          | string   | Absolute path to the inverter power lookup table.                                | n.a.              |
+| ``power_lut``          | string   | File name of the inverter power lookup table.                                    | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 Power consumption measurement
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. _confiuration_mqtt_consumption:
 MQTT consumption
 ''''''''''''''''
 
@@ -396,8 +430,11 @@ Driver name: ``mqttConsumption``
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
 +========================+================+==================================================================================+===================+
-| ``topic``              | string         | | MQTT topic where live consumption data is published.                           | n.a.              |
-|                        |                | | The published data at this topic must be a 16 or 32 bit signed integer and     |                   |
-|                        |                |   must have the unit watt (W). Positive values stand for power taken from grid,  |                   |
-|                        |                |   negative values stand for power fed into grid.                                 |                   |
+| ``topic``              | string         | MQTT topic where live consumption data is published.                             | n.a.              |
+|                        |                |                                                                                  |                   |
+|                        |                | The published data at this topic must be a 16 or 32 bit signed integer and       |                   |
+|                        |                |                                                                                  |                   |
+|                        |                | must have the unit watt (W). Positive values stand for power taken from grid,    |                   |
+|                        |                |                                                                                  |                   |
+|                        |                | negative values stand for power fed into grid.                                   |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+

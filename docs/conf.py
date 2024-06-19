@@ -24,4 +24,5 @@ exclude_patterns = []
 language = 'en'
 
 html_theme = 'sphinx_rtd_theme'
+html_style = 'css/my_theme.css'
 html_static_path = ['_static']

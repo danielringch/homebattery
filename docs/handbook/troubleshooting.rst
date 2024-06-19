@@ -10,14 +10,14 @@ Bad news. Your Raspberry Pico W is probably broken. Sorry.
 
 **The Raspberry Pico W does not start after installing the software.**
 
-Connect your Raspberry Pico W via USB and get access to its serial console, see TODO
+Connect your Raspberry Pico W via USB and get access to its serial console, see :doc:`logging <logging>`.
 
 * If the output of the serial console is empty, please install the firmware again.
 * If there is an output on the serial console, please check for error messages.
 
 **The Raspberry Pico shows an error about invalid configuration on display or serial console.**
 
-Check the configuration file and upload it again, see TODO.
+Check the configuration file and upload it again, see :doc:`installation <installation>`.
 
 **The Raspberry Pico W keeps resetting itself after a couple of seconds**
 
