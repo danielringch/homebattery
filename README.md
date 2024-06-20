@@ -65,7 +65,7 @@ Homebattery was not the first and will not be the last solution for controlling 
 
 ## How to start?
 
-Please read the handbook in the documentation.
+Please read the [handbook](https://homebattery.readthedocs.io/en/latest/handbook/index_handbook.html#)  in the [documentation](https://homebattery.readthedocs.io/en/latest/).
 
 ## Disclaimer
 
