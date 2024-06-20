@@ -1,7 +1,7 @@
 Drivers
 =======
 
-Drivers are used to connect to the devices of the system. For every device, add a driver entry to the :doc:`configuration <configuration>`.
+Drivers are used to connect devices with homebattery. For every device, add a driver entry is added to the :doc:`configuration <configuration>`.
 
 |
 |
@@ -235,9 +235,9 @@ The driver will set the inverter power only to values present in the power LUT. 
 
 A power LUT can be created with the following steps:
 
-* connect a power measurement device between the AC side of the inverter an the wall socket
-* connect the battery with a SOC > 60%
-* set the inverter power using AhoyDTU Active Power control
+* connect a power measurement device between the AC side of the inverter and the wall socket
+* ensure that the battery has an SOC > 60%
+* set the inverter power using the AhoyDTU web interface and Active Power control
 * start at the desired inverter minimum relative power
 * wait until the inverter power has stabilized (takes a couple of seconds after a power change has been triggered)
 * add an entry to the power LUT with the relative power set in AhoyDTU and the real power measured at the wall socket

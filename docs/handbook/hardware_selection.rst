@@ -4,13 +4,13 @@ Hardware selection
 Raspberry Pico W only setups
 ----------------------------
 
-homebattery supports running on a bare Raspberry Pico W. The system is then usually powered by a phone charger connected to the micro USB port.
+homebattery supports running on a bare Raspberry Pico W. The system is then powered via the micro USB port.
 
 .. image:: ../images/pico_topview.jpg
   :width: 600
   :alt: Raspberry Pico W
 
-This setup comes with a few limitations:
+This setup comes with some limitations:
 
 * only devices connected via network or Bluetooth can be used
 * no display or LEDs
@@ -48,14 +48,14 @@ Example setup:
   :width: 500
   :alt: multi controller example
 
-In a usual multi controller setup, all inverters are connected to one main controller. Chargers and batteries can either be connected to the main controller or to one or more additional controllers.
+In a multi controller setup, all inverters and grid chargers are connected to one main controller. Solar chargers and batteries can either be connected to the main controller or to one or more additional controllers.
 
 For more information, see TODO.
 
 Housing
 -------
 
-The homebattery PCBs can be mounted using M3 screws. When using add-on boards, the PCBs are usually stacked with the baseboard on top.
+The homebattery PCBs can be mounted using M3 screws. When using add-on boards, the PCBs are stacked behind the baseboard.
 
 There is no case specifically for home battery, but there are instructions how to use a standard case with transparent front, see the :doc:`hardware reference <../hardware/housing>`.
 

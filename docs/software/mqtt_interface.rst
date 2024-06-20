@@ -1,9 +1,9 @@
 MQTT interface
 ==============
 
-Homebattery can be controlled ands sends a lot of operational data over MQTT. Only MQTT v5 is supported.
+Homebattery can be controlled and monitored over MQTT. Only MQTT v5 is supported.
 
-For configuration of MQTT, see the configuration page.
+For configuration of MQTT, see the :doc:`configuration page <configuration>`.
 
 General
 -------

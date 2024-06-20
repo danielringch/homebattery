@@ -5,7 +5,7 @@ There are a few things that you need when using homebattery:
 
 * a Raspberry Pico W
 * a 2.4 GHz WLAN network with DHCP server
-* an MQTT broker (might be available as plugin in your home automation solution)
+* an MQTT 5.0 broker (might be available as plugin in your home automation solution)
 
 Depending on your hardware, you might also need:
 

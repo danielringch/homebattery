@@ -2,39 +2,53 @@
 
 Welcome to the homebattery project.
 
-<img src="docs/images/whole_box.png" alt="homebattery" height="300"/>
-<img src="docs/images/system_overview.png" alt="homebattery" height="300"/>
+<img src="docs/images/whole_box.png" alt="homebattery" height="250"/>
+<img src="docs/images/system_overview.png" alt="homebattery" height="250"/>
 
 ## What is homebattery?
 
-Homebattery is am embedded controller for your home battery storage (or EV charger). The goal of homebattery is to
+Homebattery is an embedded controller for your home battery storage (or EV charger). Its working principle is very simple:
 
-* save money with dynamic energy pricing by charging and discharging the battery depending on the current price
-* add another level of safety to our system by monitoring all safety relevant device parameters
-* combine devices that are not compatible without a little help (e.g. charge Pylontech batteries with Victron MPPT solar chargers)
-* make devices controllable and monitorable via a common MQTT interface
+* devices are connected to homebattery via various interfaces.
+* homebattery switches its mode of operation (basically charging, idle and discharge) when a corresponding command is received via MQTT.
+* if an operational parameter is not okay, homebattery automatically shuts off affected devices.
+* a collection of relevant operational parameters is published via MQTT for further usage.
 
 Homebattery comes with:
 
-* its own hardware based on a Raspberry Pi Pico W 
+* open source hardware built around the Raspberry Pi Pico W 
   * some simple setups even work with a bare Raspberry Pi Pico W
-* the homebattery firmware for Raspberry Pi Pico W 
+* the homebattery firmware written in microPython
 * extensive documentation: http://homebattery.readthedocs.io
+
+## Typical use cases
+
+* Usage with a home battery storage system with grid and/or solar chargers. Dynamic energy pricing is used. Business logic in a home automation system is used to switch homebattery between charging, discharging and idle depending on the current energy prices.
+
+* Usage with a battery charged by solar power. Homebattery monitors the system and activates the inverter as long as the battery SOC is not too low.
+
+* Usage without a whole home battery storage, but single devices. Homebattery publishes their data via MQTT to an home automation system, which then controlls other devices based on this data.
+
+The following use cases are not supported with the current version of the software, but will come in the future:
+
+* Usage with an EV charger/ AC coupled battery system and solar power. While homebattery does not control the solar system itself, it adapts the charging power to the solar production to only use suplur energy for charging.
+
+* Usage with hardware that would be not compatible with each other normally. As an example, a Pylontech battery can not directly be charged via Victron MPPT solar chargers, since they use different communication protocols. With homebattery, such setups are possible.
 
 ## Why homebattery?
 
 Homebattery was not the first and will not be the last solution for controlling your home battery storage, but it has some nice features you might be interested in:
 
-* **reliability**: by using an embedded system with a watchdog timer, homebattery is much more reliable than a bare home automation solution.
-* **safety checks**: ensure that all device parameters are in the green range. If not, homebattery reacts accordingly, e.g. by turning off the inverter if the SOC of the battery gets too low.
-* **simplicity** is achieved by a clear feature set. Controls the hardware, the business logic is implemented in your home automation solution
-* **modularity** is the result of using drivers to communicate with devices. So by adding more drivers, homebattery will support even more hardware in the future. Also the hardware is modular, so a variety of physical interfaces (Bluetooth, ethernet, RS485, VE.Direct, ...) are supported.
-* **MQTT** is used to communicate with homebattery. So everything with MQTT support can be used to controll homebattery (Home Assistant, ioBroker, etc.). The MQTT interface is well documented.
+* **reliability** by using an embedded system with a watchdog timer, homebattery is much more reliable than a bare home automation solution.
+* **safety checks** ensure that all device parameters are in the green range. If not, homebattery reacts accordingly. E.g., the inverter gets automatically turned off if the SOC of the battery gets too low.
+* **simplicity** is achieved by only caring about device communication and safety. The business logic is implemented in your home automation solution.
+* **modularity** was the design principle for both the hard- and the software. A wide variety of devices and physical interfaces (Bluetooth, ethernet, RS485, VE.Direct, ...) is supported thanks to the usage of add-on boards and drivers. And even more will be suported in the future.
+* **MQTT** is used to communicate with homebattery. So everything with MQTT support can be used to control homebattery (Home Assistant, ioBroker, etc.). The MQTT interface is well documented.
 
 ## What do I need?
 
 * **homebattery hardware**. If you only connect devices via network and Bluetooth, even a bare Raspberry Pi Pico W will do the job.
-* **a smart home solution** like Home Assistant or ioBroker. You can use any software that is capable of MQTT.
+* for most use cases, **a smart home solution** like Home Assistant or ioBroker. You can use any software that is capable of MQTT.
 * **compatible devices**. See the list below.
 
 ## What hardware is supported?

@@ -39,7 +39,7 @@ Battery cell voltage low
 
 **Objective**: operational safety
 
-**Explanation**: Discharging the battery would further might damage the battery.
+**Explanation**: Further discharging might damage the battery.
 
 **Locked devices**:
 
@@ -56,7 +56,7 @@ Battery cell voltage high
 
 **Objective**: operational safety
 
-**Explanation**: Charging the battery would further might damage the battery.
+**Explanation**: Further charging might damage the battery.
 
 **Locked devices**:
 

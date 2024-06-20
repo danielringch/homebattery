@@ -35,10 +35,10 @@ Upload configuration and files
 * turn off the Raspberry Pico W / baseboard
 
 .. note::
-   Additional files (e.g. TLS certificates for MQTT) and also be uploaded or removed via the web interface.
+   Additional files (e.g. TLS certificates for MQTT) can also be uploaded or removed via the web interface.
 
 .. warning::
    Files can not be downloaded, so keep copies of the files you have uploaded.
 
 .. warning::
-   If macOS is used, the list of files may not refresh automatically. Please reload the page manually a couple seconds after deleting/ uploading a file.
+   If Safari is used, the list of files may not refresh automatically. Please reload the page manually a couple seconds after deleting/ uploading a file.

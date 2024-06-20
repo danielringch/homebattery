@@ -31,7 +31,7 @@ UDP data stream
 
 Logging data can be sent via a UDP port, if a host is set in the logging configuration. For configuration, see the :doc:`software reference <../software/configuration>`
 
-Log data is then sent as plain text to this host. Homebattery comes with its own small application to receive this log data and store it as a file for every day, see https://github.com/danielringch/homebattery/releases.
+Log data is then sent as plain text to this host. Homebattery comes with its own small application to receive this log data and store it in one file per day, see https://github.com/danielringch/homebattery/releases.
 
 The logger application takes the following arguments:
 

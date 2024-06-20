@@ -1,7 +1,7 @@
 Configuration
 =============
 
-Configuration is done using a json file ``config.json``, which is uploaded onto the Raspberry Pi Pico, see  :doc:`installation <../handbook/installation>`.
+Configuration is done using a json file ``config.json``, which is uploaded to homebattery via web interface, see  :doc:`installation <../handbook/installation>`.
 
 
 Example
@@ -17,9 +17,7 @@ Parent key: ``general``
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
 +========================+================+==================================================================================+===================+
-| ``default_mode``       | string, -      | Mode of operation the system will switch to after startup when no mode request   | idle              |
-|                        |                |                                                                                  |                   |
-|                        |                | is received in the meanwhile.                                                    |                   |
+| ``default_mode``       | string, -      | Initial mode of operation after statup.                                          | idle              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``inverter_power``     | int, W         | Inverter power when in operation mode discharge.                                 | n.a.              |
 |                        |                |                                                                                  |                   |
@@ -67,7 +65,7 @@ Parent key: ``mqtt``
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype       | Description                                                                      | Recommended Value |
 +========================+================+==================================================================================+===================+
-| ``host``               | string         | Host address of the MQTT broker. Expected format is ``1.2.3.4:1883``.            | n.a.              |
+| ``host``               | string         | Host address of the MQTT broker. Expected format is ``1.2.3.4:5678``.            | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``ca``                 | string         | Optional. File name of the TLS CA certificate.                                   | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
@@ -96,7 +94,7 @@ Parent key: ``logging``
 |                        |                |                                                                                  |                   |
 |                        |                | Expected format is ``1.2.3.4:1883.``                                             |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``ignore``             | list of        | Logging sender that shall be ignored.                                            | mqtt, bluetooth,  |
+| ``ignore``             | list of        | Logging sender which debug messages shall be ignored.                            | mqtt, bluetooth,  |
 |                        |                |                                                                                  |                   |
 |                        | strings        | Some parts of the system have a very verbose logging output for debug purposes.  | consumption       |
 |                        |                |                                                                                  |                   |
