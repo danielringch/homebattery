@@ -2,48 +2,53 @@
   "general":
   {
     "default_mode": "idle",
-    "inverter_power": 0
+    "inverter_power": <integer>
   },
   "network":
   {
-    "ssid": "",
-    "password": "",
-    "timeout": 0,
-    "ntp_server": "",
-    "timezone": 0,
-    "ntp_timeout": 0
+    "ssid": "<string>",
+    "password": "<string>",
+    "timeout": 15,
+    "ntp_server": "<optional, string>",
+    "timezone": <optional, integer>,
+    "ntp_timeout": 10
   },
   "mqtt":
   {
-    "host": "",
-    "ca": "",
-    "tls_insecure": false,
-    "user": "",
-    "password": "",
-    "root": ""
+    "host": "<string>",
+    "ca": "<optional, string>",
+    "tls_insecure": <optional, true or false>,
+    "user": "<optional, string>",
+    "password": "<optional, string>",
+    "root": "homebattery"
   },
   "logging":
   {
-    "host": "",
-    "ignore": []
+    "host": "<optional, string>",
+    "ignore":
+    [
+      "bluetooth",
+      "consumption",
+      "mqtt"
+    ]
   },
   "netzero":
   {
-    "enabled": true,
-    "signed": false,
-    "evaluated_time_span": 0,
-    "maturity_time_span": 0,
-    "power_offset": 0,
-    "power_hysteresis": 0,
-    "power_change_upwards": 0,
-    "power_change_downwards": 0
+    "enabled": <true or false>,
+    "signed": <true or false>,
+    "evaluated_time_span": 30,
+    "maturity_time_span": 15,
+    "power_offset": 10,
+    "power_hysteresis": 5,
+    "power_change_upwards": 100,
+    "power_change_downwards": 50
   },
   "supervisor":
   {
     "battery_offline":
     {
       "enabled": true,
-      "threshold": 300
+      "threshold": 120
     },
     "cell_low":
     {
@@ -54,8 +59,8 @@
     "cell_high":
     {
       "enabled": true,
-      "threshold": 3.75,
-      "hysteresis": 0.25
+      "threshold": 3.65,
+      "hysteresis": 0.2
     },
     "temp_low_charge":
     {
@@ -72,23 +77,23 @@
     "temp_high_charge":
     {
       "enabled": true,
-      "threshold": 35,
+      "threshold": 40,
       "hysteresis": 2
     },
     "temp_high_discharge":
     {
       "enabled": true,
-      "threshold": 35,
+      "threshold": 40,
       "hysteresis": 2
     },
     "live_data_lost_charge":
     {
-      "enabled": true,
-      "threshold": 180
+      "enabled": <true or false>,
+      "threshold": 300
     },
     "live_data_lost_discharge":
     {
-      "enabled": true,
+      "enabled": <true or false>,
       "threshold": 60
     },
     "mqtt_offline":
@@ -99,51 +104,51 @@
   },
   "devices":
   {
-    "bat1":
+    "battery_llt_power":
     {
       "driver": "lltPowerBmsV4Ble",
-      "mac": ""
+      "mac": "<string>"
     },
-    "bat2":
+    "battery_daly":
     {
       "driver": "daly8S24V60A",
-      "mac": ""
+      "mac": "<string>"
     },
-    "bat3":
+    "battery_jk":
     {
       "driver": "jkBmsBd4",
-      "mac": ""
+      "mac": "<string>"
     },
-    "bat4":
+    "battery_mqtt":
     {
       "driver": "mqttBattery",
       "root_topic": "<root>/bat/dev/<device>",
-      "cell_count": 0,
-      "temperature_count": 0
+      "cell_count": <integer>,
+      "temperature_count": <integer>
     },
-    "sol1":
+    "solar_victron":
     {
       "driver": "victronMppt",
-      "port": "ext1",
+      "port": "<ext1 or ext2>",
       "power_hysteresis": 2
     },
-    "chrg1":
+    "charger_shelly":
     {
       "driver": "shellyCharger",
-      "host": "",
+      "host": "<string>",
       "relay_id": 0
     },
-    "inv1":
+    "inverter_ahoy_dtu":
     {
       "driver": "ahoyDtu",
-      "host": "",
+      "host": <string>,
       "id": 0,
-      "power_lut": ""
+      "power_lut": "<string>"
     },
-    "power1":
+    "power_mqtt":
     {
       "driver": "mqttConsumption",
-      "topic": "foo/bar"
+      "topic": "<string>"
     }
   }
 }

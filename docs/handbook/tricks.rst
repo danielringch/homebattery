@@ -4,9 +4,9 @@ Tricks
 Starting up Hoymiles inverters without current limiting device
 --------------------------------------------------------------
 
-Hoymiles inverters have large capacitors directly connected to their input. As a consequence, there is a huge current spike when connecting a voltage source. This can lead to arks or damage the battery electronics.
+Hoymiles inverters have large capacitors directly connected to their input. As a consequence, there is a huge current spike when connecting a voltage source. This can lead to arks and damage the battery electronics.
 
-Many people use current limiting circuits (aka soft-start), but I do not recommend them for some reasons:
+Many people use current limiting circuits (aka soft-start), but they have several downsides:
 
 * they might be a fire hazard if they fail
 * they add complexity

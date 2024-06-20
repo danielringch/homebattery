@@ -1,40 +1,34 @@
 MQTT interface
 ==============
 
-Homebattery can be controlled ands sends a lot of operational data over MQTT. Only MQTT v5 is supported.
+Homebattery can be controlled and monitored over MQTT. Only MQTT v5 is supported.
 
-For configuration of MQTT, see the configuration page.
+For configuration of MQTT, see the :doc:`configuration page <configuration>`.
 
 General
 -------
 
 ``<root>`` is the MQTT topic root set in the configuration.
 
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| Topic                              | Datatype   | Direction | Unit        | Description                                                              |
-+====================================+============+===========+=============+==========================================================================+
-| ``<root>/mode/set``                | ``utf-8``  | W         | n.a.        | Requested operation mode. Possible values are ``charge``, ``discharge``, |
-|                                    |            |           |             | ``idle`` and ``protect``.                                                |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/mode/actual``             | ``utf-8``  | R         | n.a.        | Current operation mode. Possible values are ``charge``, ``discharge``,   |
-|                                    |            |           |             | ``idle`` and ``protect``.                                                |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/locked``                  | ``utf-8``  | R         | n.a.        | Reason for system lock. Only the reason with the highest priority is     |
-|                                    |            |           |             | sent. An empty payload means that there is no lock.                      |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/reset``                   | ``utf-8``  | W         | n.a.        | Writing the value "reset" to this topic will lead to a system reset.     |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-
-Live consumption related
-------------------------
-
-``<live consumption topic>`` is the topic set in the configuration.
-
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| Topic                              | Datatype   | Direction | Unit        | Description                                                              |
-+====================================+============+===========+=============+==========================================================================+
-| ``<live consumption topic>``       | ``uint16`` | W         | W           | Current energy live consumption.                                         |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
++------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
+| Topic                              | Datatype   | Direction | Unit   | Description                                                              |
++====================================+============+===========+========+==========================================================================+
+| ``<root>/mode/set``                | ``utf-8``  | W         | n.a.   | Requested operation mode.                                                |
+|                                    |            |           |        |                                                                          |
+|                                    |            |           |        | Possible values are ``charge``, ``discharge``, ``idle`` and ``protect``. |
++------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
+| ``<root>/mode/actual``             | ``utf-8``  | R         | n.a.   | Current operation mode.                                                  |
+|                                    |            |           |        |                                                                          |
+|                                    |            |           |        | Possible values are ``charge``, ``discharge``, ``idle`` and ``protect``. |
++------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
+| ``<root>/locked``                  | ``utf-8``  | R         | n.a.   | Reason for system lock.                                                  |
+|                                    |            |           |        |                                                                          |
+|                                    |            |           |        | Only the reason with the highest priority is sent.                       |
+|                                    |            |           |        |                                                                          |
+|                                    |            |           |        | An empty payload means that there is no lock.                            |
++------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
+| ``<root>/reset``                   | ``utf-8``  | W         | n.a.   | Writing the value ``reset`` to this topic will lead to a system reset.   |
++------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
 
 Charger related
 ---------------
@@ -47,6 +41,7 @@ Charger related
 | Topic                              | Datatype   | Direction | Unit   | Description                                                                   |
 +====================================+============+===========+========+===============================================================================+
 | ``<root>/cha/state``               | ``int8``   | R         | n.a.   | Charger state. ``0`` means charger is off, ``1`` means charger is on,         |
+|                                    |            |           |        |                                                                               |
 |                                    |            |           |        | ``-1`` means charger is in fault or syncing state.                            |
 +------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
 | ``<root>/cha/e``                   | ``uint16`` | R         | Wh     | Overall charger energy. Value is reset after every transmission.              |
@@ -64,8 +59,9 @@ Inverter related
 +------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
 | Topic                              | Datatype   | Direction | Unit   | Description                                                                   |
 +====================================+============+===========+========+===============================================================================+
-| ``<root>/inv/state``               | ``int8``   | R         | n.a.   | Inverter state. ``0`` means inverter is off, ``1`` means inverter is          |
-|                                    |            |           |        | on, ``-1`` means charger is in fault or syncing state.                        |
+| ``<root>/inv/state``               | ``int8``   | R         | n.a.   | Inverter state. ``0`` means inverter is off, ``1`` means inverter is on,      |
+|                                    |            |           |        |                                                                               |
+|                                    |            |           |        | ``-1`` means charger is in fault or syncing state.                            |
 +------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
 | ``<root>/inv/p``                   | ``uint16`` | R         | W      | Overall inverter power.                                                       |
 +------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
@@ -87,6 +83,7 @@ Solar related
 | Topic                              | Datatype   | Direction | Unit   | Description                                                                   |
 +====================================+============+===========+========+===============================================================================+
 | ``<root>/sol/state``               | ``int8``   | R         | n.a.   | Solar state. ``0`` means solar is off, ``1`` means solar is on,               |
+|                                    |            |           |        |                                                                               |
 |                                    |            |           |        | ``-1`` means solar is in fault or syncing state.                              |
 +------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
 | ``<root>/sol/p``                   | ``uint16`` | R         | W      | Overall solar power.                                                          |

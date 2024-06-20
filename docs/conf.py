@@ -4,10 +4,16 @@ import os
 project = 'homebattery'
 author = 'Daniel Ring'
 copyright = u'2024, Daniel Ring'
-version = '0.1'
-release = '0.1.0'
+version = '0.3'
+release = '0.3.0'
 
-extensions = []
+extensions = [
+    'sphinx_rtd_theme',
+]
+
+html_theme_options = {
+    'navigation_depth': 3,
+}
 
 source_suffix = '.rst'
 source_encoding = 'utf-8-sig'
@@ -17,5 +23,6 @@ exclude_patterns = []
 
 language = 'en'
 
-html_theme = 'default'
+html_theme = 'sphinx_rtd_theme'
+html_style = 'css/my_theme.css'
 html_static_path = ['_static']

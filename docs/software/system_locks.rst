@@ -1,19 +1,19 @@
 System locks
 ============
 
-Homebattery continuously checks several parameters of itself and the connected devices. Those checks have two functions:
+Homebattery continuously monitors several parameters of the system and the connected devices to:
 
 * prevent unsafe operation states
 * prevent uneconomic operation
 
-When a check fails, the affected device types are locked for activity.
+This is done by running checks. If a check fails, the affected device types are locked for activity.
 
 There might be multiple locks active at the same time, but only the most critical one gets broadcasted via MQTT and is shown on the display.
 
-The LEDs on the baseboard indicate whether a device type are locked or not.
+The LEDs on the baseboard indicate whether a device type is locked or not.
 
 .. note:: 
-   Some checks can only be healed through a whole system reset. This can either be done by power cycling or triggering a reset over MQTT TODO.
+   Some checks can only be healed through a whole system reset. This can either be done by power cycling or triggering a reset over :doc:`MQTT <mqtt_interface>`.
 
 Battery offline
 ---------------
@@ -39,35 +39,31 @@ Battery cell voltage low
 
 **Objective**: operational safety
 
-**Explanation**: Discharging the battery would further decrease the cell voltage, which might damage the battery.
+**Explanation**: Further discharging might damage the battery.
 
 **Locked devices**:
 
 * inverter
 
-**Remarks**:
-
-A too small value of ``hysteresis`` might cause the system to toggle between this check failing and not failing, since cell voltages rise a bit when inverters get deactivated.
+**Remarks**: A too small value of ``hysteresis`` might cause the system to toggle between this check failing and not failing, since cell voltages change a bit when the battery current changes.
 
 Battery cell voltage high
 -------------------------
 
-**Check fails if** any cell of any connected battery has a voltage above ``treshold``` volts.
+**Check fails if** any cell of any connected battery has a voltage above ``treshold`` volts.
 
 **Check heals if** all cell voltages fall below (``treshold`` - ``hysteresis``) volts.
 
 **Objective**: operational safety
 
-**Explanation**: Charging the battery would further increase the cell voltage, which might damage the battery.
+**Explanation**: Further charging might damage the battery.
 
 **Locked devices**:
 
 * charger
 * solar
 
-**Remarks**:
-
-A too small value of ``hysteresis`` might cause the system to toggle between this check failing and not failing, since cell voltages drop a bit when chargers get deactivated.
+**Remarks**: A too small value of ``hysteresis`` might cause the system to toggle between this check failing and not failing, since cell voltages change a bit when the battery current changes.
 
 Battery temperature low for charging / discharging
 --------------------------------------------------
@@ -78,7 +74,7 @@ Battery temperature low for charging / discharging
 
 **Objective**: operational safety
 
-**Explanation**: Charging or discharging the battery outside its safe temperature range can damage the battery.
+**Explanation**: Charging or discharging the battery outside its safe temperature range might damage the battery.
 
 **Locked devices**:
 
@@ -86,19 +82,18 @@ Battery temperature low for charging / discharging
 * solar (for charge)
 * inverter (for discharging)
 
-.. note::
-   There are separate checks for charge and discharge, which can be configured independently from each other.
+**Remarks**: There are separate checks for charge and discharge, which can be configured independently from each other.
 
 Battery temperature high for charging / discharging
 ---------------------------------------------------
 
 **Check fails if** any cell temperature sensor of any connected battery has a temperature above ``treshold`` degrees celsius.
 
-**Check heals if** all cell temperatures fall below (``treshold`` + ``hysteresis``) degrees celsius.
+**Check heals if** all cell temperatures fall below (``treshold`` - ``hysteresis``) degrees celsius.
 
 **Objective**: operational safety
 
-**Explanation**: Charging or discharging the battery outside its safe temperature range can damage the battery.
+**Explanation**: Charging or discharging the battery outside its safe temperature range might damage the battery.
 
 **Locked devices**:
 
@@ -106,8 +101,7 @@ Battery temperature high for charging / discharging
 * solar (for charge)
 * inverter (for discharging)
 
-.. note::
-   There are separate checks for charge and discharge, which can be configured independently from each other.
+**Remarks**: There are separate checks for charge and discharge, which can be configured independently from each other.
 
 Live power consumption data lost for charging
 ---------------------------------------------
@@ -118,17 +112,18 @@ Live power consumption data lost for charging
 
 **Objective**: economics
 
-**Explanation**: When no live consumption data is reveiced from the power provider, the increase power consumption for charging might not be billed correctly.
+**Explanation**: When no live consumption data is reveiced from the power provider, the increased power consumption for charging might not be billed correctly.
 
 **Locked devices**:
 
 * charger
 
-.. note::
-   This check is only useful if you:
+**Remarks**: 
 
-   * use dynamic electricity pricing
-   * get your live consumption data from your electricity provider (e.g. tibber) 
+This check is only useful if you:
+
+* use dynamic electricity pricing
+* get your live consumption data from your electricity provider (e.g. tibber) 
 
 Live power consumption data lost for discharging
 ------------------------------------------------
@@ -142,21 +137,22 @@ Live power consumption data lost for discharging
 **Explanation**: 
 
 * the netzero algorithm does not work without live consumption data
-* when no live consumption data is reveiced from the power provider, the increase power consumption for charging might not be billed correctly.
+* when no live consumption data is reveiced from the power provider, the decreased power consumption might not be billed correctly.
 
 **Locked devices**:
 
 * inverter
 
-.. note::
-   This check is only useful if you:
+**Remarks**: 
 
-   * use net zero inverter power control
+This check is only useful if you:
 
-   or
+* use netzero algorithm
 
-   * use dynamic electricity pricing
-   * get your live consumption data from your electricity provider (e.g. tibber) 
+or
+
+* use dynamic electricity pricing
+* get your live consumption data from your electricity provider (e.g. tibber) 
 
 MQTT offline
 ------------
@@ -185,7 +181,7 @@ Startup
 
 **Objective**: operational safety
 
-**Explanation**: before a connection to all devices is established, a safe operation is the system can not be guaranteed.
+**Explanation**: before a connection to all devices is established, a safe operation of the system can not be guaranteed.
 
 **Locked devices**:
 
