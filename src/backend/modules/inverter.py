@@ -38,8 +38,6 @@ class Inverter:
             device.on_inverter_status_change.append(self.__on_inverter_status)
             device.on_inverter_power_change.append(self.__on_inverter_power)
 
-        self.__max_power = sum((x.max_power for x in self.__inverters), 0)
-
         if len(self.__inverters) == 0:
             self.__last_status = STATUS_OFF
 
@@ -143,7 +141,8 @@ class Inverter:
     async def __set_power(self, power):
         last_inverter = self.__inverters[-1]
 
-        relative_power = power / self.__max_power
+        max_power = sum((x.max_power for x in self.__inverters), 0)
+        relative_power = power / max_power if max_power > 0 else 0
         remaining_power = power
         new_power = 0
 
