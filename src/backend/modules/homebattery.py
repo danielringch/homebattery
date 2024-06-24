@@ -4,8 +4,6 @@ from gc import mem_alloc, mem_free
 from json import load as load_json
 from micropython import const
 gc_collect()
-from ..core.addonport import AddonPort
-gc_collect()
 from ..core.microblecentral import MicroBleCentral
 gc_collect()
 from ..core.logging import Logging
@@ -44,8 +42,6 @@ async def homebattery():
     from ..core.singletons import Singletons
     Singletons.log = Logging()
     Singletons.ui = UserInterface()
-    Singletons.addon_port_1 = AddonPort(1, 0)
-    Singletons.addon_port_2 = AddonPort(0, 1)
 
     log = Singletons.log
     ui = Singletons.ui

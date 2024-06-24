@@ -3,15 +3,15 @@ from machine import Pin, UART
 
 from .types import run_callbacks
 
-class AddonPort:
-    def __init__(self, uart_id: int, spi_id: int):
-        if uart_id == 0:
-            self.__uart = UART(0, tx=Pin(12) , rx=Pin(13), timeout=100)
-        elif uart_id == 1:
+class AddOnSerial:
+    def __init__(self, port_id: int):
+        if port_id == 0:
             self.__uart = UART(1, tx=Pin(4) , rx=Pin(5), timeout=100)
-        self.__uart = UART(uart_id)
-        _ = spi_id
-
+        elif port_id == 1:
+            self.__uart = UART(0, tx=Pin(12) , rx=Pin(13), timeout=100)
+        else:
+            raise Exception('Unknow port id: ', port_id)
+        
         self.__line_mode = False
         self.__connected = False
         self.__rx_task = None
