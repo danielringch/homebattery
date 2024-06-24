@@ -10,7 +10,7 @@ from .modeswitcher import ModeSwitcher
 from .supervisorchecks import BatteryOfflineChecker, CellLowChecker, CellHighChecker
 from .supervisorchecks import TempLowChargeChecker, TempLowDischargeChecker, TempHighChargeChecker, TempHighDischargeChecker
 from .supervisorchecks import LiveDataOfflineChargeChecker, LiveDataOfflineDischargeChecker, MqttOfflineChecker
-from .supervisorchecks import StartupChecker, LockedReason, PRIO_INTERNAL
+from .supervisorchecks import StartupChecker, LockedReason
 
 class Supervisor:
     def __init__(self, \
@@ -32,11 +32,10 @@ class Supervisor:
 
         self.__internal_error = self.internal = LockedReason(
                 name='internal',
-                priority=PRIO_INTERNAL,
                 locked_devices=(TYPE_CHARGER, TYPE_SOLAR, TYPE_INVERTER),
                 fatal=True)
 
-        self.__locks = set()
+        self.__locks = list()
         self.__checkers = (
                 BatteryOfflineChecker(config, battery),
                 CellLowChecker(config, battery),
@@ -66,35 +65,32 @@ class Supervisor:
     async def __tick(self):
         now = time()
 
-        previous_locked = sorted(self.__locks)[0] if len(self.__locks) else None
+        previous_locked = self.__locks[-1] if len(self.__locks) else None
 
         try:
             for checker in self.__checkers:
                 result = checker.check(now)
                 if result is None:
                     continue
-                if result[0]:
-                    self.__locks.add(result[1])
-                else:
-                    self.__clear_lock(result[1])
-            self.__clear_lock(self.__internal_error)
+                self.__update_lock(result[0], result[1])
+            self.__update_lock(False, self.__internal_error)
 
         except Exception as e:
             self.__log.error('Checker failed: ', e)
-            self.__locks.add(self.__internal_error)
+            self.__update_lock.add(True, self.__internal_error)
 
         locked_devices = set()
         for lock in self.__locks:
             locked_devices.update(lock.locked_devices)
-        top_priority_lock = sorted(self.__locks)[0] if len(self.__locks) else None
+        latest_lock = self.__locks[-1] if len(self.__locks) > 0 else None
 
-        if previous_locked != top_priority_lock:
+        if previous_locked != latest_lock:
             for lock in self.__locks:
                 self.__log.info('System lock: ', lock.name)
             if len(self.__locks) == 0:
                 self.__log.info('System lock: none')
-            await self.__mqtt.send_locked(top_priority_lock.name if top_priority_lock is not None else None)
-            self.__ui.update_lock(top_priority_lock.name if top_priority_lock is not None else None)
+            await self.__mqtt.send_locked(latest_lock.name if latest_lock is not None else None)
+            self.__ui.update_locks(self.__locks)
 
         self.__modeswitcher.update_locked_devices(locked_devices)
 
@@ -102,8 +98,10 @@ class Supervisor:
             self.__watchdog.feed()
             self.__ui.notify_watchdog()
 
-    def __clear_lock(self, lock):
-        try:
-            self.__locks.remove(lock)
-        except KeyError:
-            pass
+    def __update_lock(self, active, lock):
+        if lock in self.__locks:
+            if not active:
+                self.__locks.remove(lock)
+        else:
+            if active:
+                self.__locks.append(lock)

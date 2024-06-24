@@ -50,7 +50,7 @@ async def homebattery():
     log = Singletons.log
     ui = Singletons.ui
     log.debug('Homebattery ', _VERSION)
-    ui.print('Homebattery', _VERSION)
+    ui.overlay('Homebattery', _VERSION)
 
     gc_collect()
     print_memory(log)
@@ -63,7 +63,7 @@ async def homebattery():
         log.debug('Entering configuration mode.')
 
         ip = Network({'network':None}).create_hotspot()
-        ui.print('Connect to SSID:', AP_SSID, 'Password:', AP_PASSWORD, 'Open:', ip)
+        ui.overlay('Connect to SSID:', AP_SSID, 'Password:', AP_PASSWORD, 'Open:', ip)
         Webserver().run()
 
     try:
@@ -71,12 +71,12 @@ async def homebattery():
             config = load_json(stream)
     except:
         log.error('Invalid configuration.')
-        ui.print('Invalid', 'configuration.')
+        ui.overlay('Invalid', 'configuration.')
         while True:
             await sleep(1)
 
     log.debug('Configuring logging...')
-    ui.print('Configuring', 'logging...')
+    ui.overlay('Configuring', 'logging...')
     log.configure(config)
 
     Singletons.ble = MicroBleCentral()
@@ -84,20 +84,20 @@ async def homebattery():
     
     from ..core.network import Network
     log.debug('Connecting to network...')
-    ui.print('Connecting to', 'network...')
+    ui.overlay('Connecting to', 'network...')
     network = Network(config)
     network.connect(watchdog)
     network.get_network_time(watchdog)
 
     from ..core.backendmqtt import Mqtt
     log.debug('Configuring MQTT...')
-    ui.print('Configuring', 'MQTT...')
+    ui.overlay('Configuring', 'MQTT...')
     mqtt = Mqtt(config)
 
     watchdog.feed()
     gc_collect()
 
-    ui.print('Configuring', 'modules...')
+    ui.overlay('Configuring', 'modules...')
     devices = Devices(config, mqtt)
     gc_collect()
     consumption = Consumption(devices)
@@ -113,9 +113,11 @@ async def homebattery():
     gc_collect()
 
     log.debug('Connecting to MQTT broker...')
-    ui.print('Connecting to', 'MQTT broker...')
+    ui.overlay('Connecting to', 'MQTT broker...')
     await mqtt.connect()
     watchdog.feed()
+
+    ui.remove_overlay()
 
     battery_task = create_task(battery.run())
     charger_task = create_task(charger.run())

@@ -28,8 +28,12 @@ class UserInterface:
             self.__sw1.init(pull=Pin.PULL_UP)
             self.__sw2.init(pull=Pin.PULL_UP)
 
+        self.__has_overlay = True
+
         self.__mode = None
-        self.__lock = None
+        self.__locks = list()
+        self.__lock_index = 0
+        self.__shown_lock = None
         self.__c_bat = None
         self.__p_sol = None
         self.__p_inv = None
@@ -63,8 +67,8 @@ class UserInterface:
         self.__mode = mode
         self.__update_event.set()
 
-    def update_lock(self, lock: str):
-        self.__lock = lock
+    def update_locks(self, locks: list):
+        self.__locks = locks # no copy necessary here, the part of the code updating the list is not async
         self.__update_event.set()
 
     def update_battery_capacity(self, capacity: float):
@@ -83,18 +87,13 @@ class UserInterface:
         self.__p_grd = power
         self.__update_event.set()
 
-    def print(self, *lines: str):
-        if self.__display is None:
-            return
-        self.__display.fill(0) 
-        i = 0
-        for line in lines:
-            self.__display.text(line, 0, i, 1)
-            i += 10
-        try:
-            self.__display.show()
-        except OSError as e:
-            self.__log.error(f'Update failed: {e}')
+    def overlay(self, *lines: str):
+        self.__has_overlay = True
+        self.__print(*lines)
+
+    def remove_overlay(self):
+        self.__has_overlay = False
+        self.__update_event.set()
 
 # LEDs
 
@@ -138,13 +137,28 @@ class UserInterface:
             self.__refresh_display()
 
     def __refresh_display(self):
+        if self.__has_overlay:
+            return
         mode = f'Mode: {self.__mode if self.__mode else "unknown"}'
-        lock = f'! {self.__lock}' if self.__lock is not None else 'normal operation'
+        lock = self.__shown_lock if self.__shown_lock is not None else ''
         c_bat = f'C_bat: {self.__c_bat} Ah'
         p_sol = f'P_sol: {self.__p_sol} W'
         p_inv = f'P_inv: {self.__p_inv} W'
         p_grd = f'P_grd: {self.__p_grd} W'
-        self.print(mode, lock, c_bat, p_sol, p_inv, p_grd)
+        self.__print(mode, lock, c_bat, p_sol, p_inv, p_grd)
+
+    def __print(self, *lines: str):
+        if self.__display is None:
+            return
+        self.__display.fill(0) 
+        i = 0
+        for line in lines:
+            self.__display.text(line, 0, i, 1)
+            i += 10
+        try:
+            self.__display.show()
+        except OSError as e:
+            self.__log.error(f'Update failed: {e}')
 
     def __on_timer(self, t):
         self.__mqtt.update(self.__index)
@@ -156,7 +170,20 @@ class UserInterface:
         self.__watchdog.update(self.__index)
         self.__index += 1
         if self.__index >= 20:
+            self.__rotate_locks()
             self.__index = 0
+
+    def __rotate_locks(self):
+        if len(self.__locks) == 0:
+            self.__shown_lock = None
+            self.__lock_index = 0
+        else:
+            self.__lock_index += 1
+            if self.__lock_index >= len(self.__locks):
+                self.__lock_index = 0
+            self.__shown_lock = self.__locks[self.__lock_index].name
+        self.__update_event.set()
+
 
 class SingleLed:
     def __init__(self, pin):
