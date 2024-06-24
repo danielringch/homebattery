@@ -20,7 +20,7 @@ class Inverter:
             self.__netzero = NetZero(config)
             consumption.on_power.append(self.__on_live_consumption)
         else:
-            self.__log.send('Netzero disabled.')
+            self.__log.info('Netzero disabled.')
             self.__netzero = None
 
         self.__status_callbacks = list()
