@@ -68,6 +68,13 @@ class MicroMqtt():
             
         def is_overdue(self, now):
             return self.timestamp + _OVERDUE_TIMEOUT < now
+        
+    class Subscription:
+        def __init__(self, topic: str, qos: int, callback):
+            self.topic = topic
+            self.qos = qos
+            self.regex = filter_to_regex(topic)
+            self.callback = callback
 
     def __init__(self, topic_root: str, connect_callback):
         from .singletons import Singletons
@@ -89,7 +96,8 @@ class MicroMqtt():
 
         self.__connected = False
         self.__on_connect = connect_callback
-        self.__message_callbacks = list()
+
+        self.__subscriptions = list()
 
         self.__tx_builder = bytearray(_MAX_PACKET_SIZE)
         self.__tx_builder_lock = Lock()
@@ -121,15 +129,14 @@ class MicroMqtt():
     def connected(self):
         return self.__connected and self.__socket and self.__socket.is_connected
 
-    async def subscribe(self, topic, qos):
-        async with self.__tx_builder_lock:
-            pid, packet = await self.__get_free_buffer()
+    async def subscribe(self, topic, qos, callback):
+        subscription = self.Subscription(topic, qos, callback)
+        self.__subscriptions.append(subscription)
 
-            start = subscribe_to_bytes(pid, topic, qos, self.__tx_builder)
-            packet.fill(self.__tx_builder, start)
-            
-        self.__log.info('TX SUBSCRIBE, pid=', pid, ' qos=', qos, ': ', topic)
-        await self.__send_packet(packet)
+        if not self.__connected: # subscriptions will be done later automatically when connecting
+            return
+        
+        await self.__subscribe(subscription)
 
     async def publish(self, topic, payload, qos, retain):
         async with self.__tx_builder_lock:
@@ -142,9 +149,6 @@ class MicroMqtt():
         await self.__send_packet(packet)
         if qos == 0:
             packet.clear()
-
-    def message_callback_add(self, topic, callback):
-        self.__message_callbacks.append((filter_to_regex(topic), callback))
 
     async def __connect(self):
         self.__log.info("Connecting to broker.")
@@ -170,6 +174,9 @@ class MicroMqtt():
                 self.__receive_task = create_task(self.__receive_loop())
                 if not self.__supervisor_task:
                     self.__supervisor_task = create_task(self.__supervisor_loop())
+
+                for subscription in self.__subscriptions:
+                    await self.__subscribe(subscription)
 
                 await self.__on_connect()
                 break
@@ -210,6 +217,16 @@ class MicroMqtt():
         if not self.connected:
             return
         await self.__socket.send(pingreq_to_bytes())
+
+    async def __subscribe(self, subscription):
+        async with self.__tx_builder_lock:
+            pid, packet = await self.__get_free_buffer()
+
+            start = subscribe_to_bytes(pid, subscription.topic, subscription.qos, self.__tx_builder)
+            packet.fill(self.__tx_builder, start)
+            
+        self.__log.info('TX SUBSCRIBE, pid=', pid, ' qos=', subscription.qos, ': ', subscription.topic)
+        await self.__send_packet(packet)
 
     async def __receive_data(self):
         if self.__socket is None:
@@ -371,9 +388,9 @@ class MicroMqtt():
             await sleep(0.1)
 
     def __get_message_callback(self, topic):
-        for regex, callback in self.__message_callbacks:
-            if match(regex, topic) is not None:
-                return callback
+        for subscription in self.__subscriptions:
+            if match(subscription.regex, topic) is not None:
+                return subscription.callback
         return None
 
     async def __send_loop(self):

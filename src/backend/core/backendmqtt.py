@@ -49,33 +49,22 @@ class Mqtt():
         self.__bat_dev_temp_root = 'bat/dev/%s/temp/%i'
         self.__bat_dev_cell_root = 'bat/dev/%s/cell/%i'
 
-        self.__mqtt.message_callback_add(self.__mode_set_topic, self.__on_mode)
-        self.__mqtt.message_callback_add(self.__reset_topic, self.__on_reset)
-
-        self.__subscriptions = [
-            (self.__mode_set_topic, 2),
-            (self.__reset_topic, 1)
-        ]
-
         self.__connect_callback = list()
         self.__mode_callback = list()
 
     async def __on_mqtt_connect(self):
-        for subscription in self.__subscriptions:
-            await self.__mqtt.subscribe(topic=subscription[0], qos=subscription[1])
         run_callbacks(self.__connect_callback)
 
     def __del__(self):
         pass
 
     async def connect(self):
+        await self.__mqtt.subscribe(self.__mode_set_topic, 2, self.__on_mode)
+        await self.__mqtt.subscribe(self.__reset_topic, 1, self.__on_reset)
         await self.__mqtt.connect(self.__ip, self.__port, 60)
 
     async def subscribe(self, topic, qos, callback):
-        self.__mqtt.message_callback_add(topic, callback)
-        while not self.__mqtt.connected:
-            await sleep(1)
-        await self.__mqtt.subscribe(topic, qos)
+        await self.__mqtt.subscribe(topic, qos, callback)
 
 # general
 
