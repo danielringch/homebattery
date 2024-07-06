@@ -17,6 +17,7 @@ class Inverter:
 
         config = config['inverter']
         self.__default_power = int(config['power'])
+        self.__reduce_power_during_fault = bool(config['reduce_power_during_fault'])
         if 'netzero' in config:
             self.__netzero = NetZero(config['netzero'])
             consumption.on_power.append(self.__on_live_consumption)
@@ -107,8 +108,7 @@ class Inverter:
         return self.__device_energy_callbacks
     
     async def __handle_state_change(self):
-        if self.__last_status == STATUS_FAULT:
-            # fault recovery has better chances if other inverters produce minimal power
+        if self.__last_status == STATUS_FAULT and self.__reduce_power_during_fault:
             await self.__set_power(0)
         elif self.__last_status == STATUS_ON and self.__netzero is None:
             await self.__set_power(self.__default_power)

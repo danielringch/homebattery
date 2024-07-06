@@ -34,6 +34,7 @@
   "inverter":
   {
     "power": <integer>,
+    "reduce_power_during_fault": false,
     "netzero":
     {
       "signed": <true or false>,
