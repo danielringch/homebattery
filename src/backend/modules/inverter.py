@@ -15,9 +15,10 @@ class Inverter:
 
         self.__log = Singletons.log.create_logger('inverter')
 
-        self.__default_power = int(config['general']['inverter_power'])
-        if config['netzero']['enabled'] == True:
-            self.__netzero = NetZero(config)
+        config = config['inverter']
+        self.__default_power = int(config['power'])
+        if 'netzero' in config:
+            self.__netzero = NetZero(config['netzero'])
             consumption.on_power.append(self.__on_live_consumption)
         else:
             self.__log.info('Netzero disabled.')

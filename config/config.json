@@ -2,7 +2,6 @@
   "general":
   {
     "default_mode": "idle",
-    "inverter_power": <integer>
   },
   "network":
   {
@@ -32,16 +31,19 @@
       "mqtt"
     ]
   },
-  "netzero":
+  "inverter":
   {
-    "enabled": <true or false>,
-    "signed": <true or false>,
-    "evaluated_time_span": 30,
-    "maturity_time_span": 15,
-    "power_offset": 10,
-    "power_hysteresis": 5,
-    "power_change_upwards": 100,
-    "power_change_downwards": 50
+    "power": <integer>,
+    "netzero":
+    {
+      "signed": <true or false>,
+      "evaluated_time_span": 30,
+      "maturity_time_span": 15,
+      "power_offset": 10,
+      "power_hysteresis": 5,
+      "power_change_upwards": 100,
+      "power_change_downwards": 50
+    }
   },
   "supervisor":
   {
