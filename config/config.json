@@ -145,6 +145,13 @@
       "id": 0,
       "power_lut": "<string>"
     },
+    "inverter_growatt":
+    {
+      "driver": "growattinvertermodbus",
+      "port": "<ext1 or ext2>",
+      "address": <integer>,
+      "power_hysteresis": 2
+    },
     "power_mqtt":
     {
       "driver": "mqttConsumption",

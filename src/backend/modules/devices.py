@@ -3,6 +3,7 @@ from micropython import const
 
 _AHOY_DTU = const('ahoyDtu')
 _DALY_8S_24V_60A = const('daly8S24V60A')
+_GROWATT_INVERTER_MODBUS = const('growattinvertermodbus')
 _JK_BMS_BD4 = const('jkBmsBd4')
 _LLT_POWER_BMS_V4_BLE = const('lltPowerBmsV4Ble')
 _MQTT_BATTERY = const('mqttBattery')
@@ -28,6 +29,10 @@ class Devices:
                 from ..drivers.daly8s24v60a import Daly8S24V60A
                 gc_collect()
                 self.__load_device(log, name, Daly8S24V60A, meta)
+            elif driver_name == _GROWATT_INVERTER_MODBUS:
+                from ..drivers.growattinvertermodbus import GrowattInverterModbus
+                gc_collect()
+                self.__load_device(log, name, GrowattInverterModbus, meta)
             elif driver_name == _JK_BMS_BD4:
                 from ..drivers.jkbmsbd4 import JkBmsBd4
                 gc_collect()
