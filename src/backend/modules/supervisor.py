@@ -36,6 +36,7 @@ class Supervisor:
                 fatal=True)
 
         self.__locks = list()
+        self.__previous_top_lock = None
         self.__checkers = (
                 BatteryOfflineChecker(config, battery),
                 CellLowChecker(config, battery),
@@ -64,9 +65,6 @@ class Supervisor:
 
     async def __tick(self):
         now = time()
-
-        previous_locked = self.__locks[-1] if len(self.__locks) else None
-
         try:
             for checker in self.__checkers:
                 result = checker.check(now)
@@ -84,13 +82,18 @@ class Supervisor:
             locked_devices.update(lock.locked_devices)
         latest_lock = self.__locks[-1] if len(self.__locks) > 0 else None
 
-        if previous_locked != latest_lock:
+        if latest_lock != self.__previous_top_lock:
+            self.__previous_top_lock = latest_lock
             for lock in self.__locks:
                 self.__log.info('System lock: ', lock.name)
             if len(self.__locks) == 0:
                 self.__log.info('System lock: none')
-            await self.__mqtt.send_locked(latest_lock.name if latest_lock is not None else None)
             self.__ui.update_locks(self.__locks)
+            try: # if MQTT is offline, sending data results in an exception
+                await self.__mqtt.send_locked(latest_lock.name if latest_lock is not None else None)
+            except:
+                self.__log.error('Failed to send lock information over MQTT')
+                self.__previous_top_lock = None # ensure lock is sent over MQTT in next cycle
 
         self.__modeswitcher.update_locked_devices(locked_devices)
 
