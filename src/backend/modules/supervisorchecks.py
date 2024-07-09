@@ -22,6 +22,9 @@ class SubChecker:
         else:
             self._lock = None
 
+    def _return_lock(self, active):
+        return self._lock if active else None
+
 class BatteryOfflineChecker(SubChecker):
     def __init__(self, config, battery):
         super().__init__(config, 'battery_offline', (TYPE_CHARGER, TYPE_SOLAR, TYPE_INVERTER))
@@ -36,8 +39,7 @@ class BatteryOfflineChecker(SubChecker):
         if self._lock is None:
             return None
         oldest_timestamp = min(self.__last_data.values()) if len(self.__last_data) > 0 else 0
-        active = bool((now - oldest_timestamp) > self.__threshold)
-        return (active, self._lock)
+        return self._return_lock(bool((now - oldest_timestamp) > self.__threshold))
         
     def __on_battery_data(self, name):
         data = self.__battery.battery_data[name]
@@ -72,7 +74,7 @@ class CellLowChecker(SubChecker):
             threshold += self.__hysteresis
 
         self.__threshold_exceeded = lowest_cell < threshold
-        return (self.__threshold_exceeded, self._lock)
+        return self._return_lock(self.__threshold_exceeded)
         
 class CellHighChecker(SubChecker):
     def __init__(self, config, battery):
@@ -100,7 +102,7 @@ class CellHighChecker(SubChecker):
             threshold -= self.__hysteresis
 
         self.__threshold_exceeded = highest_cell > threshold
-        return (self.__threshold_exceeded, self._lock)
+        return self._return_lock(self.__threshold_exceeded)
 
 class TempLowChargeChecker(SubChecker):
     def __init__(self, config, battery):
@@ -128,7 +130,7 @@ class TempLowChargeChecker(SubChecker):
             threshold += self.__hysteresis
 
         self.__threshold_exceeded = lowest_temp < threshold
-        return (self.__threshold_exceeded, self._lock)
+        return self._return_lock(self.__threshold_exceeded)
 
 class TempLowDischargeChecker(SubChecker):
     def __init__(self, config, battery):
@@ -156,7 +158,7 @@ class TempLowDischargeChecker(SubChecker):
             threshold += self.__hysteresis
 
         self.__threshold_exceeded = lowest_temp < threshold
-        return (self.__threshold_exceeded, self._lock)
+        return self._return_lock(self.__threshold_exceeded)
     
 class TempHighChargeChecker(SubChecker):
     def __init__(self, config, battery):
@@ -184,7 +186,7 @@ class TempHighChargeChecker(SubChecker):
             threshold -= self.__hysteresis
 
         self.__threshold_exceeded = highest_temp > threshold
-        return (self.__threshold_exceeded, self._lock)
+        return self._return_lock(self.__threshold_exceeded)
     
 class TempHighDischargeChecker(SubChecker):
     def __init__(self, config, battery):
@@ -212,7 +214,7 @@ class TempHighDischargeChecker(SubChecker):
             threshold -= self.__hysteresis
 
         self.__threshold_exceeded = highest_temp > threshold
-        return (self.__threshold_exceeded, self._lock)
+        return self._return_lock(self.__threshold_exceeded)
         
 class LiveDataOfflineChargeChecker(SubChecker):
     def __init__(self, config, consumption):
@@ -223,8 +225,7 @@ class LiveDataOfflineChargeChecker(SubChecker):
     def check(self, now):
         if self._lock is None:
             return None
-        active = bool((now - self.__consumption.last_seen) > self.__threshold)
-        return (active, self._lock)
+        return self._return_lock(bool((now - self.__consumption.last_seen) > self.__threshold))
 
 class LiveDataOfflineDischargeChecker(SubChecker):
     def __init__(self, config, consumption):
@@ -235,8 +236,7 @@ class LiveDataOfflineDischargeChecker(SubChecker):
     def check(self, now):
         if self._lock is None:
             return None
-        active = bool((now - self.__consumption.last_seen) > self.__threshold)
-        return (active, self._lock)
+        return self._return_lock(bool((now - self.__consumption.last_seen) > self.__threshold))
 
 class MqttOfflineChecker(SubChecker):
     def __init__(self, config, mqtt):
@@ -250,8 +250,7 @@ class MqttOfflineChecker(SubChecker):
             return None
         if self.__mqtt.connected:
             self.__last_online = time()
-        active = bool((now - self.__last_online) > self.__threshold)
-        return (active, self._lock)
+        return self._return_lock(bool((now - self.__last_online) > self.__threshold))
 
 class StartupChecker(SubChecker):
     def __init__(self, config, locks):
@@ -264,8 +263,8 @@ class StartupChecker(SubChecker):
         if len(self.__locks) > 0 \
             and self._lock not in self.__locks \
             and now < self.__mature_timestamp:
-            return (True, self._lock)
+            return self._lock
         elif (len(self.__locks) == 1 and self._lock in self.__locks) \
                 or (now >= self.__mature_timestamp):
             self.__mature_timestamp = now
-            return (False, self._lock)
+            return None
