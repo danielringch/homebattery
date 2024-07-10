@@ -155,6 +155,15 @@
       "address": <integer>,
       "power_hysteresis": 2
     },
+    "power_http":
+    {
+      "driver": "httpConsumption",
+      "host": "<string>",
+      "query": "<string>",
+      "path": <list of strings>,
+      "interval": 2,
+      "factor": <integer>
+    },
     "power_mqtt":
     {
       "driver": "mqttConsumption",
