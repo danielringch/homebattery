@@ -50,58 +50,48 @@
   {
     "battery_offline":
     {
-      "enabled": true,
       "threshold": 120
     },
     "cell_low":
     {
-      "enabled": true,
       "threshold": 3.1,
       "hysteresis": 0.1
     },
     "cell_high":
     {
-      "enabled": true,
       "threshold": 3.65,
       "hysteresis": 0.2
     },
     "temp_low_charge":
     {
-      "enabled": true,
       "threshold": 10,
       "hysteresis": 2
     },
     "temp_low_discharge":
     {
-      "enabled": true,
       "threshold": 0,
       "hysteresis": 2
     },
     "temp_high_charge":
     {
-      "enabled": true,
       "threshold": 40,
       "hysteresis": 2
     },
     "temp_high_discharge":
     {
-      "enabled": true,
       "threshold": 40,
       "hysteresis": 2
     },
     "live_data_lost_charge":
     {
-      "enabled": <true or false>,
       "threshold": 300
     },
     "live_data_lost_discharge":
     {
-      "enabled": <true or false>,
       "threshold": 60
     },
     "mqtt_offline":
     {
-      "enabled": true,
       "threshold": 60
     }
   },
