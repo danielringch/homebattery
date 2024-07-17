@@ -188,77 +188,84 @@ class GrowattInverterModbus(InverterInterface):
             run_callbacks(self.__on_status_change, self, new_status)
 
     async def __write_state(self):
-        self.__log.info('Set state to ', self.__requested_status)
-        value = (1 if self.__requested_status == STATUS_ON else 0) | self.__registers.switch_flags
-        rx = await self.__port.write_single(self.__slave_address, self.__registers.switch, value)
-        if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not write device state: communication error'):
-            return
-        received_state = unpack('!H', rx)[0] # type: ignore
-        self.__handle_communication_error(received_state != value, 'Can not write device state: different value received')
+        async with self.__port.lock:
+            self.__log.info('Set state to ', self.__requested_status)
+            value = (1 if self.__requested_status == STATUS_ON else 0) | self.__registers.switch_flags
+            rx = await self.__port.write_single(self.__slave_address, self.__registers.switch, value)
+            if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not write device state: communication error'):
+                return
+            received_state = unpack('!H', rx)[0] # type: ignore
+            self.__handle_communication_error(received_state != value, 'Can not write device state: different value received')
 
     async def __write_limit(self):
-        self.__log.info('Set limit to ', self.__requested_limit, ' %')
-        # enable temporary mode
-        rx = await self.__port.write_single(self.__slave_address, self.__registers.temporary, 1)
-        if self.__handle_communication_error(rx is None, 'Can not enable temporary mode: communication error'):
-            return
-        temporary_mode = unpack('!H', rx)[0] # type: ignore
-        if self.__handle_communication_error(temporary_mode != 1, 'Can not enable temporary mode: different value received'):
-            return
-        # write limit
-        rx = await self.__port.write_single(self.__slave_address, self.__registers.power_limit, self.__requested_limit)
-        if self.__handle_communication_error(rx is None, 'Can not write power limit: communication error'):
-            return
-        limit = unpack('!H', rx)[0] # type: ignore
-        if self.__handle_communication_error(limit != self.__requested_limit, 'Can not write power limit: different value received'):
-            return
+        async with self.__port.lock:
+            self.__log.info('Set limit to ', self.__requested_limit, ' %')
+            # enable temporary mode
+            rx = await self.__port.write_single(self.__slave_address, self.__registers.temporary, 1)
+            if self.__handle_communication_error(rx is None, 'Can not enable temporary mode: communication error'):
+                return
+            temporary_mode = unpack('!H', rx)[0] # type: ignore
+            if self.__handle_communication_error(temporary_mode != 1, 'Can not enable temporary mode: different value received'):
+                return
+            # write limit
+            rx = await self.__port.write_single(self.__slave_address, self.__registers.power_limit, self.__requested_limit)
+            if self.__handle_communication_error(rx is None, 'Can not write power limit: communication error'):
+                return
+            limit = unpack('!H', rx)[0] # type: ignore
+            if self.__handle_communication_error(limit != self.__requested_limit, 'Can not write power limit: different value received'):
+                return
 
     async def __read_status(self):
-        rx = await self.__port.read_input(self.__slave_address, self.__registers.status, 1)
-        if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read device status: communication error'):
-            return
-        try:
-            status = self.__payload_to_status[unpack('!H', rx)[0]] # type: ignore
-        except:
-            status = STATUS_FAULT
-        if status != self.__device_status:
-            self.__device_status = status
-            self.__handle_status_change()
+        async with self.__port.lock:
+            rx = await self.__port.read_input(self.__slave_address, self.__registers.status, 1)
+            if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read device status: communication error'):
+                return
+            try:
+                status = self.__payload_to_status[unpack('!H', rx)[0]] # type: ignore
+            except:
+                status = STATUS_FAULT
+            if status != self.__device_status:
+                self.__device_status = status
+                self.__handle_status_change()
 
     async def __read_power(self):
-        rx = await self.__port.read_input(self.__slave_address, self.__registers.power, 2)
-        if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read power: communication error'):
-            return
-        power = round(unpack('!I', rx)[0] / 10) # type: ignore
-        if abs(power - self.__power) >= self.__power_hysteresis: # value changed
-            self.__log.info('Power=', power, ' W')
-            self.__power = power
-            run_callbacks(self.__on_power_change, self, power)
+        async with self.__port.lock:
+            rx = await self.__port.read_input(self.__slave_address, self.__registers.power, 2)
+            if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read power: communication error'):
+                return
+            power = round(unpack('!I', rx)[0] / 10) # type: ignore
+            if abs(power - self.__power) >= self.__power_hysteresis: # value changed
+                self.__log.info('Power=', power, ' W')
+                self.__power = power
+                run_callbacks(self.__on_power_change, self, power)
 
     async def __read_energy(self):
-        rx = await self.__port.read_input(self.__slave_address, self.__registers.energy, 2)
-        if self.__handle_communication_error((rx is None) or (len(rx) < 4), 'Can not read energy: communication error'):
-            return
-        energy = round(unpack('!I', rx)[0] * 100) # type: ignore
-        self.__log.info('Total energy=', energy, ' Wh')
-        if self.__last_energy is None:
-            self.__last_energy = energy
-        elif energy > self.__last_energy:
-            delta = energy - self.__last_energy
-            self.__energy += delta
-            self.__last_energy = energy
+        async with self.__port.lock:
+            rx = await self.__port.read_input(self.__slave_address, self.__registers.energy, 2)
+            if self.__handle_communication_error((rx is None) or (len(rx) < 4), 'Can not read energy: communication error'):
+                return
+            energy = round(unpack('!I', rx)[0] * 100) # type: ignore
+            self.__log.info('Total energy=', energy, ' Wh')
+            if self.__last_energy is None:
+                self.__last_energy = energy
+            elif energy > self.__last_energy:
+                delta = energy - self.__last_energy
+                self.__energy += delta
+                self.__last_energy = energy
 
     async def __read_power_limit(self):
-        rx = await self.__port.read_holding(self.__slave_address, self.__registers.power_limit, 1)
-        if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read power limit: communication error'):
-            return
-        self.__device_limit = unpack('!H', rx)[0] # type: ignore
-        self.__log.info('Limit=', self.__device_limit, ' %')
+        async with self.__port.lock:
+            rx = await self.__port.read_holding(self.__slave_address, self.__registers.power_limit, 1)
+            if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read power limit: communication error'):
+                return
+            self.__device_limit = unpack('!H', rx)[0] # type: ignore
+            self.__log.info('Limit=', self.__device_limit, ' %')
 
     async def __read_max_power(self):
-        rx = await self.__port.read_holding(self.__slave_address, self.__registers.max_power, 2)
-        if self.__handle_communication_error((rx is None) or (len(rx) < 4), 'Can not read maximum power: communication error'):
-            return
-        self.__max_power = round(unpack('!I', rx)[0] / 10)
-        self.__log.info('Maximum power=', self.__max_power, ' W')
-        self.__handle_status_change()
+        async with self.__port.lock:
+            rx = await self.__port.read_holding(self.__slave_address, self.__registers.max_power, 2)
+            if self.__handle_communication_error((rx is None) or (len(rx) < 4), 'Can not read maximum power: communication error'):
+                return
+            self.__max_power = round(unpack('!I', rx)[0] / 10)
+            self.__log.info('Maximum power=', self.__max_power, ' W')
+            self.__handle_status_change()
