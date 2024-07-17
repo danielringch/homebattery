@@ -12,9 +12,13 @@ class HttpResponse:
 
     async def read(self):
         try:
-            length = int(self.__headers['Content-Length'])
-            buffer = bytearray(length)
-            length = await self.__socket.receive_into(buffer, 0, length)
+            length = self.__headers.get('Content-Length', None)
+            if length is None:
+                buffer = await self.__socket.receiveall(0.5)
+            else:
+                buffer = bytearray(length)
+                length = await self.__socket.receive_into(buffer, 0, length)
+                
         except:
             raise
         return buffer

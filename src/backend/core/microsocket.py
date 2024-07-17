@@ -118,6 +118,24 @@ class MicroSocket:
                     raise MicroSocketClosedExecption()
                 else:
                     raise MicroSocketTimeoutException()
+                
+        async def receiveall(self, timeout: int):
+            async with self.__receive_lock:
+                self.__check_socket()
+
+                self.__socket.settimeout(timeout)
+
+                data = None
+                try:
+                    data = self.__socket.read()
+                except OSError as e:
+                    code = e.args[0]
+                    if code not in BUSY_ERRORS:
+                        self.__connected = False
+
+                self.__socket.setblocking(False)
+
+                return data
             
         def empty_receive_queue(self):
             self.__check_socket()
