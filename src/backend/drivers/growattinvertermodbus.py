@@ -140,6 +140,7 @@ class GrowattInverterModbus(InverterInterface):
                 try:
                     if self.__max_power is None:
                         await self.__read_max_power()
+                        await sleep(1)
                         
                     if self.__device_status != self.__requested_status:
                         await self.__write_state()
