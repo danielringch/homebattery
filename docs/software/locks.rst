@@ -1,7 +1,7 @@
-System locks
-============
+Device class locks
+==================
 
-Homebattery continuously monitors several parameters of the system and the connected devices to:
+Homebattery continuously monitors several parameters of the system and the connected devices. By doing so, it can:
 
 * prevent unsafe operation states
 * prevent uneconomic operation
@@ -24,7 +24,7 @@ Battery offline
 
 **Objective**: operational safety
 
-**Explanation**: Since the communication breakdown might be the sympton of malfunctioning battery management system, any use of the battery must be assumed to be unsafe.
+**Explanation**: Since the communication breakdown might be the sympton of a malfunctioning battery management system, any use of the battery must be assumed to be unsafe.
 
 **Locked devices**:
 

@@ -7,12 +7,12 @@ Welcome to the homebattery project.
 
 ## What is homebattery?
 
-Homebattery is an embedded controller for your home battery storage (or EV charger). Its working principle is very simple:
+Homebattery is an embedded controller for your home battery storage. Its working principle is very simple:
 
-* devices are connected to homebattery via various interfaces.
-* homebattery switches its mode of operation (basically charging, idle and discharge) when a corresponding command is received via MQTT.
-* if an operational parameter is not okay, homebattery automatically shuts off affected devices.
-* a collection of relevant operational parameters is published via MQTT for further usage.
+* devices are connected to homebattery via their respective interfaces
+* homebattery switches the mode of operation (charge, discharge, ...) when a corresponding command is received via MQTT
+* if an operational parameter of any connected device is not okay, homebattery automatically shuts off affected devices for safety
+* a collection of relevant operational parameters is published via MQTT for further usage
 
 Homebattery comes with:
 
@@ -23,32 +23,28 @@ Homebattery comes with:
 
 ## Typical use cases
 
-* Usage with a home battery storage system with grid and/or solar chargers. Dynamic energy pricing is used. Business logic in a home automation system is used to switch homebattery between charging, discharging and idle depending on the current energy prices.
+* Home battery storage in combination with dynamic energy pricing. Dending on rules programmed in a home automation system, homebattery switches between charging, discharging and idling the battery depending on the current energy price.
 
-* Usage with a battery charged by solar power. Homebattery monitors the system and activates the inverter as long as the battery SOC is not too low.
+* Home battery storage charged by solar. Homebattery monitors the system and disables the inverter if the battery SOC gets too low.
 
-* Usage without a whole home battery storage, but single devices. Homebattery publishes their data via MQTT to an home automation system, which then controlls other devices based on this data.
+* Getting "incompatible" devices to talk to each other. Since homebattery supports a wide range of devices, protocols and connection methods, it can be used to combine devices with no direct communication possible, e.g. Pylontech batteries and Victron MPPT solar chargers.
 
-The following use cases are not supported with the current version of the software, but will come in the future:
-
-* Usage with an EV charger/ AC coupled battery system and solar power. While homebattery does not control the solar system itself, it adapts the charging power to the solar production to only use suplur energy for charging.
-
-* Usage with hardware that would be not compatible with each other normally. As an example, a Pylontech battery can not directly be charged via Victron MPPT solar chargers, since they use different communication protocols. With homebattery, such setups are possible.
+* Connecting single devices to a home automation system. Homebattery can give different devices a common interface via MQTT for further usage.
 
 ## Why homebattery?
 
 Homebattery was not the first and will not be the last solution for controlling your home battery storage, but it has some nice features you might be interested in:
 
-* **reliability** by using an embedded system with a watchdog timer, homebattery is much more reliable than a bare home automation solution.
-* **safety checks** ensure that all device parameters are in the green range. If not, homebattery reacts accordingly. E.g., the inverter gets automatically turned off if the SOC of the battery gets too low.
-* **simplicity** is achieved by only caring about device communication and safety. The business logic is implemented in your home automation solution.
-* **modularity** was the design principle for both the hard- and the software. A wide variety of devices and physical interfaces (Bluetooth, ethernet, RS485, VE.Direct, ...) is supported thanks to the usage of add-on boards and drivers. And even more will be suported in the future.
+* **reliability** is achieved by usage of an embedded system with a watchdog timer, so homebattery is much more reliable than a home automation solution running on a regular PC or Raspberry Pi
+* **safety checks** ensure that all device parameters are in the green range. If not, homebattery reacts accordingly to prevent damage from any device.
+* **simplicity** is achieved by only caring about device communication and safety. The logic when to switch the mode of operation is implemented in your home automation solution.
+* **modularity** was the design principle for both the hard- and the software. A wide variety of devices and physical interfaces (Bluetooth, ethernet, RS485, Modbus, VE.Direct, ...) is supported thanks to the usage of add-on boards and drivers. And even more will be suported in the future.
 * **MQTT** is used to communicate with homebattery. So everything with MQTT support can be used to control homebattery (Home Assistant, ioBroker, etc.). The MQTT interface is well documented.
 
 ## What do I need?
 
-* **homebattery hardware**. If you only connect devices via network and Bluetooth, even a bare Raspberry Pi Pico W will do the job.
-* for most use cases, **a smart home solution** like Home Assistant or ioBroker. You can use any software that is capable of MQTT.
+* **homebattery hardware**. The [documentation](http://homebattery.readthedocs.io) contains a guide which hardware is necessary for witch connected devices
+* **a smart home solution** like Home Assistant or ioBroker, if you want implement some logic when to switch mode of operation. You can use any software that is capable of MQTT.
 * **compatible devices**. See the list below.
 
 ## What hardware is supported?
@@ -61,11 +57,13 @@ Homebattery was not the first and will not be the last solution for controlling 
 | solar charger | Victron SmartSolar MPPT | Smartsolar MPPT 75/15 | VE.Direct | - |
 | | Victron BlueSolar MPPT | - | VE.Direct | configuration is still done via Victron USB interface |
 | grid charger | Shelly smart switch | Shelly Plus2PM<br>Shelly Plug S | network | - |
-| inverter | Hoymiles HM-Series | HM-300 | network | requires AhoyDTU |
+| inverter | Hoymiles HM-Series | HM-300 | network | requires a AhoyDTU device |
+| | Growatt xx00-S series | 1000-S | RS485 / modbus | - |
+| | Growatt MIC xxTL-X series | MIC 1500TL-X | RS485 / modbus | -
 
 ## How to start?
 
-Please read the [handbook](https://homebattery.readthedocs.io/en/latest/handbook/index_handbook.html#)  in the [documentation](https://homebattery.readthedocs.io/en/latest/).
+Please read the [handbook](https://homebattery.readthedocs.io/en/latest/handbook/index_handbook.html)  in the [documentation](https://homebattery.readthedocs.io/en/latest/).
 
 ## Disclaimer
 

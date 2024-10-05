@@ -24,12 +24,12 @@ Connection parameters are:
 You can use any terminal emulation program that supports serial connections, like `PuTTY <https://www.putty.org>`_ or `picocom <https://github.com/npat-efault/picocom>`_.
 
 .. warning::
-   If the baseboard is used, it is strongly recommended to disconnect all other cables from the baseboard while using USB. Otherwise the Pico might get damaged due to ESD.
+   If the baseboard is used, it is strongly recommended to disconnect all other power supplies while using USB. Otherwise the Pico might get damaged due to ESD.
 
 UDP data stream
 ---------------
 
-Logging data can be sent via a UDP port, if a host is set in the logging configuration. For configuration, see the :doc:`software reference <../software/configuration>`
+Logging data can be sent via a UDP port, if a host is set in the logging configuration. For configuration, see the :doc:`software reference <../software/configuration>`.
 
 Log data is then sent as plain text to this host. Homebattery comes with its own small application to receive this log data and store it in one file per day, see https://github.com/danielringch/homebattery/releases.
 
