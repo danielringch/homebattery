@@ -4,8 +4,6 @@ from gc import mem_alloc, mem_free
 from json import load as load_json
 from micropython import const
 gc_collect()
-from ..core.addonport import AddonPort
-gc_collect()
 from ..core.microblecentral import MicroBleCentral
 gc_collect()
 from ..core.logging import Logging
@@ -33,7 +31,7 @@ gc_collect()
 from .outputs import Outputs
 gc_collect()
 
-_VERSION = const('1.0.0')
+_VERSION = const('1.1.0')
 
 prefix = '[homebattery] {0}'
 
@@ -44,13 +42,11 @@ async def homebattery():
     from ..core.singletons import Singletons
     Singletons.log = Logging()
     Singletons.ui = UserInterface()
-    Singletons.addon_port_1 = AddonPort(1, 0)
-    Singletons.addon_port_2 = AddonPort(0, 1)
 
     log = Singletons.log
     ui = Singletons.ui
     log.debug('Homebattery ', _VERSION)
-    ui.print('Homebattery', _VERSION)
+    ui.overlay('Homebattery', _VERSION)
 
     gc_collect()
     print_memory(log)
@@ -63,7 +59,7 @@ async def homebattery():
         log.debug('Entering configuration mode.')
 
         ip = Network({'network':None}).create_hotspot()
-        ui.print('Connect to SSID:', AP_SSID, 'Password:', AP_PASSWORD, 'Open:', ip)
+        ui.overlay('Connect to SSID:', AP_SSID, 'Password:', AP_PASSWORD, 'Open:', ip)
         Webserver().run()
 
     try:
@@ -71,12 +67,12 @@ async def homebattery():
             config = load_json(stream)
     except:
         log.error('Invalid configuration.')
-        ui.print('Invalid', 'configuration.')
+        ui.overlay('Invalid', 'configuration.')
         while True:
             await sleep(1)
 
     log.debug('Configuring logging...')
-    ui.print('Configuring', 'logging...')
+    ui.overlay('Configuring', 'logging...')
     log.configure(config)
 
     Singletons.ble = MicroBleCentral()
@@ -84,20 +80,20 @@ async def homebattery():
     
     from ..core.network import Network
     log.debug('Connecting to network...')
-    ui.print('Connecting to', 'network...')
+    ui.overlay('Connecting to', 'network...')
     network = Network(config)
     network.connect(watchdog)
     network.get_network_time(watchdog)
 
     from ..core.backendmqtt import Mqtt
     log.debug('Configuring MQTT...')
-    ui.print('Configuring', 'MQTT...')
+    ui.overlay('Configuring', 'MQTT...')
     mqtt = Mqtt(config)
 
     watchdog.feed()
     gc_collect()
 
-    ui.print('Configuring', 'modules...')
+    ui.overlay('Configuring', 'modules...')
     devices = Devices(config, mqtt)
     gc_collect()
     consumption = Consumption(devices)
@@ -113,9 +109,11 @@ async def homebattery():
     gc_collect()
 
     log.debug('Connecting to MQTT broker...')
-    ui.print('Connecting to', 'MQTT broker...')
+    ui.overlay('Connecting to', 'MQTT broker...')
     await mqtt.connect()
     watchdog.feed()
+
+    ui.remove_overlay()
 
     battery_task = create_task(battery.run())
     charger_task = create_task(charger.run())

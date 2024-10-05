@@ -8,52 +8,53 @@ A typical home battery storage system
   :width: 400
   :alt: system overview
 
-A home battery storage system usually consists of at least four components:
+A home battery storage system usually consists of the following components:
 
 * batteries
 * chargers (powered by solar or grid)
 * inverters
 * a controller
 
-Some devices combine multiple components (e.g. a hybrid inverter is usually solar charger, grid charger and inverter).
+Some devices are a combination of components (e.g. a hybrid inverter is usually a solar charger, grid charger and inverter).
 
-The homebattery as controller of the system has two main tasks:
+Homebattery as controller of the system has two main tasks:
 
-* control the chargers and inverters to charge and discharge the batteries
+* control the chargers and inverters to charge and discharge the batteries depending on the mode of operation
 * monitor the system and prevent unsafe operation states
 
-There is total flexibility regarding the connected devices and there are no mandatory devices. You can also use homebattery e.g. to control your solar inverter (a system without batteries or chargers), to charge your EV (a system with only chargers) or to get your battery data published via MQTT (a system with only batteries).
+There is total flexibility regarding the connected devices. You can also use homebattery e.g. to control your solar inverter (a system without batteries or chargers), to charge your EV (a system with only chargers) or to get your battery data published via MQTT (a system with only batteries).
 
 .. note::
-   homebattery has only limited standalone operation capabilities. It is designed to get the commands to switch between its mode of operation via MQTT.
+   Homebattery contains no logic *when* to switch its mode of operation (with the exception of changes to protection modes). It is designed to receive commands for switching its mode of operation via MQTT.
 
 Modes of operation
 ------------------
 
-The main task of homebattery is to switch between predefined modes of operation. The trigger for changing the mode of operation is received via MQTT. It is not a statemachine in the traditional sense, as it is possible to switch into every mode of operation everytime (as long as it would not lead to an unsafe operation state).
+The modes of operation define which devices are active and which are not, which influences the energy flow in the system.
+
+The trigger for changing the mode of operation is received via MQTT.
 
 +-----------+-------------------------------------+--------------------------------------------------+
 | mode      | grid tie systems                    | hybrid inverter systems                          |
 +===========+=====================================+==================================================+
 | idle      | charge battery from solar           | feed output from solar + grid                    |
 +-----------+-------------------------------------+--------------------------------------------------+
-| grid      | charge battery from grid solar      | feed output from grid,                           |
-|           |                                     |                                                  |
+| grid      | charge battery from surplus grid    | feed output from grid,                           |
+|           | energy (for EV chargers only)       |                                                  |
 |           |                                     | charge battery from solar                        |
 +-----------+-------------------------------------+--------------------------------------------------+
 | charge    | charge battery from solar + grid    | feed output from grid,                           |
 |           |                                     |                                                  |
 |           |                                     | charge battery from solar + grid                 |
 +-----------+-------------------------------------+--------------------------------------------------+
-| discharge | activate inverter                   | feed output from solar + battery                 |
+| discharge | charge battery from solar, activate | feed output from solar + battery                 |
+|           | inverter                            |                                                  |
 +-----------+-------------------------------------+--------------------------------------------------+
 | protect   | everything is off                   | feed output from grid                            |
 +-----------+-------------------------------------+--------------------------------------------------+
 
 .. note::
    Mode ``grid`` is not implemented yet.
-
-Homebattery will automatically switch off devices if they are not save to operate (e.g. all chargers will be switched off if a battery cell voltage gets too high).
 
 For more information about modes of operation, see the :doc:`software reference <../software/modes_of_operation>`.
 
@@ -66,13 +67,13 @@ There are five device classes:
 * solar
 * charger
 * inverter
-* power consumption measurement device
+* power measurement
 
-homebattery offers high flexibility regarding its connected devices:
+Homebattery offers high flexibility regarding its connected devices:
 
 * all device classes are optional (e.g. you can have a system without a grid charger)
-* there can be multiple devices per class
-* batteries, solar and charger devices can be distributed across several controllers (see :ref:`multi controller setups <handbook_multi_controller_setups>`)
+* there is no device limit per class
+* batteries and solar devices can be distributed across several controllers (see :ref:`multi controller setups <handbook_multi_controller_setups>`)
 * devices can be a combination of device classes (e.g. a hybrid inverter is usally solar, charger and inverter)
 
 There are several ways to connect devices:
@@ -83,14 +84,14 @@ There are several ways to connect devices:
 
 The used interface depends on the device, see the driver documentation in the :doc:`software reference <../software/drivers>`.
 
-System locks
-------------
+Device class locks
+------------------
 
-A configured set checks is constantly applied on devive parameters. If a check fails, the affected device classes are locked (which means that they are turned off) until the check passes again.
+A configured set of checks is constantly applied on device parameters. If a check fails, the affected device classes are locked (which means that they are turned off) until the check passes again.
 
 Example: the battery cells are checked for their voltage. While a cell voltage too high locks the device classes solar and charger, a cell voltage too low locks the device class inverter.
 
-The system locks and checks are described in the :doc:`software reference <../software/system_locks>`.
+The checks and locks are described in the :doc:`software reference <../software/locks>`.
 
 System monitoring
 -----------------

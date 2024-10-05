@@ -1,7 +1,8 @@
 from asyncio import create_task, Event
 from machine import Pin
 from .interfaces.solarinterface import SolarInterface
-from ..core.types import run_callbacks, SimpleFiFo, STATUS_ON, STATUS_OFF, STATUS_SYNCING
+from ..core.addonserial import AddOnSerial
+from ..core.types import to_port_id, run_callbacks, SimpleFiFo, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 
 _OFF_STATES = const((3,4,5,7,247))
 
@@ -13,12 +14,11 @@ class VictronMppt(SolarInterface):
         self.__device_types = (TYPE_SOLAR,)
         self.__log = Singletons.log.create_logger(name)
         port = config['port']
-        if port == "ext1":
-            self.__port = Singletons.addon_port_1
-        elif port == "ext2":
-            self.__port = Singletons.addon_port_2
-        else:
-           raise Exception('Unknown port: ', port)
+        port_id = to_port_id(port)
+        if Singletons.ports[port_id] is not None:
+            raise Exception('Port ', port, 'is already in use')
+        
+        self.__port = AddOnSerial(port_id)
         self.__port.set_mode(line=True)
         self.__port.connect(19200, 0, None, 1)
         self.__port.on_rx.append(self.__on_rx)

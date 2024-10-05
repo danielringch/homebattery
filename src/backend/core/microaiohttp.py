@@ -12,17 +12,32 @@ class HttpResponse:
 
     async def read(self):
         try:
-            length = int(self.__headers['Content-Length'])
-            buffer = bytearray(length)
-            length = await self.__socket.receive_into(buffer, 0, length)
+            length = self.__headers.get('Content-Length', None)
+            if length is None:
+                buffer = await self.__socket.receiveall(0.5)
+            else:
+                length = int(length)
+                buffer = bytearray(length)
+                length = await self.__socket.receive_into(buffer, 0, length)
+                
         except:
             raise
         return buffer
 
     async def json(self):
         data = await self.read()
+        if data is None:
+            return None
+        data = data.decode('utf-8')
+        try:
+            payload_start = data.index('{')
+            payload_end = data.rindex('}')
+        except ValueError:
+            return None
+        if payload_start > 0 or payload_end < (len(data) - 1):
+            data = data[payload_start:payload_end + 1]
         return loads(data)
-    
+
     async def text(self):
         data = await self.read()
         return str(data, self.encoding)

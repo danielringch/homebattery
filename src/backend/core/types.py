@@ -28,6 +28,14 @@ def to_operation_mode(str):
         return MODE_IDLE
     else:
         return MODE_PROTECT
+    
+def to_port_id(str):
+    if str == "ext1":
+        return 0
+    elif str == "ext2":
+        return 1
+    else:
+        raise Exception(f'Unknown port: {str}')
 
 class BatteryData:
     def __init__(self, name, is_forwarded=False):

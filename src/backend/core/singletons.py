@@ -1,4 +1,5 @@
 class Singletons:
+    ports = [None, None]
     addon_port_1 = None
     addon_port_2 = None
     ble = None

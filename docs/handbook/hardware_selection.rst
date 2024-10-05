@@ -23,7 +23,7 @@ homebattery comes with a baseboard featuring
 
 * an OLED display
 * status LEDs
-* powering via wide voltage range input or micro USB
+* power via wide voltage range input or micro USB
 * two extension ports for add-on boards
 
 .. image:: ../images/baseboard_rpi_front.jpg
@@ -78,3 +78,12 @@ Victron SmartSolar and BlueSolar MPPT solar charges can be connected to homebatt
   :alt: vedirect back view
 
 For more information, see the :doc:`hardware reference <../hardware/vedirect>`.
+
+.. _handbook_rs_485:
+RS-485
+~~~~~~
+
+RS-485 or modbus devices can be connected to homebattery using the RS-485 add-on board. Cables can be connected via screw terminal or RJ45 jack with any pin configuration. Failsafe resistors and termination can be enabled via solder jumper.
+
+
+For more information, see the :doc:`hardware reference <../hardware/rs485>`.

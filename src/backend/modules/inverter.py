@@ -15,12 +15,14 @@ class Inverter:
 
         self.__log = Singletons.log.create_logger('inverter')
 
-        self.__default_power = int(config['general']['inverter_power'])
-        if config['netzero']['enabled'] == True:
-            self.__netzero = NetZero(config)
+        config = config['inverter']
+        self.__default_power = int(config['power'])
+        self.__reduce_power_during_fault = bool(config['reduce_power_during_fault'])
+        if 'netzero' in config:
+            self.__netzero = NetZero(config['netzero'])
             consumption.on_power.append(self.__on_live_consumption)
         else:
-            self.__log.send('Netzero disabled.')
+            self.__log.info('Netzero disabled.')
             self.__netzero = None
 
         self.__status_callbacks = list()
@@ -37,8 +39,6 @@ class Inverter:
         for device in self.__inverters:
             device.on_inverter_status_change.append(self.__on_inverter_status)
             device.on_inverter_power_change.append(self.__on_inverter_power)
-
-        self.__max_power = sum((x.max_power for x in self.__inverters), 0)
 
         if len(self.__inverters) == 0:
             self.__last_status = STATUS_OFF
@@ -108,8 +108,7 @@ class Inverter:
         return self.__device_energy_callbacks
     
     async def __handle_state_change(self):
-        if self.__last_status == STATUS_FAULT:
-            # fault recovery has better chances if other inverters produce minimal power
+        if self.__last_status == STATUS_FAULT and self.__reduce_power_during_fault:
             await self.__set_power(0)
         elif self.__last_status == STATUS_ON and self.__netzero is None:
             await self.__set_power(self.__default_power)
@@ -143,7 +142,8 @@ class Inverter:
     async def __set_power(self, power):
         last_inverter = self.__inverters[-1]
 
-        relative_power = power / self.__max_power
+        max_power = sum((x.max_power for x in self.__inverters), 0)
+        relative_power = power / max_power if max_power > 0 else 0
         remaining_power = power
         new_power = 0
 

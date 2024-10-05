@@ -7,8 +7,6 @@ _MIN_ITEMS = const(5)
 
 class NetZero:
     def __init__(self, config):
-        config = config['netzero']
-
         from ..core.singletons import Singletons
         self.__log = Singletons.log.create_logger('netzero')
         

@@ -3,6 +3,9 @@ from micropython import const
 
 _AHOY_DTU = const('ahoyDtu')
 _DALY_8S_24V_60A = const('daly8S24V60A')
+_GROWATT_INVERTER_MODBUS = const('growattinvertermodbus')
+_HEIDELBERG_WALLBOX = const('heidelbergWallbox')
+_HTTP_CONSUMPTION = const('httpConsumption')
 _JK_BMS_BD4 = const('jkBmsBd4')
 _LLT_POWER_BMS_V4_BLE = const('lltPowerBmsV4Ble')
 _MQTT_BATTERY = const('mqttBattery')
@@ -28,6 +31,18 @@ class Devices:
                 from ..drivers.daly8s24v60a import Daly8S24V60A
                 gc_collect()
                 self.__load_device(log, name, Daly8S24V60A, meta)
+            elif driver_name == _GROWATT_INVERTER_MODBUS:
+                from ..drivers.growattinvertermodbus import GrowattInverterModbus
+                gc_collect()
+                self.__load_device(log, name, GrowattInverterModbus, meta)
+            elif driver_name == _HEIDELBERG_WALLBOX:
+                from ..drivers.heidelbergwallbox import HeidelbergWallbox
+                gc_collect()
+                self.__load_device(log, name, HeidelbergWallbox, meta)
+            elif driver_name == _HTTP_CONSUMPTION:
+                from ..drivers.httpconsumption import HttpConsumption
+                gc_collect()
+                self.__load_device(log, name, HttpConsumption, meta)
             elif driver_name == _JK_BMS_BD4:
                 from ..drivers.jkbmsbd4 import JkBmsBd4
                 gc_collect()

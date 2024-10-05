@@ -43,6 +43,6 @@ Using mode grid
 
 Mode ``grid`` has different usecases depending on the system design.
 
-For AC coupled battery storage systems or EV chargers, this mode is used to charge the battery from the surplus solar production.
+For AC coupled battery storage systems or EV chargers, this mode is used to charge the battery from surplus grid energy.
 
-For systems with hybrid inverters, this mode is useful to charge the battery from solar in winter during medium energy prices. Solar production in winter can usually not cover the energy demand, but it would be economic to save the solar energy in the battery and use it later when the energy prices are higher.
+For systems with hybrid inverters, this mode is useful to charge the battery from solar in winter during medium or low energy prices. Solar production in winter can usually not fully cover the energy demand of a home, but it would be economic to store the solar energy in the battery and use it when the energy prices are high.
