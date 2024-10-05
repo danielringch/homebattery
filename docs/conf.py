@@ -4,8 +4,8 @@ import os
 project = 'homebattery'
 author = 'Daniel Ring'
 copyright = u'2024, Daniel Ring'
-version = '0.3'
-release = '0.3.0'
+version = '1.1'
+release = '1.1.0'
 
 extensions = [
     'sphinx_rtd_theme',
