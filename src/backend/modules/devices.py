@@ -4,6 +4,7 @@ from micropython import const
 _AHOY_DTU = const('ahoyDtu')
 _DALY_8S_24V_60A = const('daly8S24V60A')
 _GROWATT_INVERTER_MODBUS = const('growattinvertermodbus')
+_HEIDELBERG_WALLBOX = const('heidelbergWallbox')
 _HTTP_CONSUMPTION = const('httpConsumption')
 _JK_BMS_BD4 = const('jkBmsBd4')
 _LLT_POWER_BMS_V4_BLE = const('lltPowerBmsV4Ble')
@@ -34,6 +35,10 @@ class Devices:
                 from ..drivers.growattinvertermodbus import GrowattInverterModbus
                 gc_collect()
                 self.__load_device(log, name, GrowattInverterModbus, meta)
+            elif driver_name == _HEIDELBERG_WALLBOX:
+                from ..drivers.heidelbergwallbox import HeidelbergWallbox
+                gc_collect()
+                self.__load_device(log, name, HeidelbergWallbox, meta)
             elif driver_name == _HTTP_CONSUMPTION:
                 from ..drivers.httpconsumption import HttpConsumption
                 gc_collect()
