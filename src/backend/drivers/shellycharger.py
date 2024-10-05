@@ -1,5 +1,6 @@
 from asyncio import create_task, Event, sleep, TimeoutError, wait_for
 from micropython import const
+from sys import print_exception
 from time import time
 from .interfaces.chargerinterface import ChargerInterface
 from ..core.microaiohttp import ClientSession
@@ -114,6 +115,8 @@ class ShellyCharger(ChargerInterface):
                         self.__log.error('Charger query ', query, ' for ', self.__host, ' failed with code ', status, ', ', i, ' retries left.')
             except Exception as e:
                 self.__log.error('Charger query ', query, ' for ', self.__host, ' failed: ', e, ', ', i, ' retries left.')
+                from ..core.singletons import Singletons
+                print_exception(e, Singletons.log.trace)
             await sleep(1)
         return None
         
