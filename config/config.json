@@ -114,6 +114,15 @@
       "driver": "jkBmsBd4",
       "mac": <string>
     },
+    "battery_pylontech":
+    {
+      "driver": "pylonLv",
+      "port": <ext1 or ext2>,
+      "devices":
+      {
+        <string (serial)>: <string (alias)>
+      }
+    }
     "battery_mqtt":
     {
       "driver": "mqttBattery",

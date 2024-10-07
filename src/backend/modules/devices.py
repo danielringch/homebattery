@@ -10,6 +10,7 @@ _JK_BMS_BD4 = const('jkBmsBd4')
 _LLT_POWER_BMS_V4_BLE = const('lltPowerBmsV4Ble')
 _MQTT_BATTERY = const('mqttBattery')
 _MQTT_CONSUMPTION = const('mqttConsumption')
+_PYLON_LV = const('pylonLv')
 _SHELLY_CHARGER = const('shellyCharger')
 _VICTRON_MPPT = const('victronMppt')
 
@@ -59,6 +60,10 @@ class Devices:
                 from ..drivers.mqttconsumption import MqttConsumption
                 gc_collect()
                 self.__load_device(log, name, MqttConsumption, meta, mqtt)
+            elif driver_name == _PYLON_LV:
+                from ..drivers.pylonlv import PylonLv
+                gc_collect()
+                self.__load_device(log, name, PylonLv, meta)
             elif driver_name == _SHELLY_CHARGER:
                 from ..drivers.shellycharger import ShellyCharger
                 gc_collect()
