@@ -118,10 +118,7 @@
     {
       "driver": "pylonLv",
       "port": <ext1 or ext2>,
-      "devices":
-      {
-        <string (serial)>: <string (alias)>
-      }
+      "serial": <string>
     }
     "battery_mqtt":
     {

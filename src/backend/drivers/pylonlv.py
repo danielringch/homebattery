@@ -85,42 +85,49 @@ class PylonLv(BatteryInterface):
         self.__name = name
         self.__log = Singletons.log.create_logger(name)
 
-        port = config['port']
-        self.__port = AddOnRs485(to_port_id(port), 115200, 8, None, 1)
+        self.__serial = config['serial']
+        self.__address: int = None
+        self.__data = BatteryData(name)
 
+        port = config['port']
+        port_id = to_port_id(port)
+        self.__port: AddOnRs485 = None 
+        if Singletons.ports[port_id] is None:
+            self.__port = AddOnRs485(port_id, 115200, 8, None, 1)
+            Singletons.ports[port_id] = self.__port
+        elif type(Singletons.ports[port_id]) is AddOnRs485:
+            self.__port = Singletons.ports[port_id]
+            if not self.__port.is_compatible(115200, 8, None, 1):
+                raise Exception('Port ', port, ' has incompatible settings')
+        else:
+            raise Exception('Port ', port, 'is already in use')
 
         self.__on_data = list()
 
-        self.__devices = {}
-        self.__data = {}
-
-        for serial, alias in config['devices'].items():
-            self.__add_battery(serial, alias, None, None)
-
-        self.__background_task = create_task(self.__find_devices())
+        self.__background_task = create_task(self.__find_device())
 
     async def read_battery(self):
-        print('Read batteries')
-        for device_info in self.__devices.values():
-            if device_info.group_id is None or device_info.slave_id is None:
-                continue
-            try:
-                analog_response = await self.__port.send(self.__create_analog_value_request(device_info))
-                self.__read_analog_value_response(analog_response, device_info)
-                await sleep(0.5)
-                alarm_response = await self.__port.send(self.__create_alarm_info_request(device_info))
-                self.__read_alarm_info_response(alarm_response, device_info)
-                await sleep(0.5)
-                management_response = await self.__port.send(self.__create_management_info_request(device_info))
-                self.__read_management_info_response(management_response, device_info)
-                await sleep(0.5)
+        if self.__address is None:
+            return
+        try:
+            self.__data.invalidate()
+            analog_response = await self.__port.send(self.__create_analog_value_request())
+            self.__read_analog_value_response(analog_response)
 
-                if None in (analog_response, alarm_response, management_response):
-                    self.__log.error('Reading battery ', device_info.alias, ' failed: communication error')
-            except Exception as e:
-                self.__log.error('Reading battery ', device_info.alias, ' failed: ', e)
-                from ..core.singletons import Singletons
-                print_exception(e, Singletons.log.trace)
+            if self.__data.valid:
+                print_battery(self.__log, self.__data)
+                run_callbacks(self.__on_data, self.__data)
+            alarm_response = await self.__port.send(self.__create_alarm_info_request())
+            self.__read_alarm_info_response(alarm_response)
+            management_response = await self.__port.send(self.__create_management_info_request())
+            self.__read_management_info_response(management_response)
+
+            if None in (analog_response, alarm_response, management_response):
+                self.__log.error('Failed to receive battery data.')
+        except Exception as e:
+            self.__log.error('Reading battery failed: ', e)
+            from ..core.singletons import Singletons
+            print_exception(e, Singletons.log.trace)
 
     @property
     def on_battery_data(self):
@@ -135,36 +142,20 @@ class PylonLv(BatteryInterface):
         from ..core.types import TYPE_BATTERY
         return (TYPE_BATTERY,)
     
-    async def __find_devices(self):
-        remaining_devices = set(self.__devices.keys())
+    async def __find_device(self):
         for _ in range(3): # 3 attempts to mitigate communication errors
             for slave_id in range(16):
-                if any(x for x in self.__devices.values() if x.slave_id == slave_id):
-                    continue
-                response = await self.__port.send(self.__create_serial_number_request(0, slave_id))
-                # protocol spec says slave address begins with 2, battery datasheets says max. 15 slaves
-                # so we need to try the range between 0 and 2 to check for any battery
-                serial = self.__read_serial_number_response(response, 0, slave_id)
-                if serial is None:
-                    continue
-                remaining_devices.discard(serial)
-                if serial not in self.__devices:
-                    self.__add_battery(serial, f'unknown-{slave_id}', 0, slave_id)
-                device_data = self.__devices[serial]
-                device_data.group_id = 0
-                device_data.slave_id = slave_id
-                self.__log.info('Found battery ', device_data.serial, ' -> ', device_data.alias)
-                await sleep(1)
-                self.__read_system_parameter_response(
-                        await self.__port.send(self.__create_system_parameter_request(device_data)), 
-                        device_data)
-                if not remaining_devices:
+                async with self.__port.lock:
+                    response = await self.__port.send(self.__create_serial_number_request(0, slave_id))
+                    # protocol spec says slave address begins with 2, battery datasheets says max. 15 slaves
+                    # so we need to try the range between 0 and 2 to check for any battery
+                    serial = self.__read_serial_number_response(response, 0, slave_id)
+                    if serial != self.__serial:
+                        continue
+                    self.__address = slave_id # group_id is 0, so we can direct use the slave id
+                    self.__log.info('Found battery at address ', hex(self.__address))
+                    self.__read_system_parameter_response(await self.__port.send(self.__create_system_parameter_request()))
                     return
-            await sleep(1)
-
-    def __add_battery(self, serial, alias, group_id, slave_id):
-        self.__devices[serial] = PylonLvDeviceInfo(serial, group_id, slave_id, alias)
-        self.__data[serial] = BatteryData(alias, False)
 
     def __to_ascii_hex(self, value: int):
         hex_value = hex(value).upper()
@@ -287,20 +278,19 @@ class PylonLv(BatteryInterface):
             return None
         return self.__from_string(data[2:]) # first byte is command info
     
-    def __create_analog_value_request(self, device: PylonLvDeviceInfo):
+    def __create_analog_value_request(self):
         #                     SOI VER     ADR     CID LENGTH          INFO    CHK             EOI
         request = bytearray(b'\x7E\x32\x30\x00\x004642\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0D')
-        request[13], request[14] = self.__to_ascii_hex(device.slave_id)
-        self.__complete_request(request, device.group_id, device.slave_id, 2)
+        request[13], request[14] = self.__to_ascii_hex(self.__address & 0xF)
+        self.__complete_request(request, (self.__address & 0xF0) >> 4, self.__address & 0xF, 2)
         return request
     
-    def __read_analog_value_response(self, response, device: PylonLvDeviceInfo):
+    def __read_analog_value_response(self, response):
         if response is None:
             return
-        raw = self.__deccode_response(response, device.group_id, device.slave_id, 0x46)
+        raw = self.__deccode_response(response, (self.__address & 0xF0) >> 4, self.__address & 0xF, 0x46)
         if raw is None:
             return
-        data = self.__data[device.serial]
 
         reader = PylonLvStreamReader(raw, 4) # first byte is command info, second is info flags
 
@@ -324,8 +314,8 @@ class PylonLv(BatteryInterface):
 
         remaining_items = reader.read_uint8()
 
-        capacity_full = None
-        cycles = None
+        capacity_full = capacity
+        cycles = 0
 
         if remaining_items >= 2:
             capacity_full = reader.read_uint16() / 1000
@@ -335,10 +325,10 @@ class PylonLv(BatteryInterface):
             capacity = reader.read_uint24() / 1000
             capacity_full = reader.read_uint24() / 1000
 
-        data.update(
+        self.__data.update(
             v=voltage,
             i=current,
-            soc=None,
+            soc=round((capacity * 100) / capacity_full + 0.5),
             c=capacity,
             c_full=capacity_full,
             n=cycles,
@@ -346,26 +336,22 @@ class PylonLv(BatteryInterface):
             cells=tuple(cell_voltages)
         )
 
-        self.__log.info('Battery ', device.alias, ':')
-        print_battery(self.__log, data)
-
-    def __create_system_parameter_request(self, device: PylonLvDeviceInfo):
+    def __create_system_parameter_request(self):
         #                     SOI VER     ADR     CID LENGTH          INFO    CHK             EOI
         request = bytearray(b'\x7E\x32\x30\x00\x004647\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0D')
-        request[13], request[14] = self.__to_ascii_hex(device.slave_id)
-        self.__complete_request(request, device.group_id, device.slave_id, 2)
+        request[13], request[14] = self.__to_ascii_hex(self.__address & 0xF)
+        self.__complete_request(request, (self.__address & 0xF0) >> 4, self.__address & 0xF, 2)
         return request
     
-    def __read_system_parameter_response(self, response, device: PylonLvDeviceInfo):
+    def __read_system_parameter_response(self, response):
         if response is None:
             return
-        raw = self.__deccode_response(response, device.group_id, device.slave_id, 0x46)
+        raw = self.__deccode_response(response, (self.__address & 0xF0) >> 4, self.__address & 0xF, 0x46)
         if raw is None:
             return
 
         reader = PylonLvStreamReader(raw, 2) # first byte is info flags
 
-        self.__log.info('Battery ', device.alias, ':')
         self.__log.info(f'Cell high voltage limit: {(reader.read_uint16() / 1000):.3f} V')
         self.__log.info(f'Cell low voltage limit: {(reader.read_uint16() / 1000):.3f} V')
         self.__log.info(f'Cell under voltage limit: {(reader.read_uint16() / 1000):.3f} V')
@@ -380,22 +366,20 @@ class PylonLv(BatteryInterface):
         self.__log.info(f'Discharge current limit: {(reader.read_int16() / 10):.1f} A')
 
 
-    def __create_alarm_info_request(self, device: PylonLvDeviceInfo):
+    def __create_alarm_info_request(self):
         #                     SOI VER     ADR     CID LENGTH          INFO    CHK             EOI
         request = bytearray(b'\x7E\x32\x30\x00\x004644\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0D')
-        request[13], request[14] = self.__to_ascii_hex(device.slave_id)
-        self.__complete_request(request, device.group_id, device.slave_id, 2)
+        request[13], request[14] = self.__to_ascii_hex(self.__address & 0xF)
+        self.__complete_request(request, (self.__address & 0xF0) >> 4, self.__address & 0xF, 2)
         return request
     
-    def __read_alarm_info_response(self, response, device: PylonLvDeviceInfo):
+    def __read_alarm_info_response(self, response):
         if response is None:
             return
-        raw = self.__deccode_response(response, device.group_id, device.slave_id, 0x46)
+        raw = self.__deccode_response(response, (self.__address & 0xF0) >> 4, self.__address & 0xF, 0x46)
         if raw is None:
             return
         
-        self.__log.info('Battery ', device.alias, ':')
-
         reader = PylonLvStreamReader(raw, 4) # first byte is data flags, second is command value
         lock_info = PythonLvAlarmLock(self.__log)
 
@@ -470,20 +454,19 @@ class PylonLv(BatteryInterface):
         self.__log.info('Charging locked: ', lock_info.charge_locked)
         self.__log.info('Discharging locked: ', lock_info.discharge_locked)
 
-    def __create_management_info_request(self, device: PylonLvDeviceInfo):
+    def __create_management_info_request(self):
         #                     SOI VER     ADR     CID LENGTH          INFO    CHK             EOI
         request = bytearray(b'\x7E\x32\x30\x00\x004692\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0D')
-        request[13], request[14] = self.__to_ascii_hex(device.slave_id)
-        self.__complete_request(request, device.group_id, device.slave_id, 2)
+        request[13], request[14] = self.__to_ascii_hex(self.__address & 0xF)
+        self.__complete_request(request, (self.__address & 0xF0) >> 4, self.__address & 0xF, 2)
         return request
     
-    def __read_management_info_response(self, response, device: PylonLvDeviceInfo):
+    def __read_management_info_response(self, response):
         if response is None:
             return
-        raw = self.__deccode_response(response, device.group_id, device.slave_id, 0x46)
+        raw = self.__deccode_response(response, (self.__address & 0xF0) >> 4, self.__address & 0xF, 0x46)
         if raw is None:
             return
-        data = self.__data[device.serial]
 
         reader = PylonLvStreamReader(raw, 2) # first byte is command info
 
@@ -508,7 +491,6 @@ class PylonLv(BatteryInterface):
         if full_charge_request:
             flags.append('full_charge_request')
 
-        self.__log.info('Battery ', device.alias, ':')
         self.__log.info('Voltage limit (charge/ discharge) [V]: ', f'{charge_voltage_limit:.3f}', ' / ', f'{discharge_voltage_limit:.3f}')
         self.__log.info('Current limit (charge/ discharge) [A]: ', f'{charge_current_limit:.1f}', ' / ', f'{discharge_current_limit:.1f}')
         self.__log.info('Flags: ', ' '.join(flags))
