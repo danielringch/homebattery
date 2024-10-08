@@ -58,6 +58,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
             self.__length = None
             self.__data = None
             self.__command = None
+            self.__checksum = 0x10000
             self.__success = None
 
         def read(self, blob):
@@ -77,12 +78,21 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 self.__command = unpack('!B', blob[1:2])[0]
                 self.__length = unpack('!B', blob[3:4])[0] + 3 # 2 bytes checksum + 1 byte end byte
                 self.__data = bytearray(blob[4:])
+                for i in range(2, len(blob)):
+                    self.__checksum -= blob[i]
             else:
                 self.__data += bytearray(blob)
+                for i in range(0, len(blob) - 3):
+                    self.__checksum -= blob[i]
 
             if len(self.__data) < self.__length: # type: ignore
                 self.__success = None
             else:
+                received_checksum = unpack('!H', self.__data[-3:-1])[0]
+                if received_checksum != self.__checksum:
+                    self.__log.error('Dropping packet: wrong checksum.')
+                    return
+
                 if self.__data[-1] != 0x77:
                     self.__log.error('Dropping packet: wrong end byte.')
                     return
