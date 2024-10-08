@@ -16,6 +16,7 @@ class JkBmsBd4(BatteryInterface):
             self.__log = log
             self.__length = 294 # 300 bytes - 6 bytes header
             self.__data = None
+            self.__checksum = 0
             self.__success = None
 
         def read(self, blob):
@@ -27,16 +28,22 @@ class JkBmsBd4(BatteryInterface):
                         and blob[0] == 0x55 and blob[1] == 0xaa and blob[2] == 0xeb and blob[3] == 0x90 \
                         and blob[4] == 0x02:
                     self.__data = blob[6:]
+                    for i in range(len(blob)):
+                        self.__checksum += blob[i]
                 else:
                     self.__success = None
                     return
             else:
                 self.__data += bytearray(blob)
+                for i in range(len(blob) - 1):
+                    self.__checksum += blob[i]
 
             if len(self.__data) < self.__length: # type: ignore
                 self.__success = None
             else:
-                if False: #TODO: crc
+                checksum = self.__checksum & 0xFF
+                received_checksum = self.__data[-1]
+                if received_checksum != checksum:
                     self.__log.error('Dropping packet: wrong checksum.')
                     return
                 self.__success = True
