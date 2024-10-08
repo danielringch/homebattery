@@ -95,11 +95,16 @@ class Daly8S24V60A(BatteryInterface):
             return
         if len(data) < 128:
             self.__log.error('Dropping too short bluetooth packet, mac=', self.__mac, ' len=', len(data))
-        elif data[0] == 0xd2 and data[1] == 0x03 and data[2] == 0x7c:
-            self.__parse(data)
-            self.__receiving = False
-        else:    
+            return
+        if data[0] != 0xd2 or data[1] != 0x03 or data[2] != 0x7c:
             self.__log.error('Dropping unknown bluetooth packet, mac=', self.__mac, ' data=', data)
+            return
+        
+        if not self.__parse(data):
+            self.__log.error('Dropping inplausible bluetooth packet, mac=', self.__mac, ' data=', data)
+            return
+        
+        self.__receiving = False
 
     def __parse(self, data):
         temp_1 = unpack('!B', data[94:95])[0] - 40
@@ -107,13 +112,29 @@ class Daly8S24V60A(BatteryInterface):
         temps = (temp_1, temp_2)
         cells = tuple(x / 1000 for x in unpack('!HHHHHHHHHHHHHHHH', data[3:35]) if x > 0)
 
-        self.__data.update(
-                v=unpack('!H', data[83:85])[0] / 10,
-                i=(unpack('!H', data[85:87])[0] - 30000) / 10,
-                soc=unpack('!H', data[87:89])[0] / 10.0,
-                c=unpack('!H', data[99:101])[0] / 10.0,
-                c_full=0,
-                n=unpack('!H', data[105:107])[0],
-                temps=temps,
-                cells=cells
-        )
+        v=unpack('!H', data[83:85])[0] / 10
+        i=(unpack('!H', data[85:87])[0] - 30000) / 10
+        soc=unpack('!H', data[87:89])[0] / 10.0
+        c=unpack('!H', data[99:101])[0] / 10.0
+        n=unpack('!H', data[105:107])[0]
+
+        data_plausible = True
+        data_plausible &= self.__check_range(v / len(cells), 0.5, 5)
+        data_plausible &= self.__check_range(i, -300, 300)
+        data_plausible &= self.__check_range(soc, 0, 100)
+        data_plausible &= self.__check_range(c, 0, 750)
+        data_plausible &= self.__check_range(n, 0, 30000)
+        for temp in temps:
+            data_plausible &= self.__check_range(temp, -40, 80)
+        for cell in cells:
+            data_plausible &= self.__check_range(cell, 0.5, 5)
+
+        if not data_plausible:
+            return False
+
+        self.__data.update(v=v, i=i, soc=soc, c=c, c_full=0, n=n, temps=temps, cells=cells)
+        return True
+
+    @staticmethod
+    def __check_range(value, min, max):
+        return value >= min and value <= max
