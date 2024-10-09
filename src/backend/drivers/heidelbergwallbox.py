@@ -1,10 +1,10 @@
 from asyncio import create_task, sleep
-from binascii import hexlify
-from struct import unpack
+from binascii import hexlify‚
 from sys import print_exception
 from .interfaces.chargerinterface import ChargerInterface
 from ..core.addonmodbus import AddOnModbus
 from ..core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
+from ..helpers.streamreader import read_big_uint16
 
 class HeidelbergWallbox(ChargerInterface):
     def __init__(self, name, config):
@@ -149,7 +149,7 @@ class HeidelbergWallbox(ChargerInterface):
         if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read device status: communication error'):
             return
         try:
-            raw_status = unpack('!H', rx)[0]
+            raw_status = read_big_uint16(rx, 0)
             status = self.__payload_to_status[raw_status] # type: ignore
         except:
             status = STATUS_FAULT
@@ -162,7 +162,7 @@ class HeidelbergWallbox(ChargerInterface):
         rx = await self.__port.read_input(self.__slave_address, 4, 1)
         if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read register version: communication error'):
             return
-        value = unpack('!H', rx)[0]
+        value = read_big_uint16(rx, 0)
         self.__log.info('Register version=', hexlify(rx))
         self.__register_version = value
 
@@ -170,7 +170,7 @@ class HeidelbergWallbox(ChargerInterface):
         rx = await self.__port.read_input(self.__slave_address, 101, 1)
         if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read hardware minimal current: communication error'):
             return
-        amperes = unpack('!H', rx)[0]
+        amperes = read_big_uint16(rx, 0)
         self.__log.info('Hardware minimal current=', amperes, ' A')
         self.__hw_min_current = amperes
 
@@ -178,7 +178,7 @@ class HeidelbergWallbox(ChargerInterface):
         rx = await self.__port.read_input(self.__slave_address, 100, 1)
         if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read hardware maximal current: communication error'):
             return
-        amperes = unpack('!H', rx)[0]
+        amperes = read_big_uint16(rx, 0)
         self.__log.info('Hardware maximal current=', amperes, ' A')
         self.__hw_max_current = amperes
 
@@ -186,21 +186,21 @@ class HeidelbergWallbox(ChargerInterface):
         rx = await self.__port.read_input(self.__slave_address, 6, 3)
         if self.__handle_communication_error((rx is None) or (len(rx) < 6), 'Can not read current: communication error'):
             return
-        amperes = tuple(x / 10 for x in unpack('!HHH', rx))
+        amperes = tuple(read_big_uint16(rx, 2 * i) / 10 for i in range(3))
         self.__log.info('Currents=', amperes[0], ' A | ', amperes[1], ' A | ', amperes[2], ' A')
 
     async def __read_power(self):
         rx = await self.__port.read_input(self.__slave_address, 14, 1)
         if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read power: communication error'):
             return
-        power = unpack('!H', rx)[0] / 1000
+        power = read_big_uint16(rx, 0) / 1000
         self.__log.info('Power=', power, ' W')
 
     async def __read_current_limit(self):
         rx = await self.__port.read_holding(self.__slave_address, 261, 1)
         if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read current limit: communication error'):
             return
-        amperes = unpack('!H', rx)[0] / 10
+        amperes = read_big_uint16(rx, 0) / 10
         self.__log.info('Current limit=', amperes, ' A')
         self.__actual_current_limit = amperes
 
@@ -210,6 +210,6 @@ class HeidelbergWallbox(ChargerInterface):
         rx = await self.__port.write_single(self.__slave_address, 261, value)
         if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not write current limit: communication error'):
             return
-        rx_current = unpack('!H', rx)[0] # type: ignore
+        rx_current = read_big_uint16(rx, 0) # type: ignore
         self.__handle_communication_error(rx_current != value, 'Can not write current limit: different value received')
 

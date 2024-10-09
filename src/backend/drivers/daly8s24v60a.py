@@ -2,12 +2,12 @@ from asyncio import create_task, sleep
 from bluetooth import UUID as BT_UUID
 from micropython import const
 from ubinascii import unhexlify
-from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
 from ..core.types import BatteryData, run_callbacks
+from ..helpers.streamreader import BigEndianSteamReader
 
 class Daly8S24V60A(BatteryInterface):
     def __init__(self, name, config):
@@ -107,16 +107,17 @@ class Daly8S24V60A(BatteryInterface):
         self.__receiving = False
 
     def __parse(self, data):
-        temp_1 = unpack('!B', data[94:95])[0] - 40
-        temp_2 = unpack('!B', data[96:97])[0] - 40
+        reader = BigEndianSteamReader(data, 0)
+        temp_1 = reader.uint8_at(94) - 40
+        temp_2 = reader.uint8_at(96) - 40
         temps = (temp_1, temp_2)
-        cells = tuple(x / 1000 for x in unpack('!HHHHHHHHHHHHHHHH', data[3:35]) if x > 0)
+        cells = tuple(x / 1000 for x in (reader.uint16_at(i) for i in range(3, 35, 2)) if x > 0)
 
-        v=unpack('!H', data[83:85])[0] / 10
-        i=(unpack('!H', data[85:87])[0] - 30000) / 10
-        soc=unpack('!H', data[87:89])[0] / 10.0
-        c=unpack('!H', data[99:101])[0] / 10.0
-        n=unpack('!H', data[105:107])[0]
+        v=reader.uint16_at(83) / 10
+        i=(reader.uint16_at(85) - 30000) / 10
+        soc=reader.uint16_at(87) / 10
+        c=reader.uint16_at(99) / 10
+        n=reader.uint16_at(105)
 
         data_plausible = True
         data_plausible &= self.__check_range(v / len(cells), 0.5, 5)

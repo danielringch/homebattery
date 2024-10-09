@@ -1,9 +1,9 @@
 from asyncio import create_task, sleep
-from struct import unpack
 from sys import print_exception
 from .interfaces.inverterinterface import InverterInterface
 from ..core.addonmodbus import AddOnModbus
 from ..core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
+from ..helpers.streamreader import read_big_uint16, read_big_uint32
 
 class RegistersXX00S:
     def __init__(self):
@@ -194,7 +194,7 @@ class GrowattInverterModbus(InverterInterface):
             rx = await self.__port.write_single(self.__slave_address, self.__registers.switch, value)
             if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not write device state: communication error'):
                 return
-            received_state = unpack('!H', rx)[0] # type: ignore
+            received_state = read_big_uint16(rx, 0) # type: ignore
             self.__handle_communication_error(received_state != value, 'Can not write device state: different value received')
 
     async def __write_limit(self):
@@ -204,14 +204,14 @@ class GrowattInverterModbus(InverterInterface):
             rx = await self.__port.write_single(self.__slave_address, self.__registers.temporary, 1)
             if self.__handle_communication_error(rx is None, 'Can not enable temporary mode: communication error'):
                 return
-            temporary_mode = unpack('!H', rx)[0] # type: ignore
+            temporary_mode = read_big_uint16(rx, 0) # type: ignore
             if self.__handle_communication_error(temporary_mode != 1, 'Can not enable temporary mode: different value received'):
                 return
             # write limit
             rx = await self.__port.write_single(self.__slave_address, self.__registers.power_limit, self.__requested_limit)
             if self.__handle_communication_error(rx is None, 'Can not write power limit: communication error'):
                 return
-            limit = unpack('!H', rx)[0] # type: ignore
+            limit = read_big_uint16(rx, 0) # type: ignore
             if self.__handle_communication_error(limit != self.__requested_limit, 'Can not write power limit: different value received'):
                 return
 
@@ -221,7 +221,7 @@ class GrowattInverterModbus(InverterInterface):
             if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read device status: communication error'):
                 return
             try:
-                status = self.__payload_to_status[unpack('!H', rx)[0]] # type: ignore
+                status = self.__payload_to_status[read_big_uint16(rx, 0)] # type: ignore
             except:
                 status = STATUS_FAULT
             if status != self.__device_status:
@@ -233,7 +233,7 @@ class GrowattInverterModbus(InverterInterface):
             rx = await self.__port.read_input(self.__slave_address, self.__registers.power, 2)
             if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read power: communication error'):
                 return
-            power = round(unpack('!I', rx)[0] / 10) # type: ignore
+            power = round(read_big_uint32(rx , 0) / 10) # type: ignore
             if abs(power - self.__power) >= self.__power_hysteresis: # value changed
                 self.__log.info('Power=', power, ' W')
                 self.__power = power
@@ -244,7 +244,7 @@ class GrowattInverterModbus(InverterInterface):
             rx = await self.__port.read_input(self.__slave_address, self.__registers.energy, 2)
             if self.__handle_communication_error((rx is None) or (len(rx) < 4), 'Can not read energy: communication error'):
                 return
-            energy = round(unpack('!I', rx)[0] * 100) # type: ignore
+            energy = round(read_big_uint32(rx, 0) * 100) # type: ignore
             self.__log.info('Total energy=', energy, ' Wh')
             if self.__last_energy is None:
                 self.__last_energy = energy
@@ -258,7 +258,7 @@ class GrowattInverterModbus(InverterInterface):
             rx = await self.__port.read_holding(self.__slave_address, self.__registers.power_limit, 1)
             if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read power limit: communication error'):
                 return
-            self.__device_limit = unpack('!H', rx)[0] # type: ignore
+            self.__device_limit = read_big_uint16(rx, 0) # type: ignore
             self.__log.info('Limit=', self.__device_limit, ' %')
 
     async def __read_max_power(self):
@@ -266,6 +266,6 @@ class GrowattInverterModbus(InverterInterface):
             rx = await self.__port.read_holding(self.__slave_address, self.__registers.max_power, 2)
             if self.__handle_communication_error((rx is None) or (len(rx) < 4), 'Can not read maximum power: communication error'):
                 return
-            self.__max_power = round(unpack('!I', rx)[0] / 10)
+            self.__max_power = read_big_uint32(rx, 0) / 10
             self.__log.info('Maximum power=', self.__max_power, ' W')
             self.__handle_status_change()

@@ -1,12 +1,12 @@
 from asyncio import create_task, sleep
 from bluetooth import UUID as BT_UUID
 from ubinascii import unhexlify
-from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
 from ..core.types import BatteryData, run_callbacks
+from ..helpers.streamreader import read_big_uint8, read_big_uint16, read_big_int16
 
 # ressources:
 # https://blog.ja-ke.tech/2020/02/07/ltt-power-bms-chinese-protocol.html
@@ -34,20 +34,16 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 return None
             g = self.__general_blob
             c = self.__cells_blob
-            number_of_temperatures = (len(g) - 23) // 2
-            temp_format_string = '!' + ('H' * number_of_temperatures)
-            temps = tuple((x - 2731) / 10 for x in unpack(temp_format_string, g[23:23 +  (2 * number_of_temperatures)]))
-            number_of_cells = len(c) // 2
-            cell_format_string = '!' + ('H' * number_of_cells)
-            cells = tuple(x / 1000 for x in unpack(cell_format_string, c[0:(2 * number_of_cells)]))
+            temps = tuple((read_big_uint16(g, i) - 2731) / 10 for i in range(23, len(g), 2))
+            cells = tuple(read_big_uint16(c, i) / 1000 for i in range(0, len(c), 2))
 
             battery_data.update(
-                v=unpack('!H', g[0:2])[0] / 100.0,
-                i=unpack('!h', g[2:4])[0] / 100.0,
-                soc=unpack('!B', g[19:20])[0],
-                c=unpack('!H', g[4:6])[0] / 100.0,
-                c_full=unpack('!H', g[6:8])[0] / 100.0,
-                n=unpack('!H', g[8:10])[0],
+                v=read_big_uint16(g, 0) / 100,
+                i=read_big_int16(g, 2) / 100,
+                soc=read_big_uint8(g, 19),
+                c=read_big_uint16(g, 4) / 100,
+                c_full=read_big_uint16(g, 6) / 100,
+                n=read_big_uint16(g, 8),
                 temps=temps,
                 cells=cells
             )
@@ -75,8 +71,8 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 if blob[2] != 0:
                     self.__log.error('Dropping packet: error indication.')
                     return
-                self.__command = unpack('!B', blob[1:2])[0]
-                self.__length = unpack('!B', blob[3:4])[0] + 3 # 2 bytes checksum + 1 byte end byte
+                self.__command = read_big_uint8(blob, 1)
+                self.__length = read_big_uint8(blob, 3) + 3 # 2 bytes checksum + 1 byte end byte
                 self.__data = bytearray(blob[4:])
                 for i in range(2, len(blob)):
                     self.__checksum -= blob[i]
@@ -88,7 +84,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
             if len(self.__data) < self.__length: # type: ignore
                 self.__success = None
             else:
-                received_checksum = unpack('!H', self.__data[-3:-1])[0]
+                received_checksum = read_big_uint16(self.__data, -3)
                 if received_checksum != self.__checksum:
                     self.__log.error('Dropping packet: wrong checksum.')
                     return

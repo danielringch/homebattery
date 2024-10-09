@@ -1,9 +1,9 @@
 from asyncio import create_task
-from struct import unpack
 from ubinascii import hexlify
 from .interfaces.consumptioninterface import ConsumptionInterface
 from ..core.backendmqtt import Mqtt
 from ..core.types import run_callbacks
+from ..helpers.streamreader import read_big_int16, read_big_int32
 
 class MqttConsumption(ConsumptionInterface):
     def __init__(self, name, config, mqtt: Mqtt):
@@ -32,13 +32,12 @@ class MqttConsumption(ConsumptionInterface):
     def __on_power(self, topic, payload):
         format = None
         if len(payload) == 2:
-            format = '!h'
+            reader = read_big_int16
         elif len(payload) == 4:
-            format = '!i'
+            reader = read_big_int32
         else:
             self.__log.error('Unknown payload: ', hexlify(payload, ' '))
             return
         
-        power = unpack(format, payload)[0]
-        run_callbacks(self.__callbacks, self, power)
+        run_callbacks(self.__callbacks, self, reader(payload, 0))
 

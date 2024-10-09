@@ -1,12 +1,12 @@
 from asyncio import create_task, sleep
 from ubinascii import unhexlify, hexlify
 from micropython import const
-from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.devicetools import print_battery
 from ..core.addonrs485 import AddOnRs485
 from ..core.types import to_port_id, BatteryData, run_callbacks
+from ..helpers.streamreader import AsciiHexStreamReader
 
 # ressources:
 
@@ -18,37 +18,6 @@ class PylonLvDeviceInfo:
         self.group_id = group_id
         self.slave_id = slave_id
         self.alias = alias
-
-class PylonLvStreamReader:
-    def __init__(self, data: bytearray, offset: int):
-        self.__data = data
-        self.__index = offset
-
-    def read_uint8(self):
-        new_index = self.__index + 2
-        value = int(self.__data[self.__index:new_index].decode('utf-8'), 16)
-        self.__index = new_index
-        return value
-    
-    def read_uint16(self):
-        new_index = self.__index + 4
-        value = int(self.__data[self.__index:new_index].decode('utf-8'), 16)
-        self.__index = new_index
-        return value
-    
-    def read_int16(self):
-        new_index = self.__index + 4
-        value = int(self.__data[self.__index:new_index].decode('utf-8'), 16)
-        self.__index = new_index
-        if value > 0x7FFF:
-            value -= 0xFFFF
-        return value
-    
-    def read_uint24(self):
-        new_index = self.__index + 6
-        value = int(self.__data[self.__index:new_index].decode('utf-8'), 16)
-        self.__index = new_index
-        return value
     
 class PythonLvAlarmLock:
     def __init__(self, logger):
@@ -292,7 +261,7 @@ class PylonLv(BatteryInterface):
         if raw is None:
             return
 
-        reader = PylonLvStreamReader(raw, 4) # first byte is command info, second is info flags
+        reader = AsciiHexStreamReader(raw, 4) # first byte is command info, second is info flags
 
         n_cells = reader.read_uint8()
         cell_voltages = []
@@ -350,7 +319,7 @@ class PylonLv(BatteryInterface):
         if raw is None:
             return
 
-        reader = PylonLvStreamReader(raw, 2) # first byte is info flags
+        reader = AsciiHexStreamReader(raw, 2) # first byte is info flags
 
         self.__log.info(f'Cell high voltage limit: {(reader.read_uint16() / 1000):.3f} V')
         self.__log.info(f'Cell low voltage limit: {(reader.read_uint16() / 1000):.3f} V')
@@ -380,7 +349,7 @@ class PylonLv(BatteryInterface):
         if raw is None:
             return
         
-        reader = PylonLvStreamReader(raw, 4) # first byte is data flags, second is command value
+        reader = AsciiHexStreamReader(raw, 4) # first byte is data flags, second is command value
         lock_info = PythonLvAlarmLock(self.__log)
 
         n_cells = reader.read_uint8()
@@ -468,7 +437,7 @@ class PylonLv(BatteryInterface):
         if raw is None:
             return
 
-        reader = PylonLvStreamReader(raw, 2) # first byte is command info
+        reader = AsciiHexStreamReader(raw, 2) # first byte is command info
 
         charge_voltage_limit = reader.read_uint16() / 1000
         discharge_voltage_limit = reader.read_uint16() / 1000

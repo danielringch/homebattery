@@ -1,12 +1,12 @@
 from asyncio import create_task, sleep
 from bluetooth import UUID as BT_UUID
 from ubinascii import unhexlify
-from struct import unpack
 from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
 from ..core.types import BatteryData, run_callbacks
+from ..helpers.streamreader import read_little_uint8, read_little_uint16, read_little_int16, read_little_uint32, read_little_int32
 
 # ressources:
 
@@ -150,16 +150,16 @@ class JkBmsBd4(BatteryInterface):
         return False
     
     def __parse(self, data):
-        temps = tuple(x / 10 for x in unpack('<HH', data[156:160]))
-        cells = tuple(x / 1000 for x in unpack('<HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH', data[0:64]) if x > 0)
+        temps = tuple(read_little_int16(data, i) / 10 for i in range(156, 160, 2))
+        cells = tuple(x / 1000 for x in (read_little_uint16(data, i) for i in range(0, 64, 2)) if x > 0)
 
         self.__data.update(
-            v=unpack('<I', data[144:148])[0] / 1000,
-            i=unpack('<i', data[152:156])[0] / 1000,
-            soc=unpack('!B', data[167:168])[0],
-            c=unpack('<I', data[168:172])[0] / 1000,
-            c_full=unpack('<I', data[172:176])[0] / 1000,
-            n=unpack('<I', data[176:180])[0],
+            v=read_little_uint32(data, 144) / 1000,
+            i=read_little_int32(data, 152) / 1000,
+            soc=read_little_uint8(data, 167),
+            c=read_little_uint32(data, 168) / 1000,
+            c_full=read_little_uint32(data, 172) / 1000,
+            n=read_little_uint32(data, 176),
             temps=temps,
             cells=cells
         )

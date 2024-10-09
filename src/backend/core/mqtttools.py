@@ -1,6 +1,7 @@
 from micropython import const
-from struct import pack_into, unpack
+from struct import pack_into
 from .microsocket import MicroSocket, MicroSocketTimeoutException
+from ..helpers.streamreader import BigEndianSteamReader, read_big_uint16
 
 PACKET_TYPE_CONNECT = const(0x10)
 PACKET_TYPE_CONNACK = const(0x20)
@@ -143,16 +144,15 @@ def bytes_to_suback(buffer: bytes):
     if payload_length < 4: # 2 bytes PID, 1 byte properties, 1 byte payload
         return 'too short', None, None
     
-    pid = unpack('!H', buffer[offset:offset + 2])[0]
-    offset += 2
-
-    property_length = buffer[offset]
-    offset += 1
+    reader = BigEndianSteamReader(buffer, offset)
+    
+    pid = reader.uint16()
+    property_length = reader.uint8()
 
     if property_length != 0:
         return 'properties have content', pid, None
     
-    reason = buffer[offset]
+    reason = reader.uint8()
     if reason > 2:
         return f'error reason {reason}', pid, None
     
@@ -164,10 +164,10 @@ def bytes_to_pubx(buffer: bytes):
     if payload_length < 2:
         return 'too short', None
     
-    pid = unpack('!H', buffer[offset:offset + 2])[0]
-    offset += 2
+    reader = BigEndianSteamReader(buffer, offset)
+    pid = reader.uint16()
 
-    reason = buffer[offset] if payload_length > 2 else 0
+    reason = reader.uint8() if payload_length > 2 else 0
 
     if reason >= 0x80:
         return f'error reason {reason}', pid
@@ -179,13 +179,13 @@ def bytes_to_publish(buffer: bytes):
     packet_length += offset # type and packet length are excluded from packet length
     qos = (buffer[0] & 6) >> 1
 
-    topic_length = unpack('!H', buffer[offset:offset + 2])[0]
+    topic_length = read_big_uint16(buffer, offset)
     offset += 2
     topic = buffer[offset:offset + topic_length].decode('utf-8')
     offset += topic_length
 
     if qos > 0:
-        pid = unpack('!H', buffer[offset:offset + 2])[0]
+        pid = read_big_uint16(buffer, offset)
         offset += 2
     else:
         pid = 0
