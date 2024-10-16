@@ -5,7 +5,8 @@ from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.devicetools import print_battery
 from ..core.addonrs485 import AddOnRs485
-from ..core.types import to_port_id, BatteryData, run_callbacks
+from ..core.types import to_port_id, run_callbacks
+from ..helpers.batterydata import BatteryData
 from ..helpers.streamreader import AsciiHexStreamReader
 
 # ressources:
@@ -79,7 +80,7 @@ class PylonLv(BatteryInterface):
         if self.__address is None:
             return
         try:
-            self.__data.invalidate()
+            self.__data.reset()
             analog_response = await self.__port.send(self.__create_analog_value_request())
             self.__read_analog_value_response(analog_response)
 
@@ -277,33 +278,26 @@ class PylonLv(BatteryInterface):
             bms_temp = temps[0]
             temps.pop(0)
 
-        current = reader.read_int16() / 10
-        voltage = reader.read_uint16() / 1000
-        capacity = reader.read_uint16() / 1000
+        b = self.__data
+
+        b.temps = tuple(temps)
+        b.cells = tuple(cell_voltages)
+
+        b.i = reader.read_int16() / 10
+        b.v = reader.read_uint16() / 1000
+        b.c = reader.read_uint16() / 1000
 
         remaining_items = reader.read_uint8()
 
-        capacity_full = capacity
-        cycles = 0
-
         if remaining_items >= 2:
-            capacity_full = reader.read_uint16() / 1000
-            cycles = reader.read_uint16()
+            b.c_full = reader.read_uint16() / 1000
+            b.n = reader.read_uint16()
 
         if remaining_items >= 4:
-            capacity = reader.read_uint24() / 1000
-            capacity_full = reader.read_uint24() / 1000
+            b.c = reader.read_uint24() / 1000
+            b.c_full = reader.read_uint24() / 1000
 
-        self.__data.update(
-            v=voltage,
-            i=current,
-            soc=round((capacity * 100) / capacity_full + 0.5),
-            c=capacity,
-            c_full=capacity_full,
-            n=cycles,
-            temps=tuple(temps),
-            cells=tuple(cell_voltages)
-        )
+        self.__data.validate()
 
     def __create_system_parameter_request(self):
         #                     SOI VER     ADR     CID LENGTH          INFO    CHK             EOI

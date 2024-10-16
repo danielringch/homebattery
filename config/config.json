@@ -123,9 +123,7 @@
     "battery_mqtt":
     {
       "driver": "mqttBattery",
-      "root_topic": "<root>/bat/dev/<device>",
-      "cell_count": <integer>,
-      "temperature_count": <integer>
+      "root_topic": "<root>/bat/dev/<device>"
     },
     "solar_victron":
     {

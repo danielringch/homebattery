@@ -2,7 +2,8 @@ from asyncio import sleep
 from struct import pack
 from .micromqtt import MicroMqtt
 from ssl import CERT_NONE
-from .types import BatteryData, MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, to_operation_mode
+from .types import MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, to_operation_mode
+from ..helpers.batterydata import BatteryData
 
 class Mqtt():
     def __init__(self, config: dict):
@@ -45,9 +46,7 @@ class Mqtt():
 
         self.__bat_current = 'bat/i'
         self.__bat_capacity = 'bat/c'
-        self.__bat_dev_root = 'bat/dev/%s/%s'
-        self.__bat_dev_temp_root = 'bat/dev/%s/temp/%i'
-        self.__bat_dev_cell_root = 'bat/dev/%s/cell/%i'
+        self.__bat_dev_root = 'bat/dev/%s'
 
         self.__connect_callback = list()
         self.__mode_callback = list()
@@ -132,20 +131,7 @@ class Mqtt():
         await self.__mqtt.publish(self.__bat_capacity, pack('!H', round(capacity * 10)), qos=0, retain=False)
 
     async def send_battery_device(self, data: BatteryData):
-        name = data.name
-        await self.__mqtt.publish(self.__bat_dev_root % (name, 'v'), pack('!H', round(data.v * 100)), qos=0, retain=False)
-        await self.__mqtt.publish(self.__bat_dev_root % (name, 'i'), pack('!h', round(data.i * 10)), qos=0, retain=False)
-        await self.__mqtt.publish(self.__bat_dev_root % (name, 'soc'), pack('!B', int(data.soc)), qos=0, retain=False)
-        await self.__mqtt.publish(self.__bat_dev_root % (name, 'c'), pack('!H', round(data.c * 10)), qos=0, retain=False)
-        await self.__mqtt.publish(self.__bat_dev_root % (name, 'n'), pack('!H', round(data.n)), qos=0, retain=False)
-        i = 0
-        for temp in data.temps:
-            await self.__mqtt.publish(self.__bat_dev_temp_root % (name, i), pack('!h', round(temp * 10)), qos=0, retain=False)
-            i += 1
-        i = 0
-        for cell in data.cells:
-            await self.__mqtt.publish(self.__bat_dev_cell_root % (name, i), pack('!H', round(cell * 1000)), qos=0, retain=False)
-            i += 1
+        await self.__mqtt.publish(self.__bat_dev_root % data.name, data.to_json().encode('utf-8'), qos=0, retain=False)
 
     @property
     def connected(self):

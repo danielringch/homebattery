@@ -5,7 +5,8 @@ from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
-from ..core.types import BatteryData, run_callbacks
+from ..core.types import run_callbacks
+from ..helpers.batterydata import BatteryData
 from ..helpers.streamreader import read_big_uint8, read_big_uint16, read_big_int16
 
 # ressources:
@@ -34,19 +35,16 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 return None
             g = self.__general_blob
             c = self.__cells_blob
-            temps = tuple((read_big_uint16(g, i) - 2731) / 10 for i in range(23, len(g), 2))
-            cells = tuple(read_big_uint16(c, i) / 1000 for i in range(0, len(c), 2))
 
-            battery_data.update(
-                v=read_big_uint16(g, 0) / 100,
-                i=read_big_int16(g, 2) / 100,
-                soc=read_big_uint8(g, 19),
-                c=read_big_uint16(g, 4) / 100,
-                c_full=read_big_uint16(g, 6) / 100,
-                n=read_big_uint16(g, 8),
-                temps=temps,
-                cells=cells
-            )
+            battery_data.v=read_big_uint16(g, 0) / 100
+            battery_data.i=read_big_int16(g, 2) / 100
+            battery_data.c=read_big_uint16(g, 4) / 100
+            battery_data.c_full=read_big_uint16(g, 6) / 100
+            battery_data.n=read_big_uint16(g, 8)
+            battery_data.soc=read_big_uint8(g, 19)
+            battery_data.temps = tuple((read_big_uint16(g, i) - 2731) / 10 for i in range(23, len(g), 2))
+            battery_data.cells = tuple(read_big_uint16(c, i) / 1000 for i in range(0, len(c), 2))
+            battery_data.validate()
 
     class MesssageDecoder:
         def __init__(self, log):
@@ -127,7 +125,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
         rx_characteristic = None
         try:
             self.__ble.activate()
-            self.__data.invalidate()
+            self.__data.reset()
             self.__current_bundle = self.DataBundle()
 
             if self.__device is None:

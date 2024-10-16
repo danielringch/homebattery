@@ -5,7 +5,8 @@ from sys import print_exception
 from .interfaces.batteryinterface import BatteryInterface
 from ..core.devicetools import print_battery
 from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
-from ..core.types import BatteryData, run_callbacks
+from ..core.types import run_callbacks
+from ..helpers.batterydata import BatteryData
 from ..helpers.streamreader import read_little_uint8, read_little_uint16, read_little_int16, read_little_uint32, read_little_int32
 
 # ressources:
@@ -76,7 +77,7 @@ class JkBmsBd4(BatteryInterface):
         characteristic = None
         try:
             self.__ble.activate()
-            self.__data.invalidate()
+            self.__data.reset()
 
             if self.__device is None:
                 self.__device = MicroBleDevice(self.__ble)
@@ -150,16 +151,12 @@ class JkBmsBd4(BatteryInterface):
         return False
     
     def __parse(self, data):
-        temps = tuple(read_little_int16(data, i) / 10 for i in range(156, 160, 2))
-        cells = tuple(x / 1000 for x in (read_little_uint16(data, i) for i in range(0, 64, 2)) if x > 0)
-
-        self.__data.update(
-            v=read_little_uint32(data, 144) / 1000,
-            i=read_little_int32(data, 152) / 1000,
-            soc=read_little_uint8(data, 167),
-            c=read_little_uint32(data, 168) / 1000,
-            c_full=read_little_uint32(data, 172) / 1000,
-            n=read_little_uint32(data, 176),
-            temps=temps,
-            cells=cells
-        )
+        self.__data.cells = tuple(x / 1000 for x in (read_little_uint16(data, i) for i in range(0, 64, 2)) if x > 0)
+        self.__data.v=read_little_uint32(data, 144) / 1000
+        self.__data.i=read_little_int32(data, 152) / 1000
+        self.__data.temps = tuple(read_little_int16(data, i) / 10 for i in range(156, 160, 2))
+        self.__data.soc=read_little_uint8(data, 167)
+        self.__data.c=read_little_uint32(data, 168) / 1000
+        self.__data.c_full=read_little_uint32(data, 172) / 1000
+        self.__data.n=read_little_uint32(data, 176)
+        self.__data.validate()

@@ -36,38 +36,6 @@ def to_port_id(str):
         return 1
     else:
         raise Exception(f'Unknown port: {str}')
-
-class BatteryData:
-    def __init__(self, name, is_forwarded=False):
-        self.name = name
-        self.is_forwarded = is_forwarded
-        self.v = 0
-        self.i = 0
-        self.soc = 0
-        self.c = 0
-        self.c_full = 0
-        self.n = 0
-        self.temps = tuple()
-        self.cells = tuple()
-        self.timestamp = 0
-
-    def update(self, v, i, soc, c, c_full, n, temps, cells):
-        self.v = v # voltage [V]
-        self.i = i # current [A]
-        self.soc = soc # state of charge [%]
-        self.c = c # capacity remaining [Ah]
-        self.c_full = c_full # capacity full [Ah]
-        self.n = n # cycles
-        self.temps = temps # cell temperatures [°C]
-        self.cells = cells # cell voltages [V]
-        self.timestamp = time()
-
-    def invalidate(self):
-        self.timestamp = 0
-
-    @property
-    def valid(self):
-        return self.timestamp > 0
     
 def run_callbacks(list, *args, **kwargs):
     for callback in list:

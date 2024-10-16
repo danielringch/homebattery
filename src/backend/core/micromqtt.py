@@ -26,9 +26,9 @@ BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT, -110]
 _KEEPALIVE = const(60)
 _PING_INTERVAL = const(30)
 _SEND_LOOP_INTERVAL = const(4)
-_MAX_PACKET_SIZE = const(256)
+_MAX_PACKET_SIZE = const(512)
 _OVERDUE_TIMEOUT = const(10)
-_OUTPUT_BUFFER_SIZE = const(24)
+_OUTPUT_BUFFER_SIZE = const(10)
 
 class MicroMqtt():
     class InputMessage:
