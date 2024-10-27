@@ -1,10 +1,10 @@
 from asyncio import sleep_ms, Lock
 from machine import UART
-from rp2 import StateMachine
+from rp2 import StateMachine, DMA
 from struct import pack, pack_into
 from ubinascii import hexlify
 
-from .rs485tools import init_rs485
+from .rs485tools import init_rs485, start_dma
 
 class AddOnRs485:
     def __init__(self, port_id: int, baud, bits, parity, stop):
@@ -43,8 +43,8 @@ class AddOnRs485:
 
                 self.__sm.active(1)
                 self.__sm.restart()
-                self.__sm.put(data)
-
+                dma = start_dma(self.__port_id, self.__sm, data)
+            
                 # RX
                 await sleep_ms(round(self.__byte_time_us * len(data) / 1000 + 1)) # wait roughly the send time to get an more exact RX timeout
                 for _ in range(11):
@@ -52,6 +52,8 @@ class AddOnRs485:
                     if self.__uart.any():
                         break
                 self.__sm.active(0)
+                dma.active(False)
+                dma.close()
                 bytes = self.__uart.read(256)
                 await sleep_ms(round(self.__byte_time_us * 3.5 / 1000)) # minimum frame gap from modbus RTU spec
                 if bytes is None:

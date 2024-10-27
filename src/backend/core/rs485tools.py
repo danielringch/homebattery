@@ -1,5 +1,5 @@
 from machine import Pin, UART
-from rp2 import PIO, StateMachine, asm_pio
+from rp2 import PIO, StateMachine, asm_pio, DMA
 
 @asm_pio(autopull=True, pull_thresh=8, set_init=(PIO.OUT_LOW, PIO.OUT_LOW), sideset_init=PIO.OUT_HIGH, out_init=PIO.OUT_HIGH, out_shiftdir=PIO.SHIFT_RIGHT)
 def uart_tx_18n1():
@@ -103,14 +103,6 @@ def uart_tx_18o1():
 
 
 def init_rs485(port_id: int, baud: int, bits: int, parity: int, stop: int, timeout: int, timeout_char: int):
-    if port_id == 0:
-        uart = UART(1, tx=None, rx=Pin(5), timeout=timeout, timeout_char=timeout_char)
-    elif port_id == 1:
-        uart = UART(0, tx=None, rx=Pin(13), timeout=timeout, timeout_char=timeout_char)
-    else:
-        raise Exception('Unknow port id: ', port_id)
-    uart.init(baudrate=baud, bits=bits, parity=parity, stop=stop)
-
     if parity == 0:
         tx_func = uart_tx_18e1
     elif parity == 1:
@@ -123,8 +115,25 @@ def init_rs485(port_id: int, baud: int, bits: int, parity: int, stop: int, timeo
         assert False
 
     if port_id == 0:
+        uart = UART(1, tx=Pin(4), rx=Pin(5), timeout=timeout, timeout_char=timeout_char)
+        uart.init(baudrate=baud, bits=bits, parity=parity, stop=stop)
         sm = StateMachine(0, tx_func, freq=8 * baud, set_base=Pin(6), sideset_base=Pin(4), out_base=Pin(4))
+    elif port_id == 1:
+        uart = UART(0, tx=Pin(12), rx=Pin(13), timeout=timeout, timeout_char=timeout_char)
+        uart.init(baudrate=baud, bits=bits, parity=parity, stop=stop)
+        sm = StateMachine(1, tx_func, freq=8 * baud, set_base=Pin(14), sideset_base=Pin(12), out_base=Pin(12))
     else:
-        sm = StateMachine(5, tx_func, freq=8 * baud, set_base=Pin(14), sideset_base=Pin(12), out_base=Pin(12))
+        raise Exception('Unknow port id: ', port_id)
 
     return (uart, sm)
+
+def start_dma(port_id: int, sm: StateMachine, data: bytearray):
+    data_request_index = 0 if port_id == 0 else 1
+
+    dma = DMA()
+
+    dma_ctrl = dma.pack_ctrl(size=0, inc_write=False, treq_sel=data_request_index)
+
+    dma.config(read=data, write=sm, count=len(data), ctrl=dma_ctrl, trigger=True)
+
+    return dma
