@@ -40,8 +40,13 @@ class MicroSocket:
 
             if self.__connected:
                 if cert:
-                    import ssl
-                    self.__socket = ssl.wrap_socket(self.__socket, cert=cert, cert_reqs=cert_req)
+                    import tls
+                    context = tls.SSLContext(tls.PROTOCOL_TLS_CLIENT)
+                    with open(cert, "rb") as f:
+                        cadata = f.read()
+                    context.load_verify_locations(cadata)
+                    context.verify_mode = cert_req
+                    self.__socket = context.wrap_socket(self.__socket, server_side=False, do_handshake_on_connect=True, server_hostname=ip)
 
                 self.__socket.setblocking(False)
             else:

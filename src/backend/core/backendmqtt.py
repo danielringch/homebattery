@@ -1,7 +1,7 @@
 from asyncio import sleep
 from struct import pack
 from .micromqtt import MicroMqtt
-from ssl import CERT_NONE
+from tls import CERT_NONE
 from .types import MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, to_operation_mode
 from ..helpers.batterydata import BatteryData
 
