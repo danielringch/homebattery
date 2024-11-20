@@ -144,6 +144,14 @@
       "id": 0,
       "power_lut": <string>
     },
+    "inverter_open_dtu":
+    {
+      "driver": "openDtu",
+      "host": <string>,
+      "password": <string>,
+      "serial": <string>,
+      "power_lut": <string>
+    },
     "inverter_growatt":
     {
       "driver": "growattinvertermodbus",

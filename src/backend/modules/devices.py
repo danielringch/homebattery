@@ -10,6 +10,7 @@ _JK_BMS_BD = const('jkBmsBd')
 _LLT_POWER_BMS_V4_BLE = const('lltPowerBmsV4Ble')
 _MQTT_BATTERY = const('mqttBattery')
 _MQTT_CONSUMPTION = const('mqttConsumption')
+_OPEN_DTU = const('openDtu')
 _PYLON_LV = const('pylonLv')
 _SHELLY_CHARGER = const('shellyCharger')
 _VICTRON_MPPT = const('victronMppt')
@@ -60,6 +61,10 @@ class Devices:
                 from ..drivers.generic.mqttconsumption import MqttConsumption
                 gc_collect()
                 self.__load_device(log, name, MqttConsumption, meta, mqtt)
+            elif driver_name == _OPEN_DTU:
+                from ..drivers.hoymiles.opendtuadapter import OpenDtu
+                gc_collect()
+                self.__load_device(log, name, OpenDtu, meta)
             elif driver_name == _PYLON_LV:
                 from ..drivers.pylontech.pylonlv import PylonLv
                 gc_collect()
