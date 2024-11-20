@@ -6,7 +6,7 @@ _DALY_8S_24V_60A = const('daly8S24V60A')
 _GROWATT_INVERTER_MODBUS = const('growattinvertermodbus')
 _HEIDELBERG_WALLBOX = const('heidelbergWallbox')
 _HTTP_CONSUMPTION = const('httpConsumption')
-_JK_BMS_BD4 = const('jkBmsBd4')
+_JK_BMS_BD = const('jkBmsBd')
 _LLT_POWER_BMS_V4_BLE = const('lltPowerBmsV4Ble')
 _MQTT_BATTERY = const('mqttBattery')
 _MQTT_CONSUMPTION = const('mqttConsumption')
@@ -44,10 +44,10 @@ class Devices:
                 from ..drivers.httpconsumption import HttpConsumption
                 gc_collect()
                 self.__load_device(log, name, HttpConsumption, meta)
-            elif driver_name == _JK_BMS_BD4:
-                from ..drivers.jkbmsbd4 import JkBmsBd4
+            elif driver_name == _JK_BMS_BD:
+                from ..drivers.jkbmsbd import JkBmsBd
                 gc_collect()
-                self.__load_device(log, name, JkBmsBd4, meta)
+                self.__load_device(log, name, JkBmsBd, meta)
             elif driver_name == _LLT_POWER_BMS_V4_BLE:
                 from ..drivers.lltpowerbmsv4ble import LltPowerBmsV4Ble
                 gc_collect()

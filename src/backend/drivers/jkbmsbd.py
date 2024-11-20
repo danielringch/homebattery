@@ -11,7 +11,7 @@ from ..helpers.streamreader import read_little_uint8, read_little_uint16, read_l
 
 # ressources:
 
-class JkBmsBd4(BatteryInterface):
+class JkBmsBd(BatteryInterface):
     class MesssageDecoder:
         def __init__(self, log):
             self.__log = log

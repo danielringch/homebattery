@@ -111,7 +111,7 @@
     },
     "battery_jk":
     {
-      "driver": "jkBmsBd4",
+      "driver": "jkBmsBd",
       "mac": <string>
     },
     "battery_pylontech":

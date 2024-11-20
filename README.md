@@ -53,7 +53,7 @@ Homebattery was not the first and will not be the last solution for controlling 
 | - | - | - | - | - |
 | battery | LLT Power BMS | Accurat Traction T60 LFP BT 24V | Bluetooth         | many China LiFePo4 batteries use this BMS |
 | | Daly H-Series Smart BMS | Daly H-Series Smart BMS 8S 60A | Bluetooth | - |
-| | JK BMS BD4-Series | BD4A17S4P | Bluetooth | - |
+| | JK BMS BD-Series | BD4A17S4P<br>BD6A17S6P | Bluetooth | - |
 | solar charger | Victron SmartSolar MPPT | Smartsolar MPPT 75/15 | VE.Direct | - |
 | | Victron BlueSolar MPPT | - | VE.Direct | configuration is still done via Victron USB interface |
 | grid charger | Shelly smart switch | Shelly Plus2PM<br>Shelly Plug S | network | - |

@@ -10,7 +10,7 @@ Drivers are used to connect devices with homebattery. For every device, add a dr
 
    drivers/lltPowerBmsV4Ble
    drivers/daly8S24V60A
-   drivers/jkBmsBd4
+   drivers/jkBmsBd
    drivers/mqttBattery
    drivers/victronMppt
    drivers/shellyCharger

@@ -321,11 +321,11 @@ Driver name: ``daly8S24V60A``
 | ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 
-.. _confiuration_jk_bms_bd4:
-JK BMS BD4-Series
-'''''''''''''''''
+.. _confiuration_jk_bms_bd:
+JK BMS BD4/BD6-Series
+'''''''''''''''''''''
 
-Driver name: ``jkBmsBd4``
+Driver name: ``jkBmsBd``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
