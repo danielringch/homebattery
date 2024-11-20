@@ -1,7 +1,7 @@
 from asyncio import Event
 from micropython import const
 from struct import pack_into, unpack_from
-from time import time
+from collections import deque
 
 MODE_CHARGE = const('charge')
 MODE_DISCHARGE = const('discharge')
@@ -89,83 +89,18 @@ class InverterStatusValues:
     def from_string(self, str):
         return self.__dict[str]
     
-class SimpleFiFo:
-    class Item:
-        def __init__(self, payload):
-            self.payload = payload
-            self.newer = None
-
-    class Iter:
-        def __init__(self, start):
-            self.__item = start
-
-        def __iter__(self):
-            return self
-        
-        def __next__(self):
-            if self.__item is None:
-                raise StopIteration
-            payload = self.__item.payload
-            self.__item = self.__item.newer
-            return payload
-
+class CommandFiFo(deque):
     def __init__(self):
-        self.__newest = None
-        self.__oldest = None
-        self.__length = 0
-
-    def __len__(self):
-        return self.__length
-    
-    def __iter__(self):
-        return self.Iter(self.__oldest)
-
-    @property
-    def empty(self):
-        return self.__oldest is None
-    
-    def clear(self):
-        self.__length = 0
-        if self.__oldest is not None:
-            item = self.__oldest
-            while item is not None:
-                next = item.newer
-                item.newer = None
-                item = next
-        self.__newest = None
-        self.__oldest = None
-    
-    def append(self, payload):
-        self.__length += 1
-        item = self.Item(payload)
-        if self.__newest is not None:
-            self.__newest.newer = item
-        self.__newest = item
-        if self.__oldest is None:
-            self.__oldest = item
-
-    def peek(self):
-        assert self.__oldest is not None
-        return self.__oldest.payload
-
-    def pop(self):
-        assert self.__oldest is not None
-        self.__length -= 1
-        item = self.__oldest
-        self.__oldest = item.newer
-        if item.newer is None:
-            self.__newest = None
-        item.newer = None
-        return item.payload
-    
-class CommandFiFo(SimpleFiFo):
-    def __init__(self):
-        super().__init__()
+        super().__init__(tuple(), 16)
         self.event = Event()
 
     def append(self, payload):
         self.event.set()
         super().append(payload)
+
+    def appendleft(self, payload):
+        self.event.set()
+        super().appendleft(payload)
 
     async def wait_and_clear(self):
         await self.event.wait()

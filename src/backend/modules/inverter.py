@@ -50,8 +50,8 @@ class Inverter:
             try:
                 now = time()
                 async with self.__lock:
-                    while not self.__commands.empty:
-                        await self.__commands.pop()()
+                    while self.__commands:
+                        await self.__commands.popleft()()
                     if now >= self.__next_energy_execution:
                         await self.__get_energy()
                         self.__next_energy_execution = get_energy_execution_timestamp()

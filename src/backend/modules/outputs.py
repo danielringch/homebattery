@@ -53,8 +53,8 @@ class Outputs:
         while True:
             try:
                 await self.__commands.wait_and_clear()
-                while not self.__commands.empty:
-                    await self.__commands.pop()()
+                while self.__commands:
+                    await self.__commands.popleft()()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
                 from ..core.singletons import Singletons
@@ -63,80 +63,80 @@ class Outputs:
 # charger
 
     async def __send_charger_status(self):
-        status = self.__commands.pop()
+        status = self.__commands.popleft()
         await self.__mqtt.send_charger_status(status)
 
     async def __send_charger_energy(self):
-        energy = self.__commands.pop()
+        energy = self.__commands.popleft()
         await self.__mqtt.send_charger_energy(energy)
 
     async def __send_charger_device_energy(self):
-        name = self.__commands.pop()
-        energy = self.__commands.pop()
+        name = self.__commands.popleft()
+        energy = self.__commands.popleft()
         await self.__mqtt.send_charger_device_energy(name, energy)
 
 # inverter
 
     async def __send_inverter_status(self):
-        status = self.__commands.pop()
+        status = self.__commands.popleft()
         await self.__mqtt.send_inverter_status(status)
 
     async def __send_inverter_power(self):
-        power = self.__commands.pop()
+        power = self.__commands.popleft()
         self.__ui.update_inverter_power(power)
         await self.__mqtt.send_inverter_power(power)
 
     async def __send_inverter_device_power(self):
-        name = self.__commands.pop()
-        power = self.__commands.pop()
+        name = self.__commands.popleft()
+        power = self.__commands.popleft()
         await self.__mqtt.send_inverter_device_power(name, power)
         
     async def __send_inverter_energy(self):
-        energy = self.__commands.pop()
+        energy = self.__commands.popleft()
         await self.__mqtt.send_inverter_energy(energy)
 
     async def __send_inverter_device_energy(self):
-        name = self.__commands.pop()
-        energy = self.__commands.pop()
+        name = self.__commands.popleft()
+        energy = self.__commands.popleft()
         await self.__mqtt.send_inverter_device_energy(name, energy)
 
 # solar
 
     async def __send_solar_status(self):
-        status = self.__commands.pop()
+        status = self.__commands.popleft()
         await self.__mqtt.send_solar_status(status)
 
     async def __send_solar_power(self):
-        power = self.__commands.pop()
+        power = self.__commands.popleft()
         self.__ui.update_solar_power(power)
         await self.__mqtt.send_solar_power(power)
 
     async def __send_solar_device_power(self):
-        name = self.__commands.pop()
-        power = self.__commands.pop()
+        name = self.__commands.popleft()
+        power = self.__commands.popleft()
         await self.__mqtt.send_solar_device_power(name, power)
 
     async def __send_solar_energy(self):
-        energy = self.__commands.pop()
+        energy = self.__commands.popleft()
         await self.__mqtt.send_solar_energy(energy)
 
     async def __send_solar_device_energy(self):
-        name = self.__commands.pop()
-        energy = self.__commands.pop()
+        name = self.__commands.popleft()
+        energy = self.__commands.popleft()
         await self.__mqtt.send_solar_device_energy(name, energy)
 
 # battery
 
     async def __send_battery_current(self):
-        current = self.__commands.pop()
+        current = self.__commands.popleft()
         await self.__mqtt.send_battery_current(current)
 
     async def __send_battery_capacity(self):
-        capacity = self.__commands.pop()
+        capacity = self.__commands.popleft()
         await self.__mqtt.send_battery_capacity(capacity)
 
     async def __send_battery_device(self):
-        name = self.__commands.pop()
+        name = self.__commands.popleft()
         changed_battery = self.__battery.battery_data[name]
         if changed_battery is not None and changed_battery.valid and not changed_battery.is_forwarded:
             await self.__mqtt.send_battery_device(changed_battery)
