@@ -1,7 +1,7 @@
 from asyncio import create_task, sleep
-from sys import print_exception
 from time import time
 from ..core.backendmqtt import Mqtt
+from ..core.logging import CustomLogger
 from ..core.types import TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
 from ..core.watchdog import Watchdog
 from .consumption import Consumption
@@ -20,7 +20,7 @@ class Supervisor:
         from ..core.singletons import Singletons
         config = config['supervisor']
 
-        self.__log = Singletons.log.create_logger('supervisor')
+        self.__log: CustomLogger = Singletons.log.create_logger('supervisor')
         self.__ui = Singletons.ui
 
         self.__watchdog = watchdog
@@ -60,8 +60,7 @@ class Supervisor:
                 await self.__tick()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ..core.singletons import Singletons
-                print_exception(e, Singletons.log.trace) 
+                self.__log.trace(e)
             await sleep(1)
 
     async def __tick(self):

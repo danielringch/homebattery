@@ -2,8 +2,9 @@ from json import dumps
 from os import ilistdir, remove, sync
 from machine import reset
 from socket import getaddrinfo, socket, SOL_SOCKET, SO_REUSEADDR
-from sys import print_exception
 from time import sleep
+
+from .logging import CustomLogger
 
 CSS_STYLE = b'''html {font-family: Arial}
 table {width: 100%; border-collapse: collapse;}
@@ -77,7 +78,7 @@ class PayloadIncompleteError(Exception):
 class Webserver:
     def __init__(self):
         from .singletons import Singletons
-        self.__log = Singletons.log.create_logger('webserver')
+        self.__log: CustomLogger = Singletons.log.create_logger('webserver')
 
         addr = getaddrinfo('0.0.0.0', 80)[0][-1]
         self.__socket = socket()
@@ -114,8 +115,7 @@ class Webserver:
                 conn.send(HEADER_400)
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ..core.singletons import Singletons
-                print_exception(e, Singletons.log.trace)
+                self.__log.trace(e)
             finally:
                 conn.close()
 
@@ -152,8 +152,7 @@ class Webserver:
             raise NotImplementedError()
         except Exception as e:
             self.__log.error('Request failed: ', e)
-            from ..core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
             return None, None
 
     def __handle_get(self, connection, type: str, payload: bytes):

@@ -1,8 +1,8 @@
 from asyncio import Event, create_task, sleep
-from sys import print_exception
 from micropython import const
 from time import time
 from ..interfaces.inverterinterface import InverterInterface
+from ...core.logging import CustomLogger
 from ...core.types import PowerLut, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 from .dtuadapter import DtuAdapter
 
@@ -17,7 +17,7 @@ class AnyDtu(InverterInterface):
         from ...core.types import TYPE_INVERTER
 
         self.__device_types = (TYPE_INVERTER,)
-        self.__log = Singletons.log.create_logger(name)
+        self.__log: CustomLogger = Singletons.log.create_logger(name)
 
         self.__adapter = adapter
         self.__adapter.configure(self.__log)
@@ -146,8 +146,7 @@ class AnyDtu(InverterInterface):
                     await self.__sync_from_inverters()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ...core.singletons import Singletons
-                print_exception(e, Singletons.log.trace)
+                self.__log.trace(e)
             await sleep(1.0)
 
     def __update(self, status, power_percent):

@@ -4,6 +4,7 @@ from micropython import const
 from socket import getaddrinfo, socket, AF_INET, SOCK_DGRAM
 from time import localtime
 from uio import IOBase
+from sys import print_exception
 from .microsocket import BUSY_ERRORS
 
 _UTF8 = const('utf-8')
@@ -103,6 +104,9 @@ class CustomLogger:
 
     def error(self, *msg):
         self.__logger.__send('error@%s' % self.__sender, *msg)
+
+    def trace(self, e: Exception):
+        print_exception(e, self.__logger.trace)
 
 class IgnoreLogger:
     def __init__(self, logger: Logging, sender: str):

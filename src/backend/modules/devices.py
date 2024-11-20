@@ -1,6 +1,8 @@
 from gc import collect as gc_collect
 from micropython import const
 
+from ..core.logging import CustomLogger
+
 _AHOY_DTU = const('ahoyDtu')
 _DALY_8S_24V_60A = const('daly8S24V60A')
 _GROWATT_INVERTER_MODBUS = const('growattinvertermodbus')
@@ -21,7 +23,7 @@ class Devices:
         self.__devices = []
 
         from ..core.singletons import Singletons
-        self.__log = Singletons.log.create_logger('devices')
+        self.__log: CustomLogger = Singletons.log.create_logger('devices')
 
         for name, meta in config.items():
             driver_name = meta['driver']
@@ -95,6 +97,4 @@ class Devices:
             gc_collect()
         except Exception as e:
             self.__log.error('Failed to initialize device ', name, ': ', e)
-            from sys import print_exception
-            from ..core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)

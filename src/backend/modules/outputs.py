@@ -1,6 +1,6 @@
 from asyncio import create_task
-from sys import print_exception
 from ..core.backendmqtt import Mqtt
+from ..core.logging import CustomLogger
 from ..core.types import CommandFiFo, STATUS_ON
 from .supervisor import Supervisor
 from .consumption import Consumption
@@ -14,7 +14,7 @@ class Outputs:
                  battery: Battery, charger: Charger, inverter: Inverter, solar: Solar):
         from ..core.singletons import Singletons
         self.__commands = CommandFiFo()
-        self.__log = Singletons.log.create_logger('output')
+        self.__log: CustomLogger = Singletons.log.create_logger('output')
         self.__mqtt = mqtt
         self.__supervisor = supervisor
         self.__consumption = consumption
@@ -57,8 +57,7 @@ class Outputs:
                     await self.__commands.popleft()()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ..core.singletons import Singletons
-                print_exception(e, Singletons.log.trace)
+                self.__log.trace(e)
 
 # charger
 

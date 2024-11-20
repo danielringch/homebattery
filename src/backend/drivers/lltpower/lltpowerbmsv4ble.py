@@ -1,10 +1,10 @@
 from asyncio import sleep
 from bluetooth import UUID as BT_UUID
 from ubinascii import unhexlify
-from sys import print_exception
 from ..interfaces.batteryinterface import BatteryInterface
 from ...core.devicetools import print_battery
 from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ...core.logging import CustomLogger
 from ...core.types import run_callbacks
 from ...helpers.batterydata import BatteryData
 from ...helpers.streamreader import read_big_uint8, read_big_uint16, read_big_int16
@@ -112,7 +112,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
         self.__mac = config['mac']
 
         self.__ble = Singletons.ble
-        self.__log = Singletons.log.create_logger(name)
+        self.__log: CustomLogger = Singletons.log.create_logger(name)
 
         self.__on_data = list()
 
@@ -162,8 +162,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
             self.__log.error(str(e))
         except Exception as e:
             self.__log.error('BLE error: ', e)
-            from ...core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
         finally:
             if rx_characteristic is not None:
                 rx_characteristic.disable_rx()

@@ -1,10 +1,10 @@
 from asyncio import sleep
 from bluetooth import UUID as BT_UUID
 from ubinascii import unhexlify
-from sys import print_exception
 from ..interfaces.batteryinterface import BatteryInterface
 from ...core.devicetools import print_battery
 from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ...core.logging import CustomLogger
 from ...core.types import run_callbacks
 from ...helpers.batterydata import BatteryData
 from ...helpers.streamreader import read_little_uint8, read_little_uint16, read_little_int16, read_little_uint32, read_little_int32
@@ -14,7 +14,7 @@ from ...helpers.streamreader import read_little_uint8, read_little_uint16, read_
 class JkBmsBd(BatteryInterface):
     class MesssageDecoder:
         def __init__(self, log):
-            self.__log = log
+            self.__log: CustomLogger = log
             self.__length = 294 # 300 bytes - 6 bytes header
             self.__data = None
             self.__checksum = 0
@@ -113,8 +113,7 @@ class JkBmsBd(BatteryInterface):
             self.__log.error(str(e))
         except Exception as e:
             self.__log.error('BLE error: ', e)
-            from ...core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
         finally:
             if characteristic is not None:
                 characteristic.disable_rx()

@@ -1,8 +1,8 @@
 from asyncio import create_task
-from sys import print_exception
 from ..interfaces.batteryinterface import BatteryInterface
 from ...core.devicetools import print_battery
 from ...core.addonrs485 import AddOnRs485
+from ...core.logging import CustomLogger
 from ...core.types import to_port_id, run_callbacks
 from ...helpers.batterydata import BatteryData
 from ...helpers.streamreader import AsciiHexStreamReader
@@ -51,7 +51,7 @@ class PylonLv(BatteryInterface):
         from ...core.singletons import Singletons
         
         self.__name = name
-        self.__log = Singletons.log.create_logger(name)
+        self.__log: CustomLogger = Singletons.log.create_logger(name)
 
         self.__serial = config['serial']
         self.__address: int = None
@@ -94,8 +94,7 @@ class PylonLv(BatteryInterface):
                 self.__log.error('Failed to receive battery data.')
         except Exception as e:
             self.__log.error('Reading battery failed: ', e)
-            from ...core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
 
     @property
     def on_battery_data(self):
@@ -219,8 +218,7 @@ class PylonLv(BatteryInterface):
             return data
         except Exception as e:
             self.__log.error(f'Invalid response from group={group} slave={slave}: ', e)
-            from ...core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
             return None
             
 

@@ -1,9 +1,9 @@
 from asyncio import create_task, Event
-from sys import print_exception
 from time import time
 from ..interfaces.batteryinterface import BatteryInterface
 from ...core.backendmqtt import Mqtt
 from ...core.devicetools import print_battery
+from ...core.logging import CustomLogger
 from ...core.types import run_callbacks
 from ...helpers.batterydata import BatteryData
 
@@ -22,8 +22,7 @@ class MqttBattery(BatteryInterface):
                 self.data.from_json(payload.decode('utf-8'))
             except Exception as e:
                 self.__log.error('Failed to read battery data: ', e)
-                from ...core.singletons import Singletons
-                print_exception(e, Singletons.log.trace)
+                self.__log.trace(e)
                 self.data.reset()
                 return
             
@@ -35,7 +34,7 @@ class MqttBattery(BatteryInterface):
         from ...core.types import TYPE_BATTERY
         self.__name = name
         self.__device_types = (TYPE_BATTERY,)
-        self.__log = Singletons.log.create_logger(name)
+        self.__log: CustomLogger = Singletons.log.create_logger(name)
 
         self.__topic_root = config['root_topic']
 

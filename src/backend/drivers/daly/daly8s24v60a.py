@@ -1,8 +1,8 @@
 from asyncio import sleep
 from bluetooth import UUID as BT_UUID
 from ubinascii import unhexlify
-from sys import print_exception
 from ..interfaces.batteryinterface import BatteryInterface
+from ...core.logging import CustomLogger
 from ...core.devicetools import print_battery
 from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
 from ...core.types import run_callbacks
@@ -18,7 +18,7 @@ class Daly8S24V60A(BatteryInterface):
         self.__mac = config['mac']
 
         self.__ble = Singletons.ble
-        self.__log = Singletons.log.create_logger(name)
+        self.__log: CustomLogger = Singletons.log.create_logger(name)
 
         self.__on_data = list()
 
@@ -67,8 +67,7 @@ class Daly8S24V60A(BatteryInterface):
             self.__log.error(str(e))
         except Exception as e:
             self.__log.error('BLE error: ', e)
-            from ...core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
         finally:
             if self.__receive_task is not None:
                 self.__receive_task.cancel()

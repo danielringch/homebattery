@@ -1,7 +1,7 @@
 from asyncio import Lock, TimeoutError, wait_for
-from sys import print_exception
 from time import time
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
+from ..core.logging import CustomLogger
 from ..core.types import CommandFiFo, MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 from .devices import Devices
 
@@ -11,7 +11,7 @@ class Solar:
         self.__lock = Lock()
         self.__commands = CommandFiFo()
 
-        self.__log = Singletons.log.create_logger('solar')
+        self.__log: CustomLogger = Singletons.log.create_logger('solar')
 
         self.__status_callbacks = list()
         self.__power_callbacks = list()
@@ -45,8 +45,7 @@ class Solar:
                         self.__next_energy_execution = get_energy_execution_timestamp()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ..core.singletons import Singletons
-                print_exception(e, Singletons.log.trace)
+                self.__log.trace(e)
             try:
                 await wait_for(self.__commands.wait_and_clear(), timeout=1)
             except TimeoutError:

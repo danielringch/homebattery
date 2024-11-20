@@ -1,7 +1,7 @@
 from asyncio import Lock, TimeoutError, wait_for
-from sys import print_exception
 from time import time
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses
+from ..core.logging import CustomLogger
 from ..core.types import CommandFiFo, MODE_DISCHARGE, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 from .consumption import Consumption
 from .devices import Devices
@@ -13,7 +13,7 @@ class Inverter:
         self.__lock = Lock()
         self.__commands = CommandFiFo()
 
-        self.__log = Singletons.log.create_logger('inverter')
+        self.__log: CustomLogger = Singletons.log.create_logger('inverter')
 
         config = config['inverter']
         self.__default_power = int(config['power'])
@@ -57,8 +57,7 @@ class Inverter:
                         self.__next_energy_execution = get_energy_execution_timestamp()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ..core.singletons import Singletons
-                print_exception(e, Singletons.log.trace)
+                self.__log.trace(e)
             try:
                 await wait_for(self.__commands.wait_and_clear(), timeout=1)
             except TimeoutError:

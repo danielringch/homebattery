@@ -1,8 +1,8 @@
 from asyncio import create_task, sleep
 from binascii import hexlify
-from sys import print_exception
 from ..interfaces.chargerinterface import ChargerInterface
 from ...core.addonmodbus import AddOnModbus
+from ...core.logging import CustomLogger
 from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
 from ...helpers.streamreader import read_big_uint16
 
@@ -12,7 +12,7 @@ class HeidelbergWallbox(ChargerInterface):
         from ...core.types import TYPE_CHARGER
         self.__name = name
         self.__device_types = (TYPE_CHARGER,)
-        self.__log = Singletons.log.create_logger(name)
+        self.__log: CustomLogger = Singletons.log.create_logger(name)
         self.__slave_address = config['address']
         port = config['port']
         port_id = to_port_id(port)
@@ -116,8 +116,7 @@ class HeidelbergWallbox(ChargerInterface):
                     await sleep(5) 
                 except Exception as e:
                     self.__log.error('Cycle failed: ', e)
-                    from ...core.singletons import Singletons
-                    print_exception(e, Singletons.log.trace)
+                    self.__log.trace(e)
 
     def __handle_communication_error(self, present, message):
         if not present:

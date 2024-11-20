@@ -1,5 +1,6 @@
 from asyncio import create_task, sleep
 from ..interfaces.consumptioninterface import ConsumptionInterface
+from ...core.logging import CustomLogger
 from ...core.microaiohttp import ClientSession
 from ...core.microsocket import MicroSocketClosedExecption, MicroSocketTimeoutException
 from ...core.types import run_callbacks
@@ -10,7 +11,7 @@ class HttpConsumption(ConsumptionInterface):
         from ...core.types import TYPE_CONSUMPTION
         self.__name = name
         self.__device_types = (TYPE_CONSUMPTION,)
-        self.__log = Singletons.log.create_logger(name)
+        self.__log: CustomLogger = Singletons.log.create_logger(name)
 
         self.__callbacks = list()
 
@@ -57,8 +58,6 @@ class HttpConsumption(ConsumptionInterface):
                 self.__log.error('Server did not respond.')
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ...core.singletons import Singletons
-                from sys import print_exception
-                print_exception(e, Singletons.log.trace)
+                self.__log.trace(e)
             await sleep(self.__interval)
 
