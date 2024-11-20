@@ -1,4 +1,4 @@
-from asyncio import create_task, Event
+from asyncio import create_task
 from sys import print_exception
 from ..core.backendmqtt import Mqtt
 from ..core.types import CommandFiFo, STATUS_ON

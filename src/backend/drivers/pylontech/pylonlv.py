@@ -1,6 +1,4 @@
-from asyncio import create_task, sleep
-from ubinascii import unhexlify, hexlify
-from micropython import const
+from asyncio import create_task
 from sys import print_exception
 from ..interfaces.batteryinterface import BatteryInterface
 from ...core.devicetools import print_battery

@@ -1,10 +1,10 @@
-from asyncio import create_task, sleep
+from asyncio import sleep
 from bluetooth import UUID as BT_UUID
 from ubinascii import unhexlify
 from sys import print_exception
 from ..interfaces.batteryinterface import BatteryInterface
 from ...core.devicetools import print_battery
-from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
+from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
 from ...core.types import run_callbacks
 from ...helpers.batterydata import BatteryData
 from ...helpers.streamreader import read_big_uint8, read_big_uint16, read_big_int16

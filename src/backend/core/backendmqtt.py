@@ -1,4 +1,3 @@
-from asyncio import sleep
 from struct import pack
 from .micromqtt import MicroMqtt
 from tls import CERT_NONE

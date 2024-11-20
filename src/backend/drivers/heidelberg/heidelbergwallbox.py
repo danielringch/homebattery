@@ -1,5 +1,5 @@
 from asyncio import create_task, sleep
-from binascii import hexlify‚
+from binascii import hexlify
 from sys import print_exception
 from ..interfaces.chargerinterface import ChargerInterface
 from ...core.addonmodbus import AddOnModbus

@@ -1,4 +1,4 @@
-from asyncio import Event, Lock, TimeoutError, wait_for
+from asyncio import Lock, TimeoutError, wait_for
 from sys import print_exception
 from time import time
 from ..core.devicetools import get_energy_execution_timestamp, merge_driver_statuses

@@ -1,7 +1,6 @@
 from asyncio import sleep_ms, Lock
 from machine import UART
 from rp2 import StateMachine, DMA
-from struct import pack, pack_into
 from ubinascii import hexlify
 
 from .rs485tools import init_rs485, start_dma

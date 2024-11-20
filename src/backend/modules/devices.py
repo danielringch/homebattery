@@ -21,64 +21,64 @@ class Devices:
         self.__devices = []
 
         from ..core.singletons import Singletons
-        log = Singletons.log
+        self.__log = Singletons.log.create_logger('devices')
 
         for name, meta in config.items():
             driver_name = meta['driver']
             if driver_name == _AHOY_DTU:
                 from ..drivers.hoymiles.ahoydtuadapter import AhoyDtu
                 gc_collect()
-                self.__load_device(log, name, AhoyDtu, meta)
+                self.__load_device(name, AhoyDtu, meta)
             elif driver_name == _DALY_8S_24V_60A:
                 from ..drivers.daly.daly8s24v60a import Daly8S24V60A
                 gc_collect()
-                self.__load_device(log, name, Daly8S24V60A, meta)
+                self.__load_device(name, Daly8S24V60A, meta)
             elif driver_name == _GROWATT_INVERTER_MODBUS:
                 from ..drivers.growatt.growattinvertermodbus import GrowattInverterModbus
                 gc_collect()
-                self.__load_device(log, name, GrowattInverterModbus, meta)
+                self.__load_device(name, GrowattInverterModbus, meta)
             elif driver_name == _HEIDELBERG_WALLBOX:
                 from ..drivers.heidelberg.heidelbergwallbox import HeidelbergWallbox
                 gc_collect()
-                self.__load_device(log, name, HeidelbergWallbox, meta)
+                self.__load_device(name, HeidelbergWallbox, meta)
             elif driver_name == _HTTP_CONSUMPTION:
                 from ..drivers.generic.httpconsumption import HttpConsumption
                 gc_collect()
-                self.__load_device(log, name, HttpConsumption, meta)
+                self.__load_device(name, HttpConsumption, meta)
             elif driver_name == _JK_BMS_BD:
                 from ..drivers.jkbms.jkbmsbd import JkBmsBd
                 gc_collect()
-                self.__load_device(log, name, JkBmsBd, meta)
+                self.__load_device(name, JkBmsBd, meta)
             elif driver_name == _LLT_POWER_BMS_V4_BLE:
                 from ..drivers.lltpower.lltpowerbmsv4ble import LltPowerBmsV4Ble
                 gc_collect()
-                self.__load_device(log, name, LltPowerBmsV4Ble, meta)
+                self.__load_device(name, LltPowerBmsV4Ble, meta)
             elif driver_name == _MQTT_BATTERY:
                 from ..drivers.generic.mqttbattery import MqttBattery
                 gc_collect()
-                self.__load_device(log, name, MqttBattery, meta, mqtt)
+                self.__load_device(name, MqttBattery, meta, mqtt)
             elif driver_name == _MQTT_CONSUMPTION:
                 from ..drivers.generic.mqttconsumption import MqttConsumption
                 gc_collect()
-                self.__load_device(log, name, MqttConsumption, meta, mqtt)
+                self.__load_device(name, MqttConsumption, meta, mqtt)
             elif driver_name == _OPEN_DTU:
                 from ..drivers.hoymiles.opendtuadapter import OpenDtu
                 gc_collect()
-                self.__load_device(log, name, OpenDtu, meta)
+                self.__load_device(name, OpenDtu, meta)
             elif driver_name == _PYLON_LV:
                 from ..drivers.pylontech.pylonlv import PylonLv
                 gc_collect()
-                self.__load_device(log, name, PylonLv, meta)
+                self.__load_device(name, PylonLv, meta)
             elif driver_name == _SHELLY_CHARGER:
                 from ..drivers.shelly.shellycharger import ShellyCharger
                 gc_collect()
-                self.__load_device(log, name, ShellyCharger, meta)
+                self.__load_device(name, ShellyCharger, meta)
             elif driver_name == _VICTRON_MPPT:
                 from ..drivers.victron.victronmppt import VictronMppt
                 gc_collect()
-                self.__load_device(log, name, VictronMppt, meta)
+                self.__load_device(name, VictronMppt, meta)
             else:
-                log.error('Unknown driver for device ', name, ': ', driver_name)
+                self.__log.error('Unknown driver for device ', name, ': ', driver_name)
 
     def get_by_type(self, type: str):
         return tuple(x for x in self.__devices if type in x.device_types)
@@ -87,14 +87,14 @@ class Devices:
     def devices(self):
         return self.__devices
     
-    def __load_device(self, log, name, driver, config, *args):
+    def __load_device(self, name, driver, config, *args):
         try:
-            log.send('devices', 'Loading device ', name, ' with driver ', driver.__name__)
+            self.__log.info('Loading device ', name, ' with driver ', driver.__name__)
             instance = driver(name, config, *args)
             self.__devices.append(instance)
             gc_collect()
         except Exception as e:
+            self.__log.error('Failed to initialize device ', name, ': ', e)
             from sys import print_exception
             from ..core.singletons import Singletons
-            log.error('Failed to initialize device ', name, ': ', e)
             print_exception(e, Singletons.log.trace)

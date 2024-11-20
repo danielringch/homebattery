@@ -1,7 +1,7 @@
 from json import loads
 from ubinascii import b2a_base64
 
-from .microsocket import MicroSocket, MicroSocketClosedExecption, MicroSocketException, MicroSocketTimeoutException
+from .microsocket import MicroSocket, MicroSocketClosedExecption
 
 class HttpResponse:
     def __init__(self, sock, status, headers):

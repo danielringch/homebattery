@@ -1,6 +1,5 @@
-from asyncio import create_task, sleep
+from asyncio import sleep
 from bluetooth import UUID as BT_UUID
-from micropython import const
 from ubinascii import unhexlify
 from sys import print_exception
 from ..interfaces.batteryinterface import BatteryInterface

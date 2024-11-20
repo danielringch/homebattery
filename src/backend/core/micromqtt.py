@@ -1,4 +1,4 @@
-from asyncio import create_task, Event, Lock, sleep, wait_for, TimeoutError
+from asyncio import create_task, Lock, sleep, wait_for, TimeoutError
 from gc import collect as gc_collect
 from re import match
 from ubinascii import hexlify
