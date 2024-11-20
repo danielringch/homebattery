@@ -25,7 +25,7 @@ class Devices:
         for name, meta in config.items():
             driver_name = meta['driver']
             if driver_name == _AHOY_DTU:
-                from ..drivers.hoymiles.ahoydtu import AhoyDtu
+                from ..drivers.hoymiles.ahoydtuadapter import AhoyDtu
                 gc_collect()
                 self.__load_device(log, name, AhoyDtu, meta)
             elif driver_name == _DALY_8S_24V_60A:
