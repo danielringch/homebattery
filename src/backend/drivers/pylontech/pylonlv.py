@@ -2,12 +2,12 @@ from asyncio import create_task, sleep
 from ubinascii import unhexlify, hexlify
 from micropython import const
 from sys import print_exception
-from .interfaces.batteryinterface import BatteryInterface
-from ..core.devicetools import print_battery
-from ..core.addonrs485 import AddOnRs485
-from ..core.types import to_port_id, run_callbacks
-from ..helpers.batterydata import BatteryData
-from ..helpers.streamreader import AsciiHexStreamReader
+from ..interfaces.batteryinterface import BatteryInterface
+from ...core.devicetools import print_battery
+from ...core.addonrs485 import AddOnRs485
+from ...core.types import to_port_id, run_callbacks
+from ...helpers.batterydata import BatteryData
+from ...helpers.streamreader import AsciiHexStreamReader
 
 # ressources:
 
@@ -50,7 +50,7 @@ class PythonLvAlarmLock:
 
 class PylonLv(BatteryInterface):
     def __init__(self, name, config):
-        from ..core.singletons import Singletons
+        from ...core.singletons import Singletons
         
         self.__name = name
         self.__log = Singletons.log.create_logger(name)
@@ -96,7 +96,7 @@ class PylonLv(BatteryInterface):
                 self.__log.error('Failed to receive battery data.')
         except Exception as e:
             self.__log.error('Reading battery failed: ', e)
-            from ..core.singletons import Singletons
+            from ...core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
 
     @property
@@ -109,7 +109,7 @@ class PylonLv(BatteryInterface):
 
     @property
     def device_types(self):
-        from ..core.types import TYPE_BATTERY
+        from ...core.types import TYPE_BATTERY
         return (TYPE_BATTERY,)
     
     async def __find_device(self):
@@ -221,7 +221,7 @@ class PylonLv(BatteryInterface):
             return data
         except Exception as e:
             self.__log.error(f'Invalid response from group={group} slave={slave}: ', e)
-            from ..core.singletons import Singletons
+            from ...core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
             return None
             

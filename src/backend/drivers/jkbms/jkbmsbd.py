@@ -2,12 +2,12 @@ from asyncio import create_task, sleep
 from bluetooth import UUID as BT_UUID
 from ubinascii import unhexlify
 from sys import print_exception
-from .interfaces.batteryinterface import BatteryInterface
-from ..core.devicetools import print_battery
-from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
-from ..core.types import run_callbacks
-from ..helpers.batterydata import BatteryData
-from ..helpers.streamreader import read_little_uint8, read_little_uint16, read_little_int16, read_little_uint32, read_little_int32
+from ..interfaces.batteryinterface import BatteryInterface
+from ...core.devicetools import print_battery
+from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
+from ...core.types import run_callbacks
+from ...helpers.batterydata import BatteryData
+from ...helpers.streamreader import read_little_uint8, read_little_uint16, read_little_int16, read_little_uint32, read_little_int32
 
 # ressources:
 
@@ -58,8 +58,8 @@ class JkBmsBd(BatteryInterface):
             return self.__data
 
     def __init__(self, name, config):
-        from ..core.singletons import Singletons
-        from ..core.types import TYPE_BATTERY
+        from ...core.singletons import Singletons
+        from ...core.types import TYPE_BATTERY
         self.__name = name
         self.__device_types = (TYPE_BATTERY,)
         self.__mac = config['mac']
@@ -113,7 +113,7 @@ class JkBmsBd(BatteryInterface):
             self.__log.error(str(e))
         except Exception as e:
             self.__log.error('BLE error: ', e)
-            from ..core.singletons import Singletons
+            from ...core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
         finally:
             if characteristic is not None:

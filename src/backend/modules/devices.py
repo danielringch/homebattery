@@ -25,51 +25,51 @@ class Devices:
         for name, meta in config.items():
             driver_name = meta['driver']
             if driver_name == _AHOY_DTU:
-                from ..drivers.ahoydtu import AhoyDtu
+                from ..drivers.hoymiles.ahoydtu import AhoyDtu
                 gc_collect()
                 self.__load_device(log, name, AhoyDtu, meta)
             elif driver_name == _DALY_8S_24V_60A:
-                from ..drivers.daly8s24v60a import Daly8S24V60A
+                from ..drivers.daly.daly8s24v60a import Daly8S24V60A
                 gc_collect()
                 self.__load_device(log, name, Daly8S24V60A, meta)
             elif driver_name == _GROWATT_INVERTER_MODBUS:
-                from ..drivers.growattinvertermodbus import GrowattInverterModbus
+                from ..drivers.growatt.growattinvertermodbus import GrowattInverterModbus
                 gc_collect()
                 self.__load_device(log, name, GrowattInverterModbus, meta)
             elif driver_name == _HEIDELBERG_WALLBOX:
-                from ..drivers.heidelbergwallbox import HeidelbergWallbox
+                from ..drivers.heidelberg.heidelbergwallbox import HeidelbergWallbox
                 gc_collect()
                 self.__load_device(log, name, HeidelbergWallbox, meta)
             elif driver_name == _HTTP_CONSUMPTION:
-                from ..drivers.httpconsumption import HttpConsumption
+                from ..drivers.generic.httpconsumption import HttpConsumption
                 gc_collect()
                 self.__load_device(log, name, HttpConsumption, meta)
             elif driver_name == _JK_BMS_BD:
-                from ..drivers.jkbmsbd import JkBmsBd
+                from ..drivers.jkbms.jkbmsbd import JkBmsBd
                 gc_collect()
                 self.__load_device(log, name, JkBmsBd, meta)
             elif driver_name == _LLT_POWER_BMS_V4_BLE:
-                from ..drivers.lltpowerbmsv4ble import LltPowerBmsV4Ble
+                from ..drivers.lltpower.lltpowerbmsv4ble import LltPowerBmsV4Ble
                 gc_collect()
                 self.__load_device(log, name, LltPowerBmsV4Ble, meta)
             elif driver_name == _MQTT_BATTERY:
-                from ..drivers.mqttbattery import MqttBattery
+                from ..drivers.generic.mqttbattery import MqttBattery
                 gc_collect()
                 self.__load_device(log, name, MqttBattery, meta, mqtt)
             elif driver_name == _MQTT_CONSUMPTION:
-                from ..drivers.mqttconsumption import MqttConsumption
+                from ..drivers.generic.mqttconsumption import MqttConsumption
                 gc_collect()
                 self.__load_device(log, name, MqttConsumption, meta, mqtt)
             elif driver_name == _PYLON_LV:
-                from ..drivers.pylonlv import PylonLv
+                from ..drivers.pylontech.pylonlv import PylonLv
                 gc_collect()
                 self.__load_device(log, name, PylonLv, meta)
             elif driver_name == _SHELLY_CHARGER:
-                from ..drivers.shellycharger import ShellyCharger
+                from ..drivers.shelly.shellycharger import ShellyCharger
                 gc_collect()
                 self.__load_device(log, name, ShellyCharger, meta)
             elif driver_name == _VICTRON_MPPT:
-                from ..drivers.victronmppt import VictronMppt
+                from ..drivers.victron.victronmppt import VictronMppt
                 gc_collect()
                 self.__load_device(log, name, VictronMppt, meta)
             else:

@@ -2,9 +2,9 @@ from asyncio import Event, create_task, sleep
 from sys import print_exception
 from micropython import const
 from time import time
-from .interfaces.inverterinterface import InverterInterface
-from ..core.microaiohttp import ClientSession
-from ..core.types import PowerLut, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from ..interfaces.inverterinterface import InverterInterface
+from ...core.microaiohttp import ClientSession
+from ...core.types import PowerLut, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 
 _CMD_TURN_ON = const('turn_on')
 _CMD_TURN_OFF = const('turn_off')
@@ -13,8 +13,8 @@ _CMD_CHANGE_POWER = const('change_power')
 
 class AhoyDtu(InverterInterface):
     def __init__(self, name, config):
-        from ..core.singletons import Singletons
-        from ..core.types import TYPE_INVERTER
+        from ...core.singletons import Singletons
+        from ...core.types import TYPE_INVERTER
         self.__ahoy_state_to_internal_state = {
             0: STATUS_FAULT,
             1: STATUS_OFF,
@@ -155,7 +155,7 @@ class AhoyDtu(InverterInterface):
                     await self.__sync_from_inverters()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ..core.singletons import Singletons
+                from ...core.singletons import Singletons
                 print_exception(e, Singletons.log.trace)
             await sleep(1.0)
 

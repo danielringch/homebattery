@@ -1,9 +1,9 @@
 from asyncio import create_task, sleep
 from sys import print_exception
-from .interfaces.inverterinterface import InverterInterface
-from ..core.addonmodbus import AddOnModbus
-from ..core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
-from ..helpers.streamreader import read_big_uint16, read_big_uint32
+from ..interfaces.inverterinterface import InverterInterface
+from ...core.addonmodbus import AddOnModbus
+from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
+from ...helpers.streamreader import read_big_uint16, read_big_uint32
 
 class RegistersXX00S:
     def __init__(self):
@@ -29,8 +29,8 @@ class RegistersTLX:
 
 class GrowattInverterModbus(InverterInterface):
     def __init__(self, name, config):
-        from ..core.singletons import Singletons
-        from ..core.types import TYPE_INVERTER
+        from ...core.singletons import Singletons
+        from ...core.types import TYPE_INVERTER
         self.__name = name
         self.__device_types = (TYPE_INVERTER,)
         self.__log = Singletons.log.create_logger(name)
@@ -158,7 +158,7 @@ class GrowattInverterModbus(InverterInterface):
                     await sleep(1)   
                 except Exception as e:
                     self.__log.error('Cycle failed: ', e)
-                    from ..core.singletons import Singletons
+                    from ...core.singletons import Singletons
                     print_exception(e, Singletons.log.trace)
 
     def __handle_communication_error(self, present, message):

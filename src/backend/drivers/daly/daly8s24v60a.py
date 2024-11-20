@@ -3,17 +3,17 @@ from bluetooth import UUID as BT_UUID
 from micropython import const
 from ubinascii import unhexlify
 from sys import print_exception
-from .interfaces.batteryinterface import BatteryInterface
-from ..core.devicetools import print_battery
-from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
-from ..core.types import run_callbacks
-from ..helpers.batterydata import BatteryData
-from ..helpers.streamreader import BigEndianSteamReader
+from ..interfaces.batteryinterface import BatteryInterface
+from ...core.devicetools import print_battery
+from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ...core.types import run_callbacks
+from ...helpers.batterydata import BatteryData
+from ...helpers.streamreader import BigEndianSteamReader
 
 class Daly8S24V60A(BatteryInterface):
     def __init__(self, name, config):
-        from ..core.singletons import Singletons
-        from ..core.types import TYPE_BATTERY
+        from ...core.singletons import Singletons
+        from ...core.types import TYPE_BATTERY
         self.__name = name
         self.__device_types = (TYPE_BATTERY,)
         self.__mac = config['mac']
@@ -68,7 +68,7 @@ class Daly8S24V60A(BatteryInterface):
             self.__log.error(str(e))
         except Exception as e:
             self.__log.error('BLE error: ', e)
-            from ..core.singletons import Singletons
+            from ...core.singletons import Singletons
             print_exception(e, Singletons.log.trace)
         finally:
             if self.__receive_task is not None:

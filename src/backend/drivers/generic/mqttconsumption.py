@@ -1,14 +1,14 @@
 from asyncio import create_task
 from ubinascii import hexlify
-from .interfaces.consumptioninterface import ConsumptionInterface
-from ..core.backendmqtt import Mqtt
-from ..core.types import run_callbacks
-from ..helpers.streamreader import read_big_int16, read_big_int32
+from ..interfaces.consumptioninterface import ConsumptionInterface
+from ...core.backendmqtt import Mqtt
+from ...core.types import run_callbacks
+from ...helpers.streamreader import read_big_int16, read_big_int32
 
 class MqttConsumption(ConsumptionInterface):
     def __init__(self, name, config, mqtt: Mqtt):
-        from ..core.singletons import Singletons
-        from ..core.types import TYPE_CONSUMPTION
+        from ...core.singletons import Singletons
+        from ...core.types import TYPE_CONSUMPTION
         self.__name = name
         self.__device_types = (TYPE_CONSUMPTION,)
         self.__log = Singletons.log.create_logger(name)

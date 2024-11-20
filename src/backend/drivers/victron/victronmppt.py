@@ -1,15 +1,16 @@
 from asyncio import create_task, Event
+from collections import deque
 from machine import Pin
-from .interfaces.solarinterface import SolarInterface
-from ..core.addonserial import AddOnSerial
-from ..core.types import to_port_id, run_callbacks, SimpleFiFo, STATUS_ON, STATUS_OFF, STATUS_SYNCING
+from ..interfaces.solarinterface import SolarInterface
+from ...core.addonserial import AddOnSerial
+from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 
 _OFF_STATES = const((3,4,5,7,247))
 
 class VictronMppt(SolarInterface):
     def __init__(self, name, config):
-        from ..core.singletons import Singletons
-        from ..core.types import TYPE_SOLAR
+        from ...core.singletons import Singletons
+        from ...core.types import TYPE_SOLAR
         self.__name = name
         self.__device_types = (TYPE_SOLAR,)
         self.__log = Singletons.log.create_logger(name)
@@ -22,7 +23,7 @@ class VictronMppt(SolarInterface):
         self.__port.set_mode(line=True)
         self.__port.connect(19200, 0, None, 1)
         self.__port.on_rx.append(self.__on_rx)
-        self.__rx_buffer = SimpleFiFo()
+        self.__rx_buffer = deque(tuple(), 256)
         self.__rx_task = create_task(self.__receive())
         self.__rx_trigger = Event()
 
@@ -76,8 +77,8 @@ class VictronMppt(SolarInterface):
 
     async def __receive(self):
         while True:
-            while not self.__rx_buffer.empty:
-                line = self.__rx_buffer.pop()
+            while self.__rx_buffer:
+                line = self.__rx_buffer.popleft()
                 if len(line) > 4: # 1 start 1 tab 1 value 1 newline
                     end = len(line)
                     while line[end - 1] <= 32: # find trailing whitespace characters
