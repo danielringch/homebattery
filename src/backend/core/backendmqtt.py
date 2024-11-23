@@ -47,6 +47,8 @@ class Mqtt():
         self.__bat_capacity = 'bat/c'
         self.__bat_dev_root = 'bat/dev/%s'
 
+        self.__con_power = 'con/p'
+
         self.__connect_callback = list()
         self.__mode_callback = list()
 
@@ -131,6 +133,13 @@ class Mqtt():
 
     async def send_battery_device(self, data: BatteryData):
         await self.__mqtt.publish(self.__bat_dev_root % data.name, data.to_json().encode('utf-8'), qos=0, retain=False)
+
+# consumption
+
+    async def send_consumption_power(self, power: int):
+        await self.__mqtt.publish(self.__con_power, pack('!i', int(power)), qos=0, retain=False)
+
+# other
 
     @property
     def connected(self):

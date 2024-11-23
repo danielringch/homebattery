@@ -30,7 +30,6 @@ class MqttConsumption(ConsumptionInterface):
         return self.__callbacks
 
     def __on_power(self, topic, payload):
-        format = None
         if len(payload) == 2:
             reader = read_big_int16
         elif len(payload) == 4:

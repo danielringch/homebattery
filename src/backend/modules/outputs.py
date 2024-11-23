@@ -27,8 +27,6 @@ class Outputs:
 
         self.__mqtt.on_connect.append(self.__on_mqtt_connect)
 
-        self.__consumption.on_power.append(self.__on_live_consumption)
-
         self.__charger.on_status.append(self.__on_charger_status)
         self.__charger.on_energy.append(self.__on_charger_energy)
         self.__charger.on_device_energy.append(self.__on_charger_device_energy)
@@ -46,6 +44,8 @@ class Outputs:
         self.__solar.on_device_energy.append(self.__on_solar_device_energy)
         
         self.__battery.on_battery_data.append(self.__on_battery_data)
+
+        self.__consumption.on_power.append(self.__on_consumption_power)
 
         self.__task = create_task(self.__run())
 
@@ -140,6 +140,13 @@ class Outputs:
         if changed_battery is not None and changed_battery.valid and not changed_battery.is_forwarded:
             await self.__mqtt.send_battery_device(changed_battery)
 
+#consumption
+
+    async def __send_consumption_power(self):
+        power = self.__commands.popleft()
+        self.__ui.update_consumption(power)
+        await self.__mqtt.send_solar_power(power)
+
 # other
 
     async def __send_all_status(self):
@@ -151,9 +158,6 @@ class Outputs:
 
     def __on_mqtt_connect(self):
         self.__commands.append(self.__send_all_status)
-
-    def __on_live_consumption(self, power):
-        self.__ui.update_consumption(power)
 
     def __on_charger_status(self, status):
         self.__ui.switch_charger_on(status == STATUS_ON)
@@ -232,3 +236,7 @@ class Outputs:
             self.__commands.append(total_current)
             self.__commands.append(self.__send_battery_capacity)
             self.__commands.append(total_capacity)
+
+    def __on_consumption_power(self, power):
+        self.__commands.append(self.__send_consumption_power)
+        self.__commands.append(power)
