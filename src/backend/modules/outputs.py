@@ -145,7 +145,7 @@ class Outputs:
     async def __send_consumption_power(self):
         power = self.__commands.popleft()
         self.__ui.update_consumption(power)
-        await self.__mqtt.send_solar_power(power)
+        await self.__mqtt.send_consumption_power(power)
 
 # other
 
