@@ -1,3 +1,4 @@
+from json import dumps
 from struct import pack
 from .micromqtt import MicroMqtt
 from tls import CERT_NONE
@@ -71,9 +72,8 @@ class Mqtt():
     async def send_mode(self, mode: str):
         await self.__mqtt.publish(self.__mode_actual_topic, mode.encode('utf-8'), qos=2, retain=False)
 
-    async def send_locked(self, reason: str):
-        payload = reason.encode('utf-8') if reason is not None else None
-        await self.__mqtt.publish(self.__locked_topic, payload, qos=2, retain=False)
+    async def send_locked(self, labels):
+        await self.__mqtt.publish(self.__locked_topic, dumps(labels).encode('utf-8'), qos=2, retain=False)
 
 # charger
 
