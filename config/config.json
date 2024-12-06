@@ -42,10 +42,10 @@
       "signed": <true or false>,
       "evaluated_time_span": 30,
       "maturity_time_span": 15,
-      "power_offset": <integer>,
-      "power_hysteresis": <integer>,
-      "power_change_upwards": <integer>,
-      "power_change_downwards": <integer>
+      "target": <integer>,
+      "hysteresis": <integer>,
+      "change_upwards": <integer>,
+      "change_downwards": <integer>
     }
   },
   "supervisor":

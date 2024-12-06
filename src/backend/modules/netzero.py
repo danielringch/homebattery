@@ -15,10 +15,10 @@ class NetZero:
         self.__last_data = 0
 
         self.__unsigned = not bool(config['signed'])
-        self.__offset = int(config['power_offset'])
-        self.__hysteresis = int(config['power_hysteresis'])
-        self.__step_up = int(config['power_change_upwards'])
-        self.__step_down = -int(config['power_change_downwards'])
+        self.__target = int(config['target'])
+        self.__hysteresis = int(config['hysteresis'])
+        self.__step_up = int(config['change_upwards'])
+        self.__step_down = -int(config['change_downwards'])
         self.__mature_interval = int(config['maturity_time_span'])
 
     def clear(self):
@@ -65,12 +65,12 @@ class NetZero:
             result = 0
         elif self.__unsigned and second_smallest == 0: # overproduction
             result = self.__step_down
-        elif second_smallest < (self.__offset - self.__hysteresis): # reduce
-            result = -(min(self.__step_down, self.__offset - second_smallest))
+        elif second_smallest < (self.__target - self.__hysteresis): # reduce
+            result = max(self.__step_down, second_smallest - self.__target)
         elif len(self.__data) < _MIN_ITEMS or oldest_age < self.__mature_interval: # wait
             result = 0
-        elif second_smallest > (self.__offset + self.__hysteresis): # increase
-            result = min(self.__step_up, second_smallest - self.__offset) 
+        elif second_smallest > (self.__target + self.__hysteresis): # increase
+            result = min(self.__step_up, second_smallest - self.__target) 
         else:
             result = 0
 
