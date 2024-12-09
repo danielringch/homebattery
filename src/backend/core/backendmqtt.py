@@ -1,7 +1,7 @@
 from json import dumps
 from struct import pack
 from .micromqtt import MicroMqtt
-from tls import CERT_NONE
+from tls import CERT_NONE, CERT_REQUIRED
 from .types import MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, to_operation_mode
 from ..helpers.batterydata import BatteryData
 
@@ -13,13 +13,14 @@ class Mqtt():
 
         self.__ip, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
-        ca = config.get('ca', None)
-        tls_insecure = config.get('tls_insecure', False)
         user = config.get('user', None)
         password = config.get('password', None)
         self.__mqtt = MicroMqtt(self.__topic_root, self.__on_mqtt_connect)
-        if ca:
-            self.__mqtt.tls_set(ca_certs=ca, cert_reqs=CERT_NONE if tls_insecure else None)
+        tls = config.get('tls', None)
+        if tls is not None:
+            ca = tls.get('ca', None)
+            insecure = tls.get('insecure', False)
+            self.__mqtt.tls_set(ca_certs=ca, cert_reqs=CERT_NONE if insecure else CERT_REQUIRED)
 
         if user or password:
             self.__mqtt.username_pw_set(user, password)

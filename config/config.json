@@ -15,8 +15,11 @@
   "mqtt":
   {
     "host": <string>,
-    "ca": <optional, string>,
-    "tls_insecure": <optional, true or false>,
+    "tls":
+    {
+      "ca": <optional, string>,
+      "insecure": <true or false>
+    },
     "user": <optional, string>,
     "password": <optional, string>,
     "root": "homebattery"
