@@ -76,6 +76,15 @@ class AddOnModbus:
             if rx is None or not self.__check_input_packet(8, rx):
                 return None
             return bytearray()
+        
+    async def send_custom(self, packet):
+        async with self.__internal_lock:
+            self.__ui.notify_control()
+            tx = packet + bytearray(2)
+            rx = await self.__query(tx)
+            if rx is None or not self.__check_input_packet(4, rx):
+                return None
+            return rx
 
     async def __query(self, packet):
         # TX

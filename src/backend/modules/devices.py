@@ -5,6 +5,7 @@ from ..core.logging import CustomLogger
 
 _AHOY_DTU = const('ahoyDtu')
 _DALY_8S_24V_60A = const('daly8S24V60A')
+_GENERIC_SOLAR = const('genericSolar')
 _GROWATT_INVERTER_MODBUS = const('growattinvertermodbus')
 _HEIDELBERG_WALLBOX = const('heidelbergWallbox')
 _HTTP_CONSUMPTION = const('httpConsumption')
@@ -35,6 +36,10 @@ class Devices:
                 from ..drivers.daly.daly8s24v60a import Daly8S24V60A
                 gc_collect()
                 self.__load_device(name, Daly8S24V60A, meta)
+            elif driver_name == _GENERIC_SOLAR:
+                from ..drivers.generic.genericsolar import GenericSolar
+                gc_collect()
+                self.__load_device(name, GenericSolar, meta)
             elif driver_name == _GROWATT_INVERTER_MODBUS:
                 from ..drivers.growatt.growattinvertermodbus import GrowattInverterModbus
                 gc_collect()
