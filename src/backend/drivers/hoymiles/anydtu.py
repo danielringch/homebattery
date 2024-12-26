@@ -125,6 +125,8 @@ class AnyDtu(InverterInterface):
 
     def get_inverter_energy(self):
         energy = round(self.__energy.integral() / 3600, 1)
+        if energy > 0: # if the integral is too small yet, do not clear to not loose data
+            self.__energy.clear()
         self.__log.info(f'{energy:.1f}', ' Wh fed since last check.')
         return energy
         

@@ -2,6 +2,8 @@ from time import ticks_ms, ticks_diff
 
 class ValueAggregator:
     def __init__(self):
+        self.__last_value = 0
+        self.__last_ticks = None
         self.clear()
 
     def add(self, value):
@@ -16,21 +18,19 @@ class ValueAggregator:
         self.__last_ticks = now
 
     def clear(self):
-        self.__last_value = 0
-        self.__last_ticks = None
         self.__sum = 0
         self.__total_timespan = 0
 
-    def average(self):
+    def average(self, clear_afterwards=False):
         result = self.__sum / self.__total_timespan
-        self.__sum = 0
-        self.__total_timespan = 0
+        if clear_afterwards:
+            self.clear()
         return result
     
-    def integral(self):
+    def integral(self, clear_afterwards=False):
         result = self.__sum / 1000 # aggregation is done in ms for better accuracy, but the integral is in s
-        self.__sum = 0
-        self.__total_timespan = 0
+        if clear_afterwards:
+            self.clear()
         return result
         
         

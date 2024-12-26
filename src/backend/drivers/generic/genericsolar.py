@@ -136,9 +136,9 @@ class GenericSolar(SolarInterface):
             run_callbacks(self.__on_status_change, self, self.__status)
 
     def __calculate_power(self):
-        voltage = round(self.__voltage_avg.average(), 2)
-        current = round(self.__current_avg.average(), 2)
-        power = round(self.__power_avg.average())
+        voltage = round(self.__voltage_avg.average(clear_afterwards=True), 2)
+        current = round(self.__current_avg.average(clear_afterwards=True), 2)
+        power = round(self.__power_avg.average(clear_afterwards=True))
         self.__log.info('Voltage=', voltage, 'V Current=', current, 'A Power=', power, 'W')
         if self.__status != STATUS_FAULT:
             self.__set_status(STATUS_ON if power > 0 else STATUS_OFF)
