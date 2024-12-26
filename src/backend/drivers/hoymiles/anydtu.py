@@ -1,9 +1,10 @@
-from asyncio import Event, create_task, sleep
+from asyncio import Event, create_task, sleep, Lock
 from micropython import const
 from time import time
 from ..interfaces.inverterinterface import InverterInterface
 from ...core.logging import CustomLogger
 from ...core.types import PowerLut, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from ...helpers.valueaggregator import ValueAggregator
 from .dtuadapter import DtuAdapter
 
 _CMD_TURN_ON = const('turn_on')
@@ -27,22 +28,23 @@ class AnyDtu(InverterInterface):
 
         self.__tx_event = Event()
         self.__last_tx = time()
-        self.__last_rx = time()
 
-        self.__last_tick = time()
-
-        self.__service_task = create_task(self.__tick())
+        self.__power_lut = PowerLut(config['power_lut'])
 
         self.__name = name
-        self.__power_lut = PowerLut(config['power_lut'])
-        self.__shall_status = STATUS_OFF
-        self.__current_status = STATUS_SYNCING
-        self.__shall_percent = self.__power_lut.min_percent
-        self.__current_percent = None
-        self.__current_power = None
+        self.__public_status = STATUS_SYNCING
+        self.__public_power = 0
+        self.__target_power = 0
+
+        self.__device_power = None
+
         self.__last_command_type = None
         self.__last_status_command_type = None
-        self.__energy = 0 # unusual unit: Ws , too keep things integer can only divide once by 3600
+        self.__energy = ValueAggregator() # unusual unit: Ws , too keep things integer can only divide once by 3600
+
+        self.__lock = Lock()
+        self.__rx_task = create_task(self.__do_rx())
+        self.__tx_task = create_task(self.__do_tx())
 
 ###################
 # General
@@ -61,19 +63,21 @@ class AnyDtu(InverterInterface):
 ###################
     
     async def switch_inverter(self, on: bool):
-        old_value = self.__shall_status
-        self.__shall_status = STATUS_ON if on else STATUS_OFF
-        if old_value != self.__shall_status:
-            self.__shall_percent = self.__power_lut.min_percent
-            self.__log.info('New target state: ', self.__shall_status)
-            self.__tx_event.set()
+        if (self.__target_power > 0) == on:
+            return
+        self.__target_power = self.__power_lut.min_power if on else 0
+        self.__log.info('New target state: ', 'on' if on else 'off')
+        self.__tx_event.set()
 
     def get_inverter_status(self):
-        return self.__current_status
+        return self.__public_status
     
     @property
     def __is_status_synced(self):
-        return self.__shall_status == self.__current_status
+        if self.__target_power == 0:
+            return self.__public_status == STATUS_OFF
+        else:
+            return self.__public_status == STATUS_ON
     
     @property
     def on_inverter_status_change(self):
@@ -84,19 +88,17 @@ class AnyDtu(InverterInterface):
 ###################
     
     async def set_inverter_power(self, power):
-        old_percent = self.__shall_percent
-        self.__shall_percent, shall_power = self.__power_lut.get_percent(power)
-        if old_percent != self.__shall_percent:
-            self.__log.info('New power target: ', self.__shall_percent, ' % / ', shall_power, ' W')
+        if self.__target_power == 0: # inverter is not switched on:
+            return 0
+        target_percent, target_power = self.__power_lut.get_percent(power)
+        if target_power != self.__target_power:
+            self.__target_power = target_power
+            self.__log.info('New power target: ', target_percent, ' % / ', self.__target_power, ' W')
             self.__tx_event.set()
-        return shall_power
+        return target_power
         
     def get_inverter_power(self):
-        if  self.__current_status != STATUS_ON:
-            return 0
-        if not self.__is_power_synced:
-            return None
-        return self.__current_power
+        return self.__public_power
     
     @property
     def min_power(self):
@@ -108,7 +110,10 @@ class AnyDtu(InverterInterface):
     
     @property
     def __is_power_synced(self):
-        return self.__shall_percent == self.__current_percent
+        if self.__target_power == 0:
+            return self.__device_power == self.__power_lut.min_power
+        else:
+            return self.__device_power == self.__target_power
     
     @property
     def on_inverter_power_change(self):
@@ -118,107 +123,138 @@ class AnyDtu(InverterInterface):
 # Energy
 ###################
 
-    def __add_energy(self, seconds):
-        if self.__current_status != STATUS_ON or self.__current_power is None:
-            return
-        self.__energy += self.__current_power * seconds
-
     def get_inverter_energy(self):
-        energy = self.__energy / 3600
-        self.__energy = 0
+        energy = round(self.__energy.integral() / 3600, 1)
         self.__log.info(f'{energy:.1f}', ' Wh fed since last check.')
         return energy
         
 ###################
 # Internal
 ###################
-    
-    async def __tick(self):
+
+    def __set_public_status(self, new_status):
+        if new_status == self.__public_status:
+            return
+        self.__public_status = new_status
+        run_callbacks(self.__on_status_change, self, new_status)
+        self.__log.info('State=', new_status)
+        if new_status != STATUS_ON:
+            self.__set_public_power(0)
+        
+    def __set_public_power(self, new_power):
+        if new_power == self.__public_power:
+            return
+        self.__public_power = new_power
+        run_callbacks(self.__on_power_change, self, new_power)
+        self.__log.info('Power=', new_power, 'W')
+
+    async def __do_rx(self):
         while True:
             try:
-                now = time()
-                seconds = now - self.__last_tick
-                self.__last_tick = now
-                if seconds > 0:
-                    self.__add_energy(seconds)
-                await self.__sync_to_inverters()
-                if not self.__is_status_synced or not self.__is_power_synced or now - self.__last_rx > 30:
+                await sleep(2)
+                async with self.__lock:
                     await self.__sync_from_inverters()
+                self.__energy.add(self.__public_power)
             except Exception as e:
-                self.__log.error('Cycle failed: ', e)
+                self.__log.error('RX cycle failed: ', e)
                 self.__log.trace(e)
-            await sleep(1.0)
 
-    def __update(self, status, power_percent):
-        last_status = self.__current_status
-        if status != STATUS_ON \
-                and self.__shall_status == STATUS_ON \
-                and self.__current_status == STATUS_ON:
-            # inverter deactivated itself
-            self.__current_status = STATUS_FAULT
-        elif status == None:
-            # currently no communication with ahoydtu
-            self.__current_status = STATUS_SYNCING
-        else:
-            self.__current_status = status
 
-        last_percent = self.__current_percent
-        if power_percent is None or power_percent > 100:
-            self.__current_power = None
-            self.__current_percent = None
-        else:
-            self.__current_power, self.__current_percent = self.__power_lut.get_power(power_percent)
-        status_str = self.__current_status if self.__is_status_synced else f'{self.__current_status}->{self.__shall_status}'
-        power_str = self.__current_percent if self.__is_power_synced else f'{self.__current_percent}->{self.__shall_percent}'
-        self.__log.info('State=', status_str, ' Power=', power_str, ' %')
+    async def __do_tx(self):
+        while True:
+            try:
+                await sleep(1)
+                async with self.__lock:
+                    await self.__sync_to_inverters()
+            except Exception as e:
+                self.__log.error('TX cycle failed: ', e)
+                self.__log.trace(e)
 
-        if last_status != self.__current_status:
-            run_callbacks(self.__on_status_change, self, self.__current_status)
-        if (last_percent != self.__current_percent) and self.__current_power is not None:
-            run_callbacks(self.__on_power_change, self, self.__current_power)
-
-    async def __run_next_request(self):
+    async def __sync_to_inverters(self):
+        if not self.__tx_event.is_set():
+            return
+        
         if self.__is_status_synced and self.__is_power_synced:
-            return False
+            return
 
         now = time()
         delta = now - self.__last_tx
         wait_time = self.__get_wait_time()
         if delta < wait_time:
-            return False
+            return
 
         #prio 1: switch off
-        if not self.__is_status_synced and self.__shall_status != STATUS_ON:
+        if not self.__is_status_synced and self.__target_power == 0:
             self.__last_command_type = _CMD_TURN_OFF
             self.__last_status_command_type = _CMD_TURN_OFF
             self.__log.info('Sending switch off command.')
             await self.__adapter.switch_off()
+            self.__last_tx = time()
+            self.__tx_event.clear()
             return True
         
         #prio 2: reset (a power change will not survive reset, so reset first)
-        if not self.__is_status_synced and self.__shall_status == STATUS_ON and self.__last_status_command_type == _CMD_TURN_ON:
+        if not self.__is_status_synced and self.__target_power > 0 and self.__last_status_command_type == _CMD_TURN_ON:
             self.__last_command_type = _CMD_RESET
             self.__last_status_command_type = _CMD_RESET
             self.__log.info('Sending reset command.')
             await self.__adapter.reset()
+            self.__last_tx = time()
+            self.__tx_event.clear()
             return True
         
         #prio 3: change power
         if not self.__is_power_synced:
             self.__last_command_type = _CMD_CHANGE_POWER
             self.__log.info('Sending power change request.')
-            await self.__adapter.change_power(self.__shall_percent)
+            percent, _ = self.__power_lut.get_percent(self.__target_power)
+            await self.__adapter.change_power(percent)
+            self.__last_tx = time()
+            self.__tx_event.clear()
             return True
         
         #prio 4: switch on
-        if not self.__is_status_synced and self.__shall_status == STATUS_ON:
+        if not self.__is_status_synced and self.__target_power > 0:
             self.__last_command_type = _CMD_TURN_ON
             self.__last_status_command_type = _CMD_TURN_ON
             self.__log.info('Sending switch on command.')
             await self.__adapter.switch_on()
+            self.__last_tx = time()
+            self.__tx_event.clear()
             return True
         
         return False
+
+    async def __sync_from_inverters(self):
+        try:
+            status, limit = await self.__adapter.read()
+            self.__update(status, limit)
+            if False in (self.__is_status_synced, self.__is_power_synced):
+                self.__tx_event.set()
+        except Exception as e:
+            self.__log.error('No status available.')
+            self.__update(None, None)
+
+    def __update(self, status, power_percent):
+        if status != STATUS_ON \
+                and self.__target_power > 0 \
+                and self.__public_status == STATUS_ON:
+            # inverter deactivated itself
+            self.__set_public_status(STATUS_FAULT)
+        elif status == None:
+            # currently no communication with ahoydtu
+            self.__set_public_status(STATUS_SYNCING)
+        else:
+            self.__set_public_status(status)
+
+        # power percent was observed to have garbage valued from time to time when syncing, just ignore them
+        if power_percent is not None and power_percent <= 100:
+            self.__device_power, _ = self.__power_lut.get_power(power_percent)
+            if self.__public_status == STATUS_ON:
+                self.__set_public_power(self.__device_power)
+
+        if not self.__is_status_synced or not self.__is_power_synced:
+            self.__log.info('target_power=', self.__target_power, ' device_status=', self.__public_status, ' device_power=', self.__device_power)
 
     def __get_wait_time(self):
         if self.__last_command_type == _CMD_TURN_ON \
@@ -238,22 +274,3 @@ class AnyDtu(InverterInterface):
             else:
                 return 30
         return 0
-
-    async def __sync_to_inverters(self):
-        if not self.__tx_event.is_set():
-            return
-        
-        if await self.__run_next_request():
-            self.__last_tx = time()
-            self.__tx_event.clear()
-
-    async def __sync_from_inverters(self):
-        try:
-            status, limit = await self.__adapter.read()
-            self.__update(status, limit)
-            if False in (self.__is_status_synced, self.__is_power_synced):
-                self.__tx_event.set()
-            self.__last_rx = time()
-        except Exception as e:
-            self.__log.error('No status available.')
-            self.__update(None, None)
