@@ -3,6 +3,7 @@ from micropython import const
 from time import time
 from ..interfaces.inverterinterface import InverterInterface
 from ...core.logging import CustomLogger
+from ...core.triggers import triggers, TRIGGER_300S
 from ...core.types import PowerLut, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
 from ...helpers.valueaggregator import ValueAggregator
 from .dtuadapter import DtuAdapter
@@ -45,6 +46,7 @@ class AnyDtu(InverterInterface):
         self.__lock = Lock()
         self.__rx_task = create_task(self.__do_rx())
         self.__tx_task = create_task(self.__do_tx())
+        triggers.add_subscriber(self.__on_trigger)
 
 ###################
 # General
@@ -133,6 +135,16 @@ class AnyDtu(InverterInterface):
 ###################
 # Internal
 ###################
+
+    def __on_trigger(self, trigger_type):
+        try:
+            if trigger_type != TRIGGER_300S:
+                return
+            run_callbacks(self.__on_status_change, self, self.__public_status)
+            run_callbacks(self.__on_power_change, self, self.__public_power)
+        except Exception as e:
+            self.__log.error('Trigger cycle failed: ', e)
+            self.__log.trace(e)
 
     def __set_public_status(self, new_status):
         if new_status == self.__public_status:
