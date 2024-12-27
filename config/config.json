@@ -138,8 +138,7 @@
     "solar_victron":
     {
       "driver": "victronMppt",
-      "port": <ext1 or ext2>,
-      "power_hysteresis": 2
+      "port": <ext1 or ext2>
     },
     "charger_shelly":
     {

@@ -1,9 +1,10 @@
-from asyncio import create_task, Event
+from asyncio import create_task, Event, sleep
 from collections import deque
 from machine import Pin
 from ..interfaces.solarinterface import SolarInterface
 from ...core.addonserial import AddOnSerial
 from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING
+from ...helpers.valueaggregator import ValueAggregator
 
 _OFF_STATES = const((3,4,5,7,247))
 
@@ -24,20 +25,22 @@ class VictronMppt(SolarInterface):
         self.__port.connect(19200, 0, None, 1)
         self.__port.on_rx.append(self.__on_rx)
         self.__rx_buffer = deque(tuple(), 256)
-        self.__rx_task = create_task(self.__receive())
         self.__rx_trigger = Event()
+        self.__rx_task = create_task(self.__receive())
 
         self.__control_pin = Pin(4, Pin.OUT)
         self.__control_pin.off()
 
-        self.__power_hysteresis = max(int(config['power_hysteresis']), 1)
-        self.__power = self.__power_hysteresis * -1 # make sure hysteresis is reached in the first run
+        self.__power_avg = ValueAggregator()
+        self.__power = 0
         self.__energy_value = None
         self.__energy_delta = 0
         self.__last_status = STATUS_SYNCING
 
         self.__on_status_change = list()
         self.__on_power_change = list()
+
+        self.__worker_task = create_task(self.__worker())
 
 
     async def switch_solar(self, on):
@@ -71,6 +74,24 @@ class VictronMppt(SolarInterface):
     def device_types(self):
         return self.__device_types
     
+    async def __worker(self):
+        cycles_count = 0
+        while True:
+            try:
+                await sleep(6)
+                cycles_count += 1
+                power = round(self.__power_avg.average(clear_afterwards=True))
+                if (power != self.__power) or (cycles_count >= 10):
+                    self.__power = power
+                    self.__log.info('Power: ', power, ' W')
+                    run_callbacks(self.__on_power_change, self, power)
+                if cycles_count >= 10:
+                    cycles_count = 0
+            except Exception as e:
+                self.__log.error('Worker cycle failed: ', e)
+                self.__log.trace(e)
+
+    
     def __on_rx(self, data):
         self.__rx_buffer.append(data)
         self.__rx_trigger.set()
@@ -92,21 +113,13 @@ class VictronMppt(SolarInterface):
         try:
             if line[0] == 80 and line[1] == 80 and line[2] == 86 and line[3] == 9: # PPV
                 power = int(str(line[4:end], 'utf-8'))
-                value_changed = abs(power - self.__power) >= self.__power_hysteresis
-                if value_changed:
-                    self.__log.info('Power: ', power, ' W')
-                    run_callbacks(self.__on_power_change, self, power)
-                    self.__power = power
+                self.__power_avg.add(power)
             elif line[0] == 67 and line[1] == 83 and line[2]  == 9: # CS
                 status = STATUS_ON if int(str(line[3:end], 'utf-8')) in _OFF_STATES else STATUS_OFF
                 if status != self.__last_status:
+                    self.__last_status = status
                     self.__log.info('Status: ', status)
                     run_callbacks(self.__on_status_change, self, status)
-                    if status == STATUS_OFF:
-                        self.__log.info('Power: 0 W')
-                        run_callbacks(self.__on_power_change, self, 0)
-                        self.__power = 0
-                self.__last_status = status
             elif line[0] == 72 and line[1] == 50 and line[2] == 48 and line[3] == 9: # H20
                 energy = int(str(line[4:end], 'utf-8')) * 10
                 if self.__energy_value is None: # first readout after startup
