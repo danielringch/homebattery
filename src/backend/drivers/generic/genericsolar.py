@@ -1,8 +1,8 @@
 from asyncio import create_task, sleep_ms
-from time import time
 from ..interfaces.solarinterface import SolarInterface
 from ...core.addonmodbus import AddOnModbus
 from ...core.logging import CustomLogger
+from ...core.triggers import triggers, TRIGGER_300S
 from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
 from ...helpers.streamreader import read_big_uint16
 from ...helpers.valueaggregator import ValueAggregator
@@ -34,8 +34,6 @@ class GenericSolar(SolarInterface):
         else:
             raise Exception('Port ', port, 'is already in use')
 
-        self.__worker_task = create_task(self.__worker())
-
         current_range = int(config['current_range'])
         if current_range == 50:
             self.__multipliers = __current_multipliers_50
@@ -47,7 +45,7 @@ class GenericSolar(SolarInterface):
             self.__multipliers = __current_multipliers_300
         else:
             raise Exception()
-        self.__multiplier = None
+        self.__multiplier: float = None
 
         self.__voltage_avg = ValueAggregator()
         self.__current_avg = ValueAggregator()
@@ -62,6 +60,9 @@ class GenericSolar(SolarInterface):
 
         self.__on_status_change = list()
         self.__on_power_change = list()
+
+        self.__worker_task = create_task(self.__worker())
+        triggers.add_subscriber(self.__on_trigger)
 
     @property
     def device_types(self):
@@ -99,11 +100,8 @@ class GenericSolar(SolarInterface):
     ###############
 
     async def __worker(self):
-        self.__last_6s_timestamp = time()
-        self.__last_60s_timestamp = time()
         while True:
             await sleep_ms(300)
-            now = time()
             try:
                 if self.__multiplier is None:
                     await self.__read_current_range()
@@ -117,34 +115,30 @@ class GenericSolar(SolarInterface):
                 if energy is not None:
                     self.__energy_delta = energy
 
-                if now - self.__last_60s_timestamp >= 60:
-                    self.__last_6s_timestamp = now
-                    self.__last_60s_timestamp = now
-                    self.__calculate_power()
-                if now - self.__last_6s_timestamp >= 6:
-                    self.__last_6s_timestamp = now
-                    self.__calculate_power()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
                 self.__log.trace(e)
-            
+    
+    def __on_trigger(self, trigger_type):
+        try:
+            voltage = round(self.__voltage_avg.average(clear_afterwards=True), 2)
+            current = round(self.__current_avg.average(clear_afterwards=True), 2)
+            power = round(self.__power_avg.average(clear_afterwards=True))
+            self.__log.info('Voltage=', voltage, 'V Current=', current, 'A Power=', power, 'W')
+            if self.__status != STATUS_FAULT:
+                self.__set_status(STATUS_ON if power > 0 else STATUS_OFF)
+            if (power != self.__power) or (trigger_type == TRIGGER_300S):
+                self.__power = power
+                run_callbacks(self.__on_power_change, self, self.__power)
+        except Exception as e:
+            self.__log.error('Trigger cycle failed: ', e)
+            self.__log.trace(e)
 
     def __set_status(self, new_status):
         status_changed = (new_status != self.__status)
         self.__status = new_status
         if status_changed:
             run_callbacks(self.__on_status_change, self, self.__status)
-
-    def __calculate_power(self):
-        voltage = round(self.__voltage_avg.average(clear_afterwards=True), 2)
-        current = round(self.__current_avg.average(clear_afterwards=True), 2)
-        power = round(self.__power_avg.average(clear_afterwards=True))
-        self.__log.info('Voltage=', voltage, 'V Current=', current, 'A Power=', power, 'W')
-        if self.__status != STATUS_FAULT:
-            self.__set_status(STATUS_ON if power > 0 else STATUS_OFF)
-        if power != self.__power:
-            run_callbacks(self.__on_power_change, self, self.__power)
-        self.__power = power
 
     def __update_connection_status(self, success: bool):
         if success:
@@ -164,14 +158,10 @@ class GenericSolar(SolarInterface):
             self.__update_connection_status(False)
             return None
         try:
-            voltage = read_big_uint16(rx, 0) / 100
-            current = read_big_uint16(rx, 2) / 100 * self.__multiplier
-            power = ((read_big_uint16(rx, 6) << 16) + read_big_uint16(rx, 4)) * self.__multiplier / 10
+            self.__voltage_avg.add(read_big_uint16(rx, 0) / 100)
+            self.__current_avg.add(read_big_uint16(rx, 2) / 100 * self.__multiplier)
+            self.__power_avg.add(((read_big_uint16(rx, 6) << 16) + read_big_uint16(rx, 4)) * self.__multiplier / 10)
             energy = (read_big_uint16(rx, 10) << 16) + read_big_uint16(rx, 8) * self.__multiplier
-
-            self.__voltage_avg.add(voltage)
-            self.__current_avg.add(current)
-            self.__power_avg.add(power)
             self.__update_connection_status(True)
         except:
             self.__update_connection_status(False)

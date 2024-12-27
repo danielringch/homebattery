@@ -1,8 +1,9 @@
-from asyncio import create_task, Event, sleep
+from asyncio import create_task, Event
 from collections import deque
 from machine import Pin
 from ..interfaces.solarinterface import SolarInterface
 from ...core.addonserial import AddOnSerial
+from ...core.triggers import TRIGGER_300S, triggers
 from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING
 from ...helpers.valueaggregator import ValueAggregator
 
@@ -40,7 +41,7 @@ class VictronMppt(SolarInterface):
         self.__on_status_change = list()
         self.__on_power_change = list()
 
-        self.__worker_task = create_task(self.__worker())
+        triggers.add_subscriber(self.__on_trigger)
 
 
     async def switch_solar(self, on):
@@ -74,23 +75,16 @@ class VictronMppt(SolarInterface):
     def device_types(self):
         return self.__device_types
     
-    async def __worker(self):
-        cycles_count = 0
-        while True:
-            try:
-                await sleep(6)
-                cycles_count += 1
-                power = round(self.__power_avg.average(clear_afterwards=True))
-                if (power != self.__power) or (cycles_count >= 10):
-                    self.__power = power
-                    self.__log.info('Power: ', power, ' W')
-                    run_callbacks(self.__on_power_change, self, power)
-                if cycles_count >= 10:
-                    cycles_count = 0
-            except Exception as e:
-                self.__log.error('Worker cycle failed: ', e)
-                self.__log.trace(e)
-
+    def __on_trigger(self, trigger_type):
+        try:
+            power = round(self.__power_avg.average(clear_afterwards=True))
+            if (power != self.__power) or (trigger_type == TRIGGER_300S):
+                self.__power = power
+                self.__log.info('Power: ', power, ' W')
+                run_callbacks(self.__on_power_change, self, power)
+        except Exception as e:
+            self.__log.error('Trigger cycle failed: ', e)
+            self.__log.trace(e)
     
     def __on_rx(self, data):
         self.__rx_buffer.append(data)

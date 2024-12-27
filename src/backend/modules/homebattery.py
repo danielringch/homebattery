@@ -8,6 +8,8 @@ from ..core.microblecentral import MicroBleCentral
 gc_collect()
 from ..core.logging import Logging
 gc_collect()
+from ..core.triggers import triggers
+gc_collect()
 from ..core.userinterface import UserInterface
 gc_collect()
 from ..core.watchdog import Watchdog
@@ -121,6 +123,7 @@ async def homebattery():
     solar_task = create_task(solar.run())
     modeswitcher.run()
     supervisor.run()
+    triggers.start()
     
 
     gc_collect()
