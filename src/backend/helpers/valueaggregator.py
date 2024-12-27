@@ -22,7 +22,10 @@ class ValueAggregator:
         self.__total_timespan = 0
 
     def average(self, clear_afterwards=False):
-        result = self.__sum / self.__total_timespan
+        if self.__total_timespan == 0:
+            result = 0
+        else:
+            result = self.__sum / self.__total_timespan
         if clear_afterwards:
             self.clear()
         return result
