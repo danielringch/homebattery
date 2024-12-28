@@ -15,6 +15,9 @@ class Charger:
 
         self.__last_status = None
 
+        self.__last_status_tx = 0
+        self.__last_power_tx = 0
+
         self.__status_callbacks = list()
         self.__energy_callbacks = list()
         self.__device_energy_callbacks = list()
@@ -69,12 +72,14 @@ class Charger:
         return self.__status_callbacks
 
     async def __get_status(self):
+        now = time()
         driver_statuses = tuple(x.get_charger_status() for x in self.__chargers)
         status = merge_driver_statuses(driver_statuses)
 
-        if status != self.__last_status:
+        if (status != self.__last_status) or ((now - self.__last_status_tx) > 270):
             run_callbacks(self.__status_callbacks, status)
             self.__last_status = status
+            self.__last_status_tx = now
 
     async def __get_energy(self):
         energy = 0.0

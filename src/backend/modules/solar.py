@@ -25,6 +25,9 @@ class Solar:
             device.on_solar_status_change.append(self.__on_status_change)
             device.on_solar_power_change.append(self.__on_power_change)
 
+        self.__last_status_tx = 0
+        self.__last_power_tx = 0
+
         self.__last_status = None
         self.__last_power = None
 
@@ -81,18 +84,22 @@ class Solar:
         return self.__device_energy_callbacks
 
     async def __get_status(self):
+        now = time()
         driver_statuses = tuple(x.get_solar_status() for x in self.__devices)
         status = merge_driver_statuses(driver_statuses)
 
-        if status != self.__last_status:
+        if (status != self.__last_status) or ((now - self.__last_status_tx) > 270):
             run_callbacks(self.__status_callbacks, status)
             self.__last_status = status
+            self.__last_status_tx = now
 
     async def __get_power(self):
+        now = time()
         power = sum((x.get_solar_power() for x in self.__devices), 0)
-        if power != self.__last_power:
+        if (power != self.__last_power) or ((now - self.__last_power_tx) > 270):
             run_callbacks(self.__power_callbacks, power)
             self.__last_power = power
+            self.__last_power_tx = now
 
     async def __get_energy(self):
         energy = 0.0

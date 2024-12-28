@@ -31,6 +31,9 @@ class Inverter:
         self.__energy_callbacks = list()
         self.__device_energy_callbacks = list()
 
+        self.__last_status_tx = 0
+        self.__last_power_tx = 0
+
         self.__last_status = None
         self.__last_power = None
 
@@ -67,6 +70,7 @@ class Inverter:
         return self.__last_status if self.__last_status is not None else STATUS_SYNCING
 
     async def __get_status(self):
+        now = time()
         driver_statuses = tuple(x.get_inverter_status() for x in self.__inverters)
         status = merge_driver_statuses(driver_statuses)
 
@@ -76,8 +80,11 @@ class Inverter:
                 run_callbacks(self.__power_callbacks, 0)
                 if self.__netzero is not None:
                     self.__netzero.clear()
+
+        if (status != self.__last_status) or ((now - self.__last_status_tx) > 270):
             run_callbacks(self.__status_callbacks, status)
             self.__last_status = status
+            self.__last_status_tx = now
         return status
 
     async def set_mode(self, mode: str):
@@ -124,6 +131,7 @@ class Inverter:
             await self.__set_power(power + delta)
 
     async def __get_power(self):
+        now = time()
         power = 0
         for inverter in self.__inverters:
             inverter_power = inverter.get_inverter_power()
@@ -134,8 +142,10 @@ class Inverter:
         if power != self.__last_power:
             if self.__netzero is not None:
                 self.__netzero.clear()
+        if (power != self.__last_power) or ((now - self.__last_power_tx) > 270):
             run_callbacks(self.__power_callbacks, power)
             self.__last_power = power
+            self.__last_power_tx = now
         return power
     
     async def __set_power(self, power):
