@@ -13,11 +13,22 @@ TYPE_CHARGER = const('charger')
 TYPE_CONSUMPTION = const('consumption')
 TYPE_INVERTER = const('inverter')
 TYPE_SOLAR = const('solar')
+TYPE_SENSOR = const('sensor')
 
 STATUS_ON = const('on')
 STATUS_SYNCING = const('syncing')
 STATUS_OFF = const('off')
 STATUS_FAULT = const('fault')
+STATUS_OFFLINE = const('offline')
+
+MEASUREMENT_CAPACITY = const('capacity')
+MEASUREMENT_CURRENT = const('current')
+MEASUREMENT_ENERGY = const('energy')
+MEASUREMENT_POWER = const('power')
+MEASUREMENT_SOC = const('soc')
+MEASUREMENT_STATUS = const('status')
+MEASUREMENT_TEMPERATURE = const('temperature')
+MEASUREMENT_VOLTAGE = const('voltage')
 
 def to_operation_mode(str):
     if str == MODE_CHARGE:
@@ -90,8 +101,8 @@ class InverterStatusValues:
         return self.__dict[str]
     
 class CommandFiFo(deque):
-    def __init__(self):
-        super().__init__(tuple(), 16)
+    def __init__(self, size: int):
+        super().__init__(tuple(), size)
         self.event = Event()
 
     def append(self, payload):

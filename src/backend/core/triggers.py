@@ -1,7 +1,7 @@
 from asyncio import create_task, sleep_ms
 from .types import run_callbacks
 from micropython import const
-from time import ticks_ms, ticks_diff, time
+from time import ticks_ms, ticks_diff, time, localtime
 
 TRIGGER_6S = const('trigger_6s')
 TRIGGER_300S = const('trigger_300s')
@@ -10,6 +10,7 @@ class Triggers:
     def __init__(self):
         self.__worker = None
         self.__subscribers = []
+        self.__next_300s = get_timestamp_of_next_interval(5)
 
     def start(self):
         from .singletons import Singletons # logger might not be initialised in ctor
@@ -20,7 +21,6 @@ class Triggers:
         self.__subscribers.append(callback)
 
     async def __run(self):
-        self.__last_5min = time()
         wait_time = 6000
         while True:
             try:
@@ -34,10 +34,19 @@ class Triggers:
 
     def __get_trigger_type(self):
         now = time()
-        delta = now - self.__last_5min
-        if delta > 297:
-            self.__last_5min = now
-            return TRIGGER_300S
-        return TRIGGER_6S
+        trigger = TRIGGER_6S
+        if now > self.__next_300s:
+            self.__next_300s = get_timestamp_of_next_interval(5)
+            trigger = TRIGGER_300S
+        return trigger
+    
+def get_timestamp_of_next_interval(interval: int):
+    now = localtime()
+    now_seconds = time()
+    minutes = now[4]
+    seconds = now[5]
+    extra_seconds = (minutes % interval) * 60 + seconds
+    seconds_to_add = (interval * 60) - extra_seconds
+    return now_seconds + seconds_to_add
     
 triggers = Triggers()

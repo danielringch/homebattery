@@ -10,7 +10,7 @@ class ModeSwitcher:
     def __init__(self, config: dict, mqtt: Mqtt, inverter: Inverter, charger: Charger, solar: Solar):
         from ..core.singletons import Singletons
         #config = config['modeswitcher']
-        self.__commands = CommandFiFo()
+        self.__commands = CommandFiFo(16)
         self.__task = None
 
         self.__log: CustomLogger = Singletons.log.create_logger('modeswitcher')

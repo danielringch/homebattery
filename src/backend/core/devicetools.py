@@ -1,27 +1,20 @@
 from time import localtime, time
 from .logging import CustomLogger
-from .types import STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from .types import STATUS_FAULT, STATUS_OFF, STATUS_OFFLINE, STATUS_ON, STATUS_SYNCING
 from ..helpers.batterydata import BatteryData
-
-def get_energy_execution_timestamp():
-    now = localtime()
-    now_seconds = time()
-    minutes = now[4]
-    seconds = now[5]
-    extra_seconds = (minutes % 15) * 60 + seconds
-    seconds_to_add = (15 * 60) - extra_seconds
-    return now_seconds + seconds_to_add
 
 def merge_driver_statuses(statuses):
     if len(statuses) == 0:
         return STATUS_OFF
     if STATUS_FAULT in statuses:
         return STATUS_FAULT
-    if all(x == STATUS_ON for x in statuses):
+    if STATUS_OFFLINE in statuses:
+        return STATUS_OFFLINE
+    if STATUS_SYNCING in statuses:
+        return STATUS_SYNCING
+    if any(x == STATUS_ON for x in statuses):
         return STATUS_ON
-    if all(x == STATUS_OFF for x in statuses):
-        return STATUS_OFF
-    return STATUS_SYNCING
+    return STATUS_OFF
 
 def print_battery(logger: CustomLogger, battery: BatteryData):
     v = f'{battery.v:.2f} V' if battery.v is not None else 'unknown'

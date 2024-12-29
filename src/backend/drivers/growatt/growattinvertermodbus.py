@@ -2,7 +2,9 @@ from asyncio import create_task, sleep
 from ..interfaces.inverterinterface import InverterInterface
 from ...core.addonmodbus import AddOnModbus
 from ...core.logging import CustomLogger
+from ...core.triggers import triggers, TRIGGER_300S
 from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
+from ...core.types import MEASUREMENT_STATUS, MEASUREMENT_POWER, MEASUREMENT_ENERGY
 from ...helpers.streamreader import read_big_uint16, read_big_uint32
 
 class RegistersXX00S:
@@ -72,10 +74,10 @@ class GrowattInverterModbus(InverterInterface):
         self.__energy = 0
         self.__last_energy = None
 
-        self.__worker_task = create_task(self.__worker())
+        self.__on_data = list()
 
-        self.__on_status_change = list()
-        self.__on_power_change = list()
+        self.__worker_task = create_task(self.__worker())
+        triggers.add_subscriber(self.__on_trigger)
 
     @property
     def device_types(self):
@@ -91,13 +93,6 @@ class GrowattInverterModbus(InverterInterface):
             self.__requested_limit = 1
             self.__log.info('New target state: ', self.__requested_status)
     
-    def get_inverter_status(self):
-        return self.__shown_status
-    
-    @property
-    def on_inverter_status_change(self):
-        return self.__on_status_change
-    
     async def set_inverter_power(self, power):
         if self.__max_power is None:
             return 0
@@ -109,9 +104,6 @@ class GrowattInverterModbus(InverterInterface):
             self.__requested_limit = limit
         return power
     
-    def get_inverter_power(self):
-        return self.__power
-    
     @property
     def min_power(self):
         return 0
@@ -121,15 +113,15 @@ class GrowattInverterModbus(InverterInterface):
         return self.__max_power if self.__max_power is not None else 0
     
     @property
-    def on_inverter_power_change(self):
-        return self.__on_power_change
+    def on_inverter_data(self):
+        return self.__on_data
     
-    def get_inverter_energy(self):
-        energy = self.__energy
-        self.__energy = 0
-        self.__log.info(energy, ' Wh fed since last check.')
-        return energy
-
+    def get_inverter_data(self):
+        return {
+            MEASUREMENT_STATUS: self.__shown_status,
+            MEASUREMENT_POWER: self.__power
+        }
+    
     async def __worker(self):
         schedule = (self.__read_power, self.__read_power, self.__read_power, self.__read_power, self.__read_status,\
             self.__read_power, self.__read_power, self.__read_power, self.__read_power, self.__read_power_limit,\
@@ -160,6 +152,24 @@ class GrowattInverterModbus(InverterInterface):
                     self.__log.error('Cycle failed: ', e)
                     self.__log.trace(e)
 
+    def __on_trigger(self, trigger_type):
+        try:
+            if trigger_type == TRIGGER_300S:
+                data = {}
+                data[MEASUREMENT_STATUS] = self.__shown_status
+                data[MEASUREMENT_POWER] = self.__power
+                data[MEASUREMENT_ENERGY] = self.__get_energy()
+                run_callbacks(self.__on_data, self, data)
+        except Exception as e:
+            self.__log.error('Trigger cycle failed: ', e)
+            self.__log.trace(e)
+
+    def __get_energy(self):
+        energy = self.__energy
+        self.__energy = 0
+        self.__log.info(energy, ' Wh fed since last check.')
+        return energy
+
     def __handle_communication_error(self, present, message):
         if not present:
             self.__active_errors.discard(message)
@@ -184,7 +194,7 @@ class GrowattInverterModbus(InverterInterface):
         if new_status != self.__shown_status:
             self.__log.info('Status=', new_status)
             self.__shown_status = new_status
-            run_callbacks(self.__on_status_change, self, new_status)
+            run_callbacks(self.__on_data, self, {MEASUREMENT_STATUS: new_status})
 
     async def __write_state(self):
         async with self.__port.lock:
@@ -236,7 +246,7 @@ class GrowattInverterModbus(InverterInterface):
             if abs(power - self.__power) >= self.__power_hysteresis: # value changed
                 self.__log.info('Power=', power, ' W')
                 self.__power = power
-                run_callbacks(self.__on_power_change, self, power)
+                run_callbacks(self.__on_data, self, {MEASUREMENT_POWER: power})
 
     async def __read_energy(self):
         async with self.__port.lock:

@@ -3,7 +3,9 @@ from binascii import hexlify
 from ..interfaces.chargerinterface import ChargerInterface
 from ...core.addonmodbus import AddOnModbus
 from ...core.logging import CustomLogger
+from ...core.triggers import triggers, TRIGGER_300S
 from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
+from ...core.types import MEASUREMENT_STATUS, MEASUREMENT_POWER, MEASUREMENT_ENERGY
 from ...helpers.streamreader import read_big_uint16
 
 class HeidelbergWallbox(ChargerInterface):
@@ -60,10 +62,10 @@ class HeidelbergWallbox(ChargerInterface):
         self.__energy = 0
         self.__last_energy = None
 
-        self.__worker_task = create_task(self.__worker())
+        self.__on_data = []
 
-        self.__on_status_change = list()
-        self.__on_power_change = list()
+        self.__worker_task = create_task(self.__worker())
+        triggers.add_subscriber(self.__on_trigger)
 
     @property
     def device_types(self):
@@ -75,16 +77,16 @@ class HeidelbergWallbox(ChargerInterface):
     
     async def switch_charger(self, on):
         pass
-    
-    def get_charger_status(self):
-        return self.__shown_status
-    
+
     @property
-    def on_charger_status_change(self):
-        return self.__on_status_change
+    def on_charger_data(self):
+        return self.__on_data
     
-    async def get_charger_energy(self):
-        return 0
+    def get_charger_data(self):
+        return {
+            MEASUREMENT_STATUS: self.__shown_status,
+            MEASUREMENT_POWER: self.__power
+        }
 
     ###############
 
@@ -118,6 +120,18 @@ class HeidelbergWallbox(ChargerInterface):
                     self.__log.error('Cycle failed: ', e)
                     self.__log.trace(e)
 
+    def __on_trigger(self, trigger_type):
+        try:
+            if trigger_type == TRIGGER_300S:
+                data = {}
+                data[MEASUREMENT_STATUS] = self.__shown_status
+                data[MEASUREMENT_POWER] = self.__power
+                data[MEASUREMENT_ENERGY] = 0
+                run_callbacks(self.__on_data, self, data)
+        except Exception as e:
+            self.__log.error('Trigger cycle failed: ', e)
+            self.__log.trace(e)
+
     def __handle_communication_error(self, present, message):
         if not present:
             self.__active_errors.discard(message)
@@ -141,7 +155,7 @@ class HeidelbergWallbox(ChargerInterface):
         if new_status != self.__shown_status:
             self.__log.info('Status=', new_status)
             self.__shown_status = new_status
-            run_callbacks(self.__on_status_change, new_status)
+            run_callbacks(self.__on_data, self, {MEASUREMENT_STATUS: new_status})
 
     async def __read_status(self):
         rx = await self.__port.read_input(self.__slave_address, 5, 1)

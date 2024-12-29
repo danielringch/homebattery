@@ -4,17 +4,7 @@ class InverterInterface(DriverInterface):
     async def switch_inverter(self, on):
         raise NotImplementedError()
     
-    def get_inverter_status(self):
-        raise NotImplementedError()
-    
-    @property
-    def on_inverter_status_change(self):
-        raise NotImplementedError()
-    
     async def set_inverter_power(self, power):
-        raise NotImplementedError()
-    
-    def get_inverter_power(self):
         raise NotImplementedError()
     
     @property
@@ -26,8 +16,8 @@ class InverterInterface(DriverInterface):
         raise NotImplementedError()
     
     @property
-    def on_inverter_power_change(self):
+    def on_inverter_data(self):
         raise NotImplementedError()
     
-    def get_inverter_energy(self):
+    def get_inverter_data(self):
         raise NotImplementedError()

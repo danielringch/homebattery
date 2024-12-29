@@ -5,6 +5,7 @@ from ..interfaces.solarinterface import SolarInterface
 from ...core.addonserial import AddOnSerial
 from ...core.triggers import TRIGGER_300S, triggers
 from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING
+from ...core.types import MEASUREMENT_STATUS, MEASUREMENT_POWER, MEASUREMENT_ENERGY
 from ...helpers.valueaggregator import ValueAggregator
 
 _OFF_STATES = const((3,4,5,7,247))
@@ -38,34 +39,23 @@ class VictronMppt(SolarInterface):
         self.__energy_delta = 0
         self.__last_status = STATUS_SYNCING
 
-        self.__on_status_change = list()
-        self.__on_power_change = list()
+        self.__on_data = []
 
         triggers.add_subscriber(self.__on_trigger)
 
 
     async def switch_solar(self, on):
         self.__control_pin.value(on)
-    
-    def get_solar_status(self):
-        return self.__last_status
-    
-    def get_solar_power(self):
-        return self.__power
-    
+
     @property
-    def on_solar_status_change(self):
-        return self.__on_status_change
+    def on_solar_data(self):
+        return self.__on_data
     
-    @property
-    def on_solar_power_change(self):
-        return self.__on_power_change
-    
-    async def get_solar_energy(self):
-        energy = self.__energy_delta
-        self.__energy_delta = 0
-        self.__log.info(energy, ' Wh fed after last check')
-        return energy
+    def get_solar_data(self):
+        return {
+            MEASUREMENT_STATUS: self.__last_status,
+            MEASUREMENT_POWER: self.__power
+        }
     
     @property
     def name(self):
@@ -78,10 +68,17 @@ class VictronMppt(SolarInterface):
     def __on_trigger(self, trigger_type):
         try:
             power = round(self.__power_avg.average(clear_afterwards=True))
-            if (power != self.__power) or (trigger_type == TRIGGER_300S):
+            data = {}
+            if trigger_type == TRIGGER_300S:
+                data[MEASUREMENT_STATUS] = self.__last_status
+                data[MEASUREMENT_POWER] = power
+                data[MEASUREMENT_ENERGY] = self.__get_energy()
+            if power != self.__power:
                 self.__power = power
                 self.__log.info('Power: ', power, ' W')
-                run_callbacks(self.__on_power_change, self, power)
+                data[MEASUREMENT_POWER] = power
+            if data:
+                run_callbacks(self.__on_data, self, data)
         except Exception as e:
             self.__log.error('Trigger cycle failed: ', e)
             self.__log.trace(e)
@@ -89,6 +86,12 @@ class VictronMppt(SolarInterface):
     def __on_rx(self, data):
         self.__rx_buffer.append(data)
         self.__rx_trigger.set()
+
+    def __get_energy(self):
+        energy = self.__energy_delta
+        self.__energy_delta = 0
+        self.__log.info(energy, ' Wh fed after last check')
+        return energy
 
     async def __receive(self):
         while True:
@@ -113,7 +116,7 @@ class VictronMppt(SolarInterface):
                 if status != self.__last_status:
                     self.__last_status = status
                     self.__log.info('Status: ', status)
-                    run_callbacks(self.__on_status_change, self, status)
+                    run_callbacks(self.__on_data, self, {MEASUREMENT_STATUS: status})
             elif line[0] == 72 and line[1] == 50 and line[2] == 48 and line[3] == 9: # H20
                 energy = int(str(line[4:end], 'utf-8')) * 10
                 if self.__energy_value is None: # first readout after startup

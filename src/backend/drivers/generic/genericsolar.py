@@ -4,6 +4,7 @@ from ...core.addonmodbus import AddOnModbus
 from ...core.logging import CustomLogger
 from ...core.triggers import triggers, TRIGGER_300S
 from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
+from ...core.types import MEASUREMENT_STATUS, MEASUREMENT_VOLTAGE, MEASUREMENT_CURRENT, MEASUREMENT_POWER, MEASUREMENT_ENERGY
 from ...helpers.streamreader import read_big_uint16
 from ...helpers.valueaggregator import ValueAggregator
 
@@ -54,12 +55,13 @@ class GenericSolar(SolarInterface):
         self.__connected = __connection_timeout
         self.__status = STATUS_SYNCING
         self.__power = 0
+        self.__voltage = 0.0
+        self.__current = 0.0
 
         self.__energy_delta = 0
         self.__clear_energy = True
 
-        self.__on_status_change = list()
-        self.__on_power_change = list()
+        self.__on_data = list()
 
         self.__worker_task = create_task(self.__worker())
         triggers.add_subscriber(self.__on_trigger)
@@ -74,28 +76,18 @@ class GenericSolar(SolarInterface):
     
     async def switch_solar(self, on):
         pass
-    
-    def get_solar_status(self):
-        return self.__status
-    
+
     @property
-    def on_solar_status_change(self):
-        return self.__on_status_change
+    def on_solar_data(self):
+        return self.__on_data
     
-    def get_solar_power(self):
-        return self.__power
-    
-    @property
-    def on_solar_power_change(self):
-        return self.__on_power_change
-    
-    async def get_solar_energy(self):
-        energy = self.__energy_delta
-        self.__energy_delta = 0
-        if energy > 0:
-            self.__clear_energy = True
-        self.__log.info(energy, ' Wh fed after last check')
-        return energy
+    def get_solar_data(self):
+        return {
+            MEASUREMENT_STATUS: self.__status,
+            MEASUREMENT_VOLTAGE: self.__voltage,
+            MEASUREMENT_CURRENT: self.__current,
+            MEASUREMENT_POWER: self.__power
+        }
 
     ###############
 
@@ -127,18 +119,41 @@ class GenericSolar(SolarInterface):
             self.__log.info('Voltage=', voltage, 'V Current=', current, 'A Power=', power, 'W')
             if self.__status != STATUS_FAULT:
                 self.__set_status(STATUS_ON if power > 0 else STATUS_OFF)
-            if (power != self.__power) or (trigger_type == TRIGGER_300S):
+            data = {}
+            if trigger_type == TRIGGER_300S:
+                data[MEASUREMENT_STATUS] = self.__status
+                data[MEASUREMENT_VOLTAGE] = voltage
+                data[MEASUREMENT_CURRENT] = current
+                data[MEASUREMENT_POWER] = power
+                data[MEASUREMENT_ENERGY] = self.__get_energy()
+            if voltage != self.__voltage:
+                self.__voltage = voltage
+                data[MEASUREMENT_VOLTAGE] = voltage
+            if current != self.__current:
+                self.__current = current
+                data[MEASUREMENT_CURRENT] = current
+            if power != self.__power:
                 self.__power = power
-                run_callbacks(self.__on_power_change, self, self.__power)
+                data[MEASUREMENT_POWER] = power
+            if data:
+                run_callbacks(self.__on_data, self, data)
         except Exception as e:
             self.__log.error('Trigger cycle failed: ', e)
             self.__log.trace(e)
+
+    def __get_energy(self):
+        energy = self.__energy_delta
+        self.__energy_delta = 0
+        if energy > 0:
+            self.__clear_energy = True
+        self.__log.info(energy, ' Wh fed after last check')
+        return energy
 
     def __set_status(self, new_status):
         status_changed = (new_status != self.__status)
         self.__status = new_status
         if status_changed:
-            run_callbacks(self.__on_status_change, self, self.__status)
+            run_callbacks(self.__on_data, self, {MEASUREMENT_STATUS: self.__status})
 
     def __update_connection_status(self, success: bool):
         if success:

@@ -1,7 +1,7 @@
 from asyncio import sleep
 from random import randrange
 from time import time
-from ..core.types import CommandFiFo, run_callbacks
+from ..core.types import run_callbacks
 from .devices import Devices
 
 class Battery:
@@ -12,8 +12,6 @@ class Battery:
 
 
     def __init__(self, config: dict, devices: Devices):
-        self.__commands = CommandFiFo()
-
         self.__on_battery_data = list()
 
         self.__battery_data = dict()

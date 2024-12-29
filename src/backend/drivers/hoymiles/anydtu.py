@@ -5,6 +5,7 @@ from ..interfaces.inverterinterface import InverterInterface
 from ...core.logging import CustomLogger
 from ...core.triggers import triggers, TRIGGER_300S
 from ...core.types import PowerLut, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_ON, STATUS_SYNCING
+from ...core.types import MEASUREMENT_STATUS, MEASUREMENT_POWER, MEASUREMENT_ENERGY
 from ...helpers.valueaggregator import ValueAggregator
 from .dtuadapter import DtuAdapter
 
@@ -24,8 +25,7 @@ class AnyDtu(InverterInterface):
         self.__adapter = adapter
         self.__adapter.configure(self.__log)
 
-        self.__on_status_change = list()
-        self.__on_power_change = list()
+        self.__on_data = []
 
         self.__tx_event = Event()
         self.__last_tx = time()
@@ -70,9 +70,6 @@ class AnyDtu(InverterInterface):
         self.__target_power = self.__power_lut.min_power if on else 0
         self.__log.info('New target state: ', 'on' if on else 'off')
         self.__tx_event.set()
-
-    def get_inverter_status(self):
-        return self.__public_status
     
     @property
     def __is_status_synced(self):
@@ -80,10 +77,6 @@ class AnyDtu(InverterInterface):
             return self.__public_status == STATUS_OFF
         else:
             return self.__public_status == STATUS_ON
-    
-    @property
-    def on_inverter_status_change(self):
-        return self.__on_status_change
     
 ###################
 # Power
@@ -98,9 +91,6 @@ class AnyDtu(InverterInterface):
             self.__log.info('New power target: ', target_percent, ' % / ', self.__target_power, ' W')
             self.__tx_event.set()
         return target_power
-        
-    def get_inverter_power(self):
-        return self.__public_power
     
     @property
     def min_power(self):
@@ -117,21 +107,21 @@ class AnyDtu(InverterInterface):
         else:
             return self.__device_power == self.__target_power
     
-    @property
-    def on_inverter_power_change(self):
-        return self.__on_power_change
     
 ###################
-# Energy
+# Data
 ###################
 
-    def get_inverter_energy(self):
-        energy = round(self.__energy.integral() / 3600, 1)
-        if energy > 0: # if the integral is too small yet, do not clear to not loose data
-            self.__energy.clear()
-        self.__log.info(f'{energy:.1f}', ' Wh fed since last check.')
-        return energy
-        
+    @property
+    def on_inverter_data(self):
+        return self.__on_data
+    
+    def get_inverter_data(self):
+        return {
+            MEASUREMENT_STATUS: self.__public_status,
+            MEASUREMENT_POWER: self.__public_power
+        }
+
 ###################
 # Internal
 ###################
@@ -140,17 +130,28 @@ class AnyDtu(InverterInterface):
         try:
             if trigger_type != TRIGGER_300S:
                 return
-            run_callbacks(self.__on_status_change, self, self.__public_status)
-            run_callbacks(self.__on_power_change, self, self.__public_power)
+            data = {
+                MEASUREMENT_STATUS: self.__public_status,
+                MEASUREMENT_POWER: self.__public_power,
+                MEASUREMENT_ENERGY: self.__get_energy()
+            }
+            run_callbacks(self.__on_data, self, data)
         except Exception as e:
             self.__log.error('Trigger cycle failed: ', e)
             self.__log.trace(e)
+
+    def __get_energy(self):
+        energy = round(self.__energy.integral() / 3600)
+        if energy > 0: # if the integral is too small yet, do not clear to not loose data
+            self.__energy.clear()
+        self.__log.info(f'{energy:.1f}', ' Wh fed since last check.')
+        return energy
 
     def __set_public_status(self, new_status):
         if new_status == self.__public_status:
             return
         self.__public_status = new_status
-        run_callbacks(self.__on_status_change, self, new_status)
+        run_callbacks(self.__on_data, self, {MEASUREMENT_STATUS: new_status})
         self.__log.info('State=', new_status)
         if new_status != STATUS_ON:
             self.__set_public_power(0)
@@ -159,7 +160,7 @@ class AnyDtu(InverterInterface):
         if new_power == self.__public_power:
             return
         self.__public_power = new_power
-        run_callbacks(self.__on_power_change, self, new_power)
+        run_callbacks(self.__on_data, self, {MEASUREMENT_POWER: new_power})
         self.__log.info('Power=', new_power, 'W')
 
     async def __do_rx(self):

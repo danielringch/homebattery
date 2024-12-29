@@ -3,8 +3,10 @@ from micropython import const
 from time import time
 from ..interfaces.chargerinterface import ChargerInterface
 from ...core.logging import CustomLogger
+from ...core.triggers import triggers, TRIGGER_300S
 from ...core.microaiohttp import ClientSession
 from ...core.types import run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
+from ...core.types import MEASUREMENT_STATUS, MEASUREMENT_ENERGY
 
 _REFRESH_INTERVAL = const(120)
 _TIMER_INTERVAL = const(300)
@@ -29,7 +31,9 @@ class ShellyCharger(ChargerInterface):
         self.__sync_trigger = Event()
         self.__sync_task = create_task(self.__sync())
 
-        self.__on_status_change = list()
+        self.__energy = 0
+
+        self.__on_data = []
 
         self.__on_request = f'relay/{self.__relay_id}?turn=on&timer={_TIMER_INTERVAL}'
         self.__off_request = f'relay/{self.__relay_id}?turn=off'
@@ -37,16 +41,20 @@ class ShellyCharger(ChargerInterface):
         self.__energy_request = f'rpc/Switch.GetStatus?id={self.__relay_id}'
         self.__energy_reset_request = f'rpc/Switch.ResetCounters?id={self.__relay_id}&type=["aenergy"]'
 
+        triggers.add_subscriber(self.__on_trigger)
+
     async def switch_charger(self, on):
         self.__shall_on = on
         self.__sync_trigger.set()
 
-    def get_charger_status(self):
-        return self.__last_status
-    
     @property
-    def on_charger_status_change(self):
-        return self.__on_status_change
+    def on_charger_data(self):
+        return self.__on_data
+    
+    def get_charger_data(self):
+        return {
+            MEASUREMENT_STATUS: self.__last_status
+        }
 
     async def get_charger_energy(self):
         json = await self.__get(self.__energy_request)
@@ -80,7 +88,7 @@ class ShellyCharger(ChargerInterface):
 
             self.__log.info('Status: ', status)
             if status != self.__last_status:
-                run_callbacks(self.__on_status_change, status)
+                run_callbacks(self.__on_data, self, {MEASUREMENT_STATUS: status})
             self.__last_status = status
 
             now = time()
@@ -97,6 +105,18 @@ class ShellyCharger(ChargerInterface):
             except TimeoutError:
                 pass
             self.__sync_trigger.clear()
+
+    def __on_trigger(self, trigger_type):
+        try:
+            data = {}
+            if trigger_type == TRIGGER_300S:
+                data[MEASUREMENT_STATUS] = self.__last_status
+                data[MEASUREMENT_ENERGY] = 0
+            if data:
+                run_callbacks(self.__on_data, self, data)
+        except Exception as e:
+            self.__log.error('Trigger cycle failed: ', e)
+            self.__log.trace(e)
 
     def __create_session(self):
         return ClientSession(self.__log, self.__host, self.__port)

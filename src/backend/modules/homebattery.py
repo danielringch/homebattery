@@ -105,7 +105,7 @@ async def homebattery():
     solar = Solar(config, devices)
     modeswitcher = ModeSwitcher(config, mqtt, inverter, charger, solar)
     supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, consumption, battery)
-    outputs = Outputs(mqtt, supervisor, consumption, battery, charger, inverter, solar)
+    outputs = Outputs(mqtt, supervisor, devices, consumption, battery, charger, inverter, solar)
     watchdog.feed()
 
     gc_collect()
