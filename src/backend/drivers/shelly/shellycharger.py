@@ -5,8 +5,9 @@ from ..interfaces.chargerinterface import ChargerInterface
 from ...core.logging import CustomLogger
 from ...core.triggers import triggers, TRIGGER_300S
 from ...core.microaiohttp import ClientSession
-from ...core.types import run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
-from ...core.types import MEASUREMENT_STATUS, MEASUREMENT_ENERGY
+from ...core.types import run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT, STATUS_OFFLINE
+from ...core.types import MEASUREMENT_STATUS, MEASUREMENT_ENERGY, MEASUREMENT_POWER
+from ...helpers.valueaggregator import ValueAggregator
 
 _REFRESH_INTERVAL = const(120)
 _TIMER_INTERVAL = const(300)
@@ -21,6 +22,7 @@ class ShellyCharger(ChargerInterface):
         self.__log: CustomLogger = Singletons.log.create_logger(name)
         self.__host, self.__port = config['host'].split(':')
         self.__port = int(self.__port)
+        self.__generation = int(config['generation'])
         self.__relay_id = int(config['relay_id'])
 
         self.__ui = Singletons.ui
@@ -31,17 +33,27 @@ class ShellyCharger(ChargerInterface):
         self.__sync_trigger = Event()
         self.__sync_task = create_task(self.__sync())
 
-        self.__energy = 0
+        self.__power = 0
+        self.__power_integral = ValueAggregator()
+
+        self.__last_reported_power = 0
 
         self.__on_data = []
 
         self.__on_request = f'relay/{self.__relay_id}?turn=on&timer={_TIMER_INTERVAL}'
         self.__off_request = f'relay/{self.__relay_id}?turn=off'
         self.__state_request = f'relay/{self.__relay_id}'
-        self.__energy_request = f'rpc/Switch.GetStatus?id={self.__relay_id}'
-        self.__energy_reset_request = f'rpc/Switch.ResetCounters?id={self.__relay_id}&type=["aenergy"]'
+        self.__power_request = f'meter/{self.__relay_id}' if (self.__generation == 1) else f'rpc/Switch.GetStatus?id={self.__relay_id}'
 
         triggers.add_subscriber(self.__on_trigger)
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def device_types(self):
+        return self.__device_types
 
     async def switch_charger(self, on):
         self.__shall_on = on
@@ -53,78 +65,99 @@ class ShellyCharger(ChargerInterface):
     
     def get_charger_data(self):
         return {
-            MEASUREMENT_STATUS: self.__last_status
+            MEASUREMENT_STATUS: self.__last_status,
+            MEASUREMENT_POWER: self.__power
         }
-
-    async def get_charger_energy(self):
-        json = await self.__get(self.__energy_request)
-        energy = float(json['aenergy']['total']) if json is not None else None
-        if energy is None:
-            return None
-        _ = await self.__get(self.__energy_reset_request)
-        self.__log.info(f'{energy:.1f}', ' Wh consumed since last check.')
-        return energy
-
-    @property
-    def name(self):
-        return self.__name
-
-    @property
-    def device_types(self):
-        return self.__device_types
     
     async def __sync(self):
         while True:
-            json = await self.__get(self.__state_request)
-            on = json['ison'] if json is not None else None
-            if on is None:
-                status = STATUS_FAULT
-            elif on and self.__shall_on:
-                status = STATUS_ON
-            elif not on and not self.__shall_on:
-                status = STATUS_OFF
-            else:
-                status = STATUS_SYNCING
-
-            self.__log.info('Status: ', status)
-            if status != self.__last_status:
-                run_callbacks(self.__on_data, self, {MEASUREMENT_STATUS: status})
-            self.__last_status = status
-
-            now = time()
-            request_necessary = (status == STATUS_SYNCING) or (status == STATUS_FAULT)
-            if request_necessary or\
-                    (self.__shall_on and (now - self.__last_on_command) >= (_REFRESH_INTERVAL - 5)):
-                self.__log.info('Sending switch request, on=', self.__shall_on)
-                await self.__get(self.__on_request if self.__shall_on else self.__off_request)
-                if self.__shall_on:
-                    self.__last_on_command = now
             try:
-                timeout = _REFRESH_INTERVAL if not request_necessary else 2
-                await wait_for(self.__sync_trigger.wait(), timeout=timeout)
+                await wait_for(self.__sync_trigger.wait(), timeout=_REFRESH_INTERVAL)
             except TimeoutError:
                 pass
             self.__sync_trigger.clear()
+
+            status = await self.__get_status()
+            if status in (STATUS_ON, STATUS_OFF):
+                await sleep(3)
+
+            if status == STATUS_SYNCING:
+                await self.__switch(self.__shall_on)
+            else:
+                self.__power = await self.__get_power()
+                self.__power_integral.add(self.__power)
+
+            if (time() - self.__last_on_command) > _REFRESH_INTERVAL:
+                await self.__switch(self.__shall_on)
+
+            if status == STATUS_SYNCING: # prevent reporting status change to SYNCING when relay switches fast
+                await sleep(1)
+                status = await self.__get_status()
+
+            if status not in (STATUS_ON, STATUS_OFF): # retry setting the switch faster
+                self.__sync_trigger.set()
+
+            if status != self.__last_status:
+                self.__last_status = status
+                self.__log.info('Status=', status)
+                run_callbacks(self.__on_data, self, {MEASUREMENT_STATUS: status})
 
     def __on_trigger(self, trigger_type):
         try:
             data = {}
             if trigger_type == TRIGGER_300S:
                 data[MEASUREMENT_STATUS] = self.__last_status
-                data[MEASUREMENT_ENERGY] = 0
+                data[MEASUREMENT_POWER] = self.__power
+                energy = round(self.__power_integral.integral() / 3600)
+                if energy:
+                    self.__power_integral.clear()
+                data[MEASUREMENT_ENERGY] = energy
+                self.__log.info('Status=', self.__last_status, ' Power=', self.__power, 'W Energy=', energy, 'Wh')
+            if self.__power != self.__last_reported_power:
+                self.__last_reported_power = self.__power
+                data[MEASUREMENT_POWER] = self.__power
+                self.__log.info('Power=', self.__power, 'W')
             if data:
                 run_callbacks(self.__on_data, self, data)
+            if self.__last_status == STATUS_ON:
+                self.__sync_trigger.set()
         except Exception as e:
             self.__log.error('Trigger cycle failed: ', e)
             self.__log.trace(e)
+    
+    async def __switch(self, on: bool):
+        self.__log.info('Sending switch request, on=', on)
+        if on:
+            await self.__get(self.__on_request)
+            self.__last_on_command = time()
+        else:
+            await self.__get(self.__off_request)
 
-    def __create_session(self):
-        return ClientSession(self.__log, self.__host, self.__port)
+    async def __get_status(self):
+        json = await self.__get(self.__state_request)
+        on = json['ison'] if json is not None else None
+        if on is None:
+            return STATUS_OFFLINE
+        elif on and self.__shall_on:
+            return STATUS_ON
+        elif not on and not self.__shall_on:
+            return STATUS_OFF
+        else:
+            return STATUS_SYNCING
+
+    async def __get_power(self):
+        json = await self.__get(self.__power_request)
+        key = 'power' if self.__generation == 1 else 'apower'
+        power = float(json[key]) if json is not None else None
+        if power is None:
+            self.__log.error(f'No power data available.')
+            return 0
+        return round(power)
     
     async def __get(self, query):
         for i in reversed(range(3)):
             try:
-                with self.__create_session() as session:
+                with ClientSession(self.__log, self.__host, self.__port) as session:
                     response = await session.get(query)
                     status = response.status
                     if (status >= 200 and status <= 299):
