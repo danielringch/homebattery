@@ -47,10 +47,12 @@ class GenericSolar(SolarInterface):
         else:
             raise Exception()
         self.__multiplier: float = None
+        self.__threshold = config['threshold']
 
         self.__voltage_avg = ValueAggregator()
         self.__current_avg = ValueAggregator()
         self.__power_avg = ValueAggregator()
+        self.__power_under_threshold = ValueAggregator()
 
         self.__connected = __connection_timeout
         self.__status = STATUS_SYNCING
@@ -146,6 +148,7 @@ class GenericSolar(SolarInterface):
         self.__energy_delta = 0
         if energy > 0:
             self.__clear_energy = True
+        energy = max(0, energy - round(self.__power_under_threshold.integral(clear_afterwards=True)))
         self.__log.info(energy, ' Wh fed after last check')
         return energy
 
@@ -174,8 +177,14 @@ class GenericSolar(SolarInterface):
             return None
         try:
             self.__voltage_avg.add(read_big_uint16(rx, 0) / 100)
-            self.__current_avg.add(read_big_uint16(rx, 2) / 100 * self.__multiplier)
-            self.__power_avg.add(((read_big_uint16(rx, 6) << 16) + read_big_uint16(rx, 4)) * self.__multiplier / 10)
+            current = read_big_uint16(rx, 2) / 100 * self.__multiplier
+            power = ((read_big_uint16(rx, 6) << 16) + read_big_uint16(rx, 4)) * self.__multiplier / 10
+            if power < self.__threshold:
+                current = 0.0
+                self.__power_under_threshold.add(power)
+                power = 0.0
+            self.__current_avg.add(current)
+            self.__power_avg.add(power)
             energy = (read_big_uint16(rx, 10) << 16) + read_big_uint16(rx, 8) * self.__multiplier
             self.__update_connection_status(True)
         except:
