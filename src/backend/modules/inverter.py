@@ -2,6 +2,7 @@ from asyncio import Lock, TimeoutError, wait_for
 from time import time
 from ..core.devicetools import merge_driver_statuses
 from ..core.logging import CustomLogger
+from ..core.triggers import triggers, TRIGGER_300S
 from ..core.types import CommandFiFo, MODE_DISCHARGE, run_callbacks, STATUS_FAULT, STATUS_OFF, STATUS_OFFLINE, STATUS_ON, STATUS_SYNCING
 from ..core.types import MEASUREMENT_STATUS, MEASUREMENT_POWER, MEASUREMENT_ENERGY
 from .consumption import Consumption
@@ -28,9 +29,6 @@ class Inverter:
 
         self.__summary_callbacks = list()
 
-        self.__last_status_tx = 0
-        self.__last_power_tx = 0
-
         from ..core.types import TYPE_INVERTER
         self.__inverters = devices.get_by_type(TYPE_INVERTER)
         self.__last_status = STATUS_OFFLINE if self.__inverters else STATUS_OFF
@@ -38,6 +36,8 @@ class Inverter:
 
         for device in self.__inverters:
             device.on_inverter_data.append(self.__on_device_data)
+
+        triggers.add_subscriber(self.__on_trigger)
 
     async def run(self):
         while True:
@@ -53,11 +53,18 @@ class Inverter:
             except TimeoutError:
                 pass
 
+    def __on_trigger(self, trigger_type):
+        try:
+            if trigger_type == TRIGGER_300S:
+                run_callbacks(self.__summary_callbacks, self.get_summary_data())
+        except Exception as e:
+            self.__log.error('Trigger cycle failed: ', e)
+            self.__log.trace(e)
+
     def get_status(self):
         return self.__last_status if self.__last_status is not None else STATUS_SYNCING
 
     async def __get_status(self):
-        now = time()
         driver_statuses = tuple(x.get_inverter_data()[MEASUREMENT_STATUS] for x in self.__inverters)
         status = merge_driver_statuses(driver_statuses)
 
@@ -68,10 +75,9 @@ class Inverter:
                 if self.__netzero is not None:
                     self.__netzero.clear()
 
-        if (status != self.__last_status) or ((now - self.__last_status_tx) > 270):
+        if status != self.__last_status:
             run_callbacks(self.__summary_callbacks, {MEASUREMENT_STATUS: status})
             self.__last_status = status
-            self.__last_status_tx = now
         return status
 
     async def set_mode(self, mode: str):
@@ -108,7 +114,6 @@ class Inverter:
             await self.__set_power(power + delta)
 
     async def __get_power(self):
-        now = time()
         power = 0
         for inverter in self.__inverters:
             inverter_power = inverter.get_inverter_data().get(MEASUREMENT_POWER, None)
@@ -119,10 +124,9 @@ class Inverter:
         if power != self.__last_power:
             if self.__netzero is not None:
                 self.__netzero.clear()
-        if (power != self.__last_power) or ((now - self.__last_power_tx) > 270):
+        if power != self.__last_power:
             run_callbacks(self.__summary_callbacks, {MEASUREMENT_POWER: power})
             self.__last_power = power
-            self.__last_power_tx = now
         return power
     
     async def __set_power(self, power):

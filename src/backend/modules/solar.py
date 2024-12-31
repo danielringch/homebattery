@@ -2,6 +2,7 @@ from asyncio import Lock, TimeoutError, wait_for
 from time import time
 from ..core.devicetools import merge_driver_statuses
 from ..core.logging import CustomLogger
+from ..core.triggers import triggers, TRIGGER_300S
 from ..core.types import CommandFiFo, MODE_PROTECT, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_OFFLINE, STATUS_SYNCING
 from ..core.types import MEASUREMENT_STATUS, MEASUREMENT_POWER, MEASUREMENT_ENERGY
 from .devices import Devices
@@ -21,11 +22,11 @@ class Solar:
         for device in self.__devices:
             device.on_solar_data.append(self.__on_device_data)
 
-        self.__last_status_tx = 0
-        self.__last_power_tx = 0
-
         self.__last_status = STATUS_OFFLINE if self.__devices else STATUS_OFF
         self.__last_power = 0
+
+        triggers.add_subscriber(self.__on_trigger)
+
 
     async def run(self):
         while True:
@@ -41,6 +42,14 @@ class Solar:
                 await wait_for(self.__commands.wait_and_clear(), timeout=1)
             except TimeoutError:
                 pass
+
+    def __on_trigger(self, trigger_type):
+        try:
+            if trigger_type == TRIGGER_300S:
+                run_callbacks(self.__summary_callbacks, self.get_summary_data())
+        except Exception as e:
+            self.__log.error('Trigger cycle failed: ', e)
+            self.__log.trace(e)
 
     def get_status(self):
         return self.__last_status if self.__last_status is not None else STATUS_SYNCING
@@ -62,22 +71,18 @@ class Solar:
         }
 
     async def __get_status(self):
-        now = time()
         driver_statuses = tuple(x.get_solar_data()[MEASUREMENT_STATUS] for x in self.__devices)
         status = merge_driver_statuses(driver_statuses)
 
-        if (status != self.__last_status) or ((now - self.__last_status_tx) > 270):
+        if status != self.__last_status:
             run_callbacks(self.__summary_callbacks, {MEASUREMENT_STATUS: status})
             self.__last_status = status
-            self.__last_status_tx = now
 
     async def __get_power(self):
-        now = time()
         power = sum((x.get_solar_data().get(MEASUREMENT_POWER, 0) for x in self.__devices), 0)
-        if (power != self.__last_power) or ((now - self.__last_power_tx) > 270):
+        if power != self.__last_power:
             run_callbacks(self.__summary_callbacks, {MEASUREMENT_POWER: power})
             self.__last_power = power
-            self.__last_power_tx = now
 
     def __on_device_data(self, sender, data):
         if MEASUREMENT_STATUS in data:
