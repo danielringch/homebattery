@@ -15,7 +15,7 @@ class Outputs:
     def __init__(self, mqtt: Mqtt, supervisor: Supervisor, devices: Devices, consumption: Consumption, \
                  battery: Battery, charger: Charger, inverter: Inverter, solar: Solar):
         from ..core.singletons import Singletons
-        self.__commands = CommandFiFo(128)
+        self.__commands = CommandFiFo(32 + (8 * len(devices.devices)))
         self.__log: CustomLogger = Singletons.log.create_logger('output')
         self.__mqtt = mqtt
         self.__supervisor = supervisor
