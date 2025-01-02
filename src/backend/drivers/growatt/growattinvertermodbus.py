@@ -6,6 +6,7 @@ from ...core.triggers import triggers, TRIGGER_300S
 from ...core.types import to_port_id, run_callbacks, STATUS_ON, STATUS_OFF, STATUS_SYNCING, STATUS_FAULT
 from ...core.types import MEASUREMENT_STATUS, MEASUREMENT_POWER, MEASUREMENT_ENERGY
 from ...helpers.streamreader import read_big_uint16, read_big_uint32
+from ...helpers.valueaggregator import ValueAggregator
 
 class RegistersXX00S:
     def __init__(self):
@@ -62,13 +63,14 @@ class GrowattInverterModbus(InverterInterface):
         self.__error_debounced = False
         
         self.__max_power = None
-        self.__power_hysteresis = max(int(config['power_hysteresis']), 1)
 
         self.__requested_status = STATUS_OFF
         self.__device_status = STATUS_SYNCING
         self.__shown_status = STATUS_SYNCING
         self.__requested_limit = 0
         self.__device_limit = None
+
+        self.__power_avg = ValueAggregator()
 
         self.__power = 0
         self.__energy = 0
@@ -154,11 +156,17 @@ class GrowattInverterModbus(InverterInterface):
 
     def __on_trigger(self, trigger_type):
         try:
+            power = round(self.__power_avg.average(clear_afterwards=True))
+            self.__log.info('Power=', power, 'W')
+            data = {}
             if trigger_type == TRIGGER_300S:
-                data = {}
                 data[MEASUREMENT_STATUS] = self.__shown_status
                 data[MEASUREMENT_POWER] = self.__power
                 data[MEASUREMENT_ENERGY] = self.__get_energy()
+            if power != self.__power:
+                self.__power = power
+                data[MEASUREMENT_POWER] = power
+            if data:
                 run_callbacks(self.__on_data, self, data)
         except Exception as e:
             self.__log.error('Trigger cycle failed: ', e)
@@ -242,11 +250,7 @@ class GrowattInverterModbus(InverterInterface):
             rx = await self.__port.read_input(self.__slave_address, self.__registers.power, 2)
             if self.__handle_communication_error((rx is None) or (len(rx) < 2), 'Can not read power: communication error'):
                 return
-            power = round(read_big_uint32(rx , 0) / 10) # type: ignore
-            if abs(power - self.__power) >= self.__power_hysteresis: # value changed
-                self.__log.info('Power=', power, ' W')
-                self.__power = power
-                run_callbacks(self.__on_data, self, {MEASUREMENT_POWER: power})
+            self.__power_avg.add(round(read_big_uint32(rx , 0) / 10)) # type: ignore
 
     async def __read_energy(self):
         async with self.__port.lock:
