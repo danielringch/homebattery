@@ -2,9 +2,9 @@ from asyncio import create_task
 from ..core.backendmqtt import Mqtt
 from ..core.logging import CustomLogger
 from ..core.types import CommandFiFo, MODE_CHARGE, MODE_DISCHARGE, MODE_IDLE, MODE_PROTECT, to_operation_mode, TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
-from .inverter import Inverter
-from .charger import Charger
-from .solar import Solar
+from .classes.inverter import Inverter
+from .classes.charger import Charger
+from .classes.solar import Solar
 
 class ModeSwitcher:
     def __init__(self, config: dict, mqtt: Mqtt, inverter: Inverter, charger: Charger, solar: Solar):

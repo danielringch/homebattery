@@ -20,11 +20,11 @@ from .consumption import Consumption
 gc_collect()
 from .battery import Battery
 gc_collect()
-from .charger import Charger
+from .classes.charger import Charger
 gc_collect()
-from .inverter import Inverter
+from .classes.inverter import Inverter
 gc_collect()
-from .solar import Solar
+from .classes.solar import Solar
 gc_collect()
 from .modeswitcher import ModeSwitcher
 gc_collect()

@@ -6,10 +6,10 @@ from ..core.types import TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
 from .supervisor import Supervisor
 from .consumption import Consumption
 from .battery import Battery
-from .charger import Charger
+from .classes.charger import Charger
+from .classes.inverter import Inverter
+from .classes.solar import Solar
 from .devices import Devices
-from .inverter import Inverter
-from .solar import Solar
 
 class Outputs:
     def __init__(self, mqtt: Mqtt, supervisor: Supervisor, devices: Devices, consumption: Consumption, \
