@@ -148,8 +148,9 @@ class GenericSolar(SolarInterface):
         self.__energy_delta = 0
         if energy > 0:
             self.__clear_energy = True
-        energy = max(0, energy - round(self.__power_under_threshold.integral(clear_afterwards=True)))
-        self.__log.info(energy, ' Wh fed after last check')
+        energy_under_threshold = round(self.__power_under_threshold.integral(clear_afterwards=True))
+        self.__log.info(energy, ' Wh fed after last check, ', energy_under_threshold, 'Wh under threshold')
+        energy = max(0, energy - energy_under_threshold)
         return energy
 
     def __set_status(self, new_status):
@@ -176,16 +177,20 @@ class GenericSolar(SolarInterface):
             self.__update_connection_status(False)
             return None
         try:
-            self.__voltage_avg.add(read_big_uint16(rx, 0) / 100)
+            voltage = read_big_uint16(rx, 0) / 100
             current = read_big_uint16(rx, 2) / 100 * self.__multiplier
-            power = ((read_big_uint16(rx, 6) << 16) + read_big_uint16(rx, 4)) * self.__multiplier / 10
+            power = (read_big_uint16(rx, 4) + (read_big_uint16(rx, 6) << 16)) * self.__multiplier / 10
+            energy = (read_big_uint16(rx, 8) + (read_big_uint16(rx, 10) << 16)) * self.__multiplier
+            self.__log.info('Measurement: ', voltage, 'V ', current, 'A ', power, 'W ', energy, 'Wh')
+            self.__voltage_avg.add(voltage)
             if power < self.__threshold:
                 current = 0.0
-                self.__power_under_threshold.add(power)
                 power = 0.0
+                self.__power_under_threshold.add(power)
+            else:
+                self.__power_under_threshold.add(0)
             self.__current_avg.add(current)
             self.__power_avg.add(power)
-            energy = (read_big_uint16(rx, 10) << 16) + read_big_uint16(rx, 8) * self.__multiplier
             self.__update_connection_status(True)
         except:
             self.__update_connection_status(False)
