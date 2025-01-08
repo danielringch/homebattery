@@ -22,6 +22,8 @@ from .battery import Battery
 gc_collect()
 from .classes.charger import Charger
 gc_collect()
+from .classes.heater import Heater
+gc_collect()
 from .classes.inverter import Inverter
 gc_collect()
 from .classes.solar import Solar
@@ -101,11 +103,12 @@ async def homebattery():
     consumption = Consumption(devices)
     battery = Battery(config, devices)
     charger = Charger(config, devices)
+    heater = Heater(config, devices, battery)
     inverter = Inverter(config, devices, consumption)
     solar = Solar(config, devices)
     modeswitcher = ModeSwitcher(config, mqtt, inverter, charger, solar)
     supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, consumption, battery)
-    outputs = Outputs(mqtt, supervisor, devices, consumption, battery, charger, inverter, solar)
+    outputs = Outputs(mqtt, supervisor, devices, consumption, battery, charger, heater, inverter, solar)
     watchdog.feed()
 
     gc_collect()
@@ -119,6 +122,7 @@ async def homebattery():
 
     battery_task = create_task(battery.run())
     charger_task = create_task(charger.run())
+    heater_task = create_task(heater.run())
     inverter_task = create_task(inverter.run())
     solar_task = create_task(solar.run())
     modeswitcher.run()

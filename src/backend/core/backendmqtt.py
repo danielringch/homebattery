@@ -32,6 +32,9 @@ class Mqtt():
 
         self.__cha = 'cha/sum'
         self.__cha_dev = 'cha/dev/%s'
+
+        self.__hea = 'hea/sum'
+        self.__hea_dev = 'hea/dev/%s'
     
         self.__inv = 'inv/sum'
         self.__inv_dev = 'inv/dev/%s'
@@ -78,6 +81,16 @@ class Mqtt():
     async def send_charger_device(self, name: str, data: dict):
         payload = dumps(data).encode('utf-8')
         await self.__mqtt.publish(self.__cha_dev % name, payload, qos=2, retain=False)
+
+# heater
+
+    async def send_heater_summary(self, data: dict):
+        payload = dumps(data).encode('utf-8')
+        await self.__mqtt.publish(self.__hea, payload, qos=2, retain=False)
+
+    async def send_heater_device(self, name: str, data: dict):
+        payload = dumps(data).encode('utf-8')
+        await self.__mqtt.publish(self.__hea_dev % name, payload, qos=2, retain=False)
 
 # inverter
 

@@ -16,6 +16,7 @@ _MQTT_CONSUMPTION = const('mqttConsumption')
 _OPEN_DTU = const('openDtu')
 _PYLON_LV = const('pylonLv')
 _SHELLY_CHARGER = const('shellyCharger')
+_SHELLY_HEATER = const('shellyHeater')
 _VICTRON_MPPT = const('victronMppt')
 
 class Devices:
@@ -80,6 +81,10 @@ class Devices:
                 from ..drivers.shelly.shellycharger import ShellyCharger
                 gc_collect()
                 self.__load_device(name, ShellyCharger, meta)
+            elif driver_name == _SHELLY_HEATER:
+                from ..drivers.shelly.shellyheater import ShellyHeater
+                gc_collect()
+                self.__load_device(name, ShellyHeater, meta)
             elif driver_name == _VICTRON_MPPT:
                 from ..drivers.victron.victronmppt import VictronMppt
                 gc_collect()

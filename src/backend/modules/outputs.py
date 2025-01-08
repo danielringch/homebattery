@@ -2,18 +2,19 @@ from asyncio import create_task
 from ..core.backendmqtt import Mqtt
 from ..core.logging import CustomLogger
 from ..core.types import CommandFiFo, STATUS_ON, MEASUREMENT_CAPACITY, MEASUREMENT_CURRENT, MEASUREMENT_POWER, MEASUREMENT_STATUS
-from ..core.types import TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
+from ..core.types import TYPE_CHARGER, TYPE_HEATER, TYPE_INVERTER, TYPE_SOLAR
 from .supervisor import Supervisor
 from .consumption import Consumption
 from .battery import Battery
 from .classes.charger import Charger
+from .classes.heater import Heater
 from .classes.inverter import Inverter
 from .classes.solar import Solar
 from .devices import Devices
 
 class Outputs:
     def __init__(self, mqtt: Mqtt, supervisor: Supervisor, devices: Devices, consumption: Consumption, \
-                 battery: Battery, charger: Charger, inverter: Inverter, solar: Solar):
+                 battery: Battery, charger: Charger, heater: Heater, inverter: Inverter, solar: Solar):
         from ..core.singletons import Singletons
         self.__commands = CommandFiFo(32 + (8 * len(devices.devices)))
         self.__log: CustomLogger = Singletons.log.create_logger('output')
@@ -22,19 +23,23 @@ class Outputs:
         self.__consumption = consumption
         self.__battery = battery
         self.__charger = charger
+        self.__heater = heater
         self.__inverter = inverter
         self.__solar = solar
 
         for charger_device in devices.get_by_type(TYPE_CHARGER):
             charger_device.on_charger_data.append(self.__on_charger_device_data)
+        for heater_device in devices.get_by_type(TYPE_HEATER):
+            heater_device.on_heater_data.append(self.__on_heater_device_data)
         for inverter_device in devices.get_by_type(TYPE_INVERTER):
             inverter_device.on_inverter_data.append(self.__on_inverter_device_data)
         for solar_device in devices.get_by_type(TYPE_SOLAR):
             solar_device.on_solar_data.append(self.__on_solar_device_data)
 
-        self.__charger.on_summary_data.append(self.__on_charger_summary_data)
-        self.__inverter.on_summary_data.append(self.__on_inverter_summary_data)
-        self.__solar.on_summary_data.append(self.__on_solar_summary_data)
+        charger.on_summary_data.append(self.__on_charger_summary_data)
+        heater.on_summary_data.append(self.__on_heater_summary_data)
+        inverter.on_summary_data.append(self.__on_inverter_summary_data)
+        solar.on_summary_data.append(self.__on_solar_summary_data)
 
         self.__ui = Singletons.ui
 
@@ -68,6 +73,17 @@ class Outputs:
         name = self.__commands.popleft()
         data = self.__commands.popleft()
         await self.__mqtt.send_charger_device(name, data)
+
+# heater
+
+    async def __send_heater_summary_data(self):
+        data = self.__commands.popleft()
+        await self.__mqtt.send_heater_summary(data)
+
+    async def __send_heater_device_data(self):
+        name = self.__commands.popleft()
+        data = self.__commands.popleft()
+        await self.__mqtt.send_heater_device(name, data)
 
 # inverter
 
@@ -127,6 +143,7 @@ class Outputs:
 # other
 
     async def __send_all_summary(self):
+        await self.__mqtt.send_heater_summary(self.__heater.get_summary_data())
         await self.__mqtt.send_inverter_summary(self.__inverter.get_summary_data())
         await self.__mqtt.send_solar_summary(self.__solar.get_summary_data())
         await self.__mqtt.send_charger_summary(self.__charger.get_summary_data())
@@ -140,6 +157,10 @@ class Outputs:
         self.__commands.append(self.__send_charger_summary_data)
         self.__commands.append(data)
 
+    def __on_heater_summary_data(self, data):
+        self.__commands.append(self.__send_heater_summary_data)
+        self.__commands.append(data)
+
     def __on_inverter_summary_data(self, data):
         self.__commands.append(self.__send_inverter_summary_data)
         self.__commands.append(data)
@@ -150,6 +171,11 @@ class Outputs:
 
     def __on_charger_device_data(self, sender, data):
         self.__commands.append(self.__send_charger_device_data)
+        self.__commands.append(sender.name)
+        self.__commands.append(data)
+
+    def __on_heater_device_data(self, sender, data):
+        self.__commands.append(self.__send_heater_device_data)
         self.__commands.append(sender.name)
         self.__commands.append(data)
 

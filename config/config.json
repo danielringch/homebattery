@@ -51,6 +51,17 @@
       "change_downwards": <integer>
     }
   },
+  "heater":
+  {
+    "activate":
+    {
+      "battery": 11
+    },
+    "deactivate":
+    {
+      "battery": 13
+    }
+  },
   "supervisor":
   {
     "battery_offline":
@@ -170,6 +181,13 @@
       "family": <xx00-S or TL-X>,
       "address": <integer>,
       "power_hysteresis": 3
+    },
+    "heater_shelly":
+    {
+      "driver": "shellyHeater",
+      "host": <string>,
+      "generation": <1 or 2>,
+      "relay_id": 0
     },
     "power_http":
     {
