@@ -9,7 +9,7 @@ jkBmsBd
 Compatible devices
 ------------------
 
-* JK BMS BD4/BD6-Series
+* JK BMS BD-Series
 
 Tested devices
 --------------

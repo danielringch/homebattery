@@ -5,121 +5,107 @@ Homebattery can be controlled and monitored over MQTT. Only MQTT v5 is supported
 
 For configuration of MQTT, see the :doc:`configuration page <configuration>`.
 
-General
--------
-
-``<root>`` is the MQTT topic root set in the configuration.
-
-+------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
-| Topic                              | Datatype   | Direction | Unit   | Description                                                              |
-+====================================+============+===========+========+==========================================================================+
-| ``<root>/mode/set``                | ``utf-8``  | W         | n.a.   | Requested operation mode.                                                |
-|                                    |            |           |        |                                                                          |
-|                                    |            |           |        | Possible values are ``charge``, ``discharge``, ``idle`` and ``protect``. |
-+------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
-| ``<root>/mode/actual``             | ``utf-8``  | R         | n.a.   | Current operation mode.                                                  |
-|                                    |            |           |        |                                                                          |
-|                                    |            |           |        | Possible values are ``charge``, ``discharge``, ``idle`` and ``protect``. |
-+------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
-| ``<root>/locked``                  | ``utf-8``  | R         | n.a.   | Reason for system lock.                                                  |
-|                                    |            |           |        |                                                                          |
-|                                    |            |           |        | Only the reason with the highest priority is sent.                       |
-|                                    |            |           |        |                                                                          |
-|                                    |            |           |        | An empty payload means that there is no lock.                            |
-+------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
-| ``<root>/reset``                   | ``utf-8``  | W         | n.a.   | Writing the value ``reset`` to this topic will lead to a system reset.   |
-+------------------------------------+------------+-----------+--------+--------------------------------------------------------------------------+
-
-Charger related
----------------
-
-``<root>`` is the MQTT topic root set in the configuration.
-
-``<name>`` is the device name set in the configuration.
-
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| Topic                              | Datatype   | Direction | Unit   | Description                                                                   |
-+====================================+============+===========+========+===============================================================================+
-| ``<root>/cha/state``               | ``int8``   | R         | n.a.   | Charger state. ``0`` means charger is off, ``1`` means charger is on,         |
-|                                    |            |           |        |                                                                               |
-|                                    |            |           |        | ``-1`` means charger is in fault or syncing state.                            |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/cha/e``                   | ``uint16`` | R         | Wh     | Overall charger energy. Value is reset after every transmission.              |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/cha/dev/<name>/e``        | ``uint16`` | R         | Wh     | Charger energy of a single device. Value is reset after every transmission.   |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-
-Inverter related
+General messages
 ----------------
 
 ``<root>`` is the MQTT topic root set in the configuration.
 
-``<name>`` is the device name set in the configuration.
++------------------------------------+------------+-----------+---------------------------------------------------------------------------+
+| Topic                              | Datatype   | Direction | Description                                                               |
++====================================+============+===========+===========================================================================+
+| ``<root>/mode/set``                | ``utf-8``  | W         | Requested operation mode.                                                 |
+|                                    |            |           |                                                                           |
+|                                    |            |           | Possible values are ``charge``, ``discharge``, ``idle`` and ``protect``.  |
++------------------------------------+------------+-----------+---------------------------------------------------------------------------+
+| ``<root>/mode/actual``             | ``utf-8``  | R         | Current operation mode.                                                   |
+|                                    |            |           |                                                                           |
+|                                    |            |           | Possible values are ``charge``, ``discharge``, ``idle`` and ``protect``.  |
++------------------------------------+------------+-----------+---------------------------------------------------------------------------+
+| ``<root>/locked``                  | ``utf-8``  | R         | Reason for system lock. Payload is JSON and contains a list of all locks. |
+|                                    |            |           |                                                                           |
+|                                    |            |           | An empty list means that there is no lock.                                |
++------------------------------------+------------+-----------+---------------------------------------------------------------------------+
+| ``<root>/reset``                   | ``utf-8``  | W         | Writing the value ``reset`` to this topic will lead to a system reset.    |
++------------------------------------+------------+-----------+---------------------------------------------------------------------------+
 
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| Topic                              | Datatype   | Direction | Unit   | Description                                                                   |
-+====================================+============+===========+========+===============================================================================+
-| ``<root>/inv/state``               | ``int8``   | R         | n.a.   | Inverter state. ``0`` means inverter is off, ``1`` means inverter is on,      |
-|                                    |            |           |        |                                                                               |
-|                                    |            |           |        | ``-1`` means charger is in fault or syncing state.                            |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/inv/p``                   | ``uint16`` | R         | W      | Overall inverter power.                                                       |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/inv/e``                   | ``uint16`` | R         | Wh     | Overall inverter energy. Value is reset after every transmission.             |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/inv/dev/<name>/p``        | ``uint16`` | R         | W      | Inverter power of a single device.                                            |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/inv/dev/<name>/e``        | ``uint16`` | R         | Wh     | Inverter energy of a single device. Value is reset after every transmission.  |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
+Device class data
+-----------------
 
-Solar related
--------------
+For all device classes, two types of messages are sent:
+
+* ``sum`` messages, containing aggregated measurement data of a whole device class
+* ``dev`` messages, containing measurement data of a specific device
+
+The device class ``sensor`` does not send ``sum`` messages.
+
+All messages use a JSON payload:
+
+.. code-block:: json
+
+    {
+        "capacity": "<float value, unit Ah>",
+        "current": "<float value, unit A>",
+        "energy": "<integer value, unit Wh>",
+        "power": "<integer value, unit W>",
+        "status": "<on / syncing / off / fault / offline>",
+        "voltage": "<float value, unit V>"
+    }
+
+The content of a message may vary, not all measurands are present in every message.
+
+``energy`` contains the energy since the last message containing an ``energy`` value, which means to get the energy of a longer period, the values of the ``energy`` messages need to be accumulated. All other measurands contain the average value since the last message with the same measurand. 
+
+A measurand is sent with a minimum interval of ~ 6s when a value changed. In addition to that, it is sent every ~ 300s, even if no value changed. The device class ``battery`` sends messages every time the battery data is read, no matter whether a value changed or not.
+
+Battery dev messages
+~~~~~~~~~~~~~~~~~~~~
+
+``battery`` ``dev`` messages use a different payload format:
+
+.. code-block:: json
+
+    {
+        "v": "<battery voltage, float value, unit V>",
+        "i": "<battery current, float value, unit A>",
+        "soc": "<battery soc, float value, no unit>",
+        "c": "<remaining capacity, float value, unit Ah>",
+        "c_full": "<full battery capacity, float value, unit Ah>",
+        "n": "<battery cycles, integer value, no unit>",
+        "temps": "<battery cell temperatures, list of float values, unit °C>",
+        "cells": "<battery cell voltage, list of float values, unit V>"
+    }
+
+Measurands are not sent if they are not supported by the battery.
+
+Device class messages
+---------------------
 
 ``<root>`` is the MQTT topic root set in the configuration.
 
 ``<name>`` is the device name set in the configuration.
 
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| Topic                              | Datatype   | Direction | Unit   | Description                                                                   |
-+====================================+============+===========+========+===============================================================================+
-| ``<root>/sol/state``               | ``int8``   | R         | n.a.   | Solar state. ``0`` means solar is off, ``1`` means solar is on,               |
-|                                    |            |           |        |                                                                               |
-|                                    |            |           |        | ``-1`` means solar is in fault or syncing state.                              |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/sol/p``                   | ``uint16`` | R         | W      | Overall solar power.                                                          |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/sol/e``                   | ``uint16`` | R         | Wh     | Overall solar energy. Value is reset after every transmission.                |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/sol/dev/<name>/p``        | ``uint16`` | R         | W      | Solar power of a single device.                                               |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-| ``<root>/sol/dev/<name>/e``        | ``uint16`` | R         | Wh     | Solar energy of a single device. Value is reset after every transmission.     |
-+------------------------------------+------------+-----------+--------+-------------------------------------------------------------------------------+
-
-Battery related
----------------
-
-``<root>`` is the MQTT topic root set in the configuration.
-
-``<name>`` is the battery name set in the configuration.
-
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| Topic                              | Datatype   | Direction | Unit        | Description                                                              |
-+====================================+============+===========+=============+==========================================================================+
-| ``<root>/bat/i``                   | ``int16``  | R         | A / 10      | Overall battery current. Positive values indicate charging.              |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/bat/c``                   | ``uint16`` | R         | Ah / 10     | Overall remaining capacity.                                              |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/bat/dev/<name>/v``        | ``uint16`` | R         | V / 100     | Voltage of a single battery.                                             |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/bat/dev/<name>/i``        | ``int16``  | R         | A / 10      | Current of a single battery. Positive values indicate charging.          |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/bat/dev/<name>/soc``      | ``uint8``  | R         | %           | State of charge of a single battery.                                     |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/bat/dev/<name>/c``        | ``uint16`` | R         | Ah / 10     | Remaining capacity of a single battery.                                  |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/bat/dev/<name>/n``        | ``uint16`` | R         | n.a.        | Cycles of a single battery.                                              |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/bat/dev/<name>/temp/<n>`` | ``uint16`` | R         | °C / 10     | Cell temperature of a single battery. ``<n>`` is the sensor number.      |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
-| ``<root>/bat/dev/<name>/cell/<n>`` | ``int16``  | R         | mV          | Cell voltage of a single battery. ``<n>`` is the cell number.            |
-+------------------------------------+------------+-----------+-------------+--------------------------------------------------------------------------+
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| Topic                              | Datatype   | Direction | Description                                                                   |
++====================================+============+===========+===============================================================================+
+| ``<root>/cha/sum``                 | ``utf-8``  | R         | ``sum`` message of the ``charger`` device class.                              |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/cha/dev/<name>``          | ``utf-8``  | R         | ``dev`` message of a ``charger`` device.                                      |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/hea/sum``                 | ``utf-8``  | R         | ``sum`` message of the ``heater`` device class.                               |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/hea/dev/<name>``          | ``utf-8``  | R         | ``dev`` message of a ``heater`` device.                                       |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/inv/sum``                 | ``utf-8``  | R         | ``sum`` message of the ``inverter`` device class.                             |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/inv/dev/<name>``          | ``utf-8``  | R         | ``dev`` message of a ``inverter`` device.                                     |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/sol/sum``                 | ``utf-8``  | R         | ``sum`` message of the ``solar`` device class.                                |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/sol/dev/<name>``          | ``utf-8``  | R         | ``dev`` message of a ``solar`` device.                                        |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/bat/sum``                 | ``utf-8``  | R         | ``sum`` message of the ``battery`` device class.                              |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/bat/dev/<name>``          | ``utf-8``  | R         | ``dev`` message of a ``battery`` device.                                      |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+
+| ``<root>/sen/dev/<name>``          | ``utf-8``  | R         | ``dev`` message of a ``sensor`` device.                                       |
++------------------------------------+------------+-----------+-------------------------------------------------------------------------------+

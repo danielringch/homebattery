@@ -1,5 +1,5 @@
-[Power] MQTT power consumption
-==============================
+[Power] MQTT power power
+========================
 
 Driver name
 -----------
@@ -9,7 +9,7 @@ mqttConsumption
 Compatible devices
 ------------------
 
-All devices or services that publish power consumption data
+All devices or services that publish power measurement data
 
 * as 16 bit or 32 bit integer 
 * with unit watt
@@ -24,4 +24,4 @@ Tested systems
 Installation steps
 ------------------
 
-* edit the configuration as documented in :ref:`driver configuration <confiuration_mqtt_consumption>`
+* edit the configuration as documented in :ref:`driver configuration <confiuration_mqtt_power>`

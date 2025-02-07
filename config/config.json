@@ -55,11 +55,11 @@
   {
     "activate":
     {
-      "battery": 11
+      "battery": 5
     },
     "deactivate":
     {
-      "battery": 13
+      "battery": 7
     }
   },
   "supervisor":
@@ -80,7 +80,7 @@
     },
     "temp_low_charge":
     {
-      "threshold": 10,
+      "threshold": 5,
       "hysteresis": 2
     },
     "temp_low_discharge":
@@ -179,8 +179,7 @@
       "driver": "growattinvertermodbus",
       "port": <ext1 or ext2>,
       "family": <xx00-S or TL-X>,
-      "address": <integer>,
-      "power_hysteresis": 3
+      "address": <integer>
     },
     "heater_shelly":
     {

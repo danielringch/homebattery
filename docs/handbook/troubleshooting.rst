@@ -24,6 +24,13 @@ Connect your Raspberry Pico W via USB and get access to its serial console, see 
 
 Bad news. Your Raspberry Pico W is probably broken. Sorry.
 
+Operation
+---------
+
+**The Raspberry Pico W loses connection to the MQTT broker and resets itself from time to time**
+
+When the connection to the MQTT broker is lost, the system automatically tries to reconnect. This can fail sometimes due to RAM fragementation. In this case, the whole system needs to restart in order to get rid of the RAM fragementation.
+
 Logging
 -------
 

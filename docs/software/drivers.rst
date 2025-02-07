@@ -11,10 +11,12 @@ Drivers are used to connect devices with homebattery. For every device, add a dr
    drivers/lltPowerBmsV4Ble
    drivers/daly8S24V60A
    drivers/jkBmsBd
+   drivers/pylonLv
    drivers/mqttBattery
    drivers/victronMppt
-   drivers/shellyCharger
+   drivers/shellySwitch
    drivers/ahoyDtu
+   drivers/openDtu
    drivers/growattinvertermodbus
-   drivers/httpConsumption
-   drivers/mqttConsumption
+   drivers/httpPower
+   drivers/mqttPower

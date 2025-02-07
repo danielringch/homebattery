@@ -15,12 +15,14 @@ Tested devices
 --------------
 
 * Hoymiles HM-300
+* Hoymiles HMT-2000-4T
 
 Remarks
 -------
 
 If more than one inverter is connected to AhoyDTU, each inverter needs its own instance of this driver.
 
+.. _power_lut:
 power LUT
 ---------
 

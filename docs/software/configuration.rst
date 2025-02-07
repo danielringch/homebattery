@@ -61,11 +61,13 @@ Parent key: ``mqtt``
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype       | Description                                                                      | Recommended Value |
 +========================+================+==================================================================================+===================+
-| ``host``               | string         | Host address of the MQTT broker. Expected format is ``1.2.3.4:5678``.            | n.a.              |
+| ``host``               | string         | Host address of the MQTT broker. Expected format is ``<ip>:<port>``.             | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``ca``                 | string         | Optional. File name of the TLS CA certificate.                                   | n.a.              |
+| ``tls``/``ca``         | string         | Optional. Turns on TLS  and sets the file name of the TLS CA chain certificate.  | n.a.              |
+|                        |                |                                                                                  |                   |
+|                        |                | The certificate must have DER encoding.                                          |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``tls_insecure``       | boolean        | Optional. Turns on accepting self-signed TLS certificates.                       | n.a.              |
+| ``tls``/``insecure``   | boolean        | Optional. Turns on accepting self-signed TLS certificates.                       | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``user``               | string         | Optional. Username for authentification at the MQTT broker.                      | n.a.              |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
@@ -86,15 +88,15 @@ Parent key: ``logging``
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------------+
 | Key                    | Datatype       | Description                                                                      | Recommended Value       |
 +========================+================+==================================================================================+=========================+
-| ``host``               | string         | Optional.  If given, the logging data will be send via UDP to this host.         | n.a.                    |
+| ``host``               | string         | Optional.  If given, logging messages will be send via UDP to this host.         | n.a.                    |
 |                        |                |                                                                                  |                         |
-|                        |                | Expected format is ``1.2.3.4:1883.``                                             |                         |
+|                        |                | Expected format is ``<ip>:<port>``                                               |                         |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------------+
-| ``ignore``             | list of        | Logging sender which debug messages shall be ignored.                            | bluetooth, consumption, |
+| ``ignore``             | list of        | Logging sender which debug messages shall be ignored.                            | n.a.                    |
 |                        |                |                                                                                  |                         |
-|                        | strings        | Some parts of the system have a very verbose logging output for debug purposes.  | modbus0, modbus1,       |
+|                        | strings        | Some parts of the system have a very verbose logging output for debug purposes.  |                         |
 |                        |                |                                                                                  |                         |
-|                        |                | It can make sense to disable them in order to get a more readable log.           | mqtt                    |
+|                        |                | It can make sense to disable them in order to get a more readable log.           |                         |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------------+
 
 Inverter
@@ -119,9 +121,9 @@ Parent key: ``inverter``
 Netzero
 ~~~~~~~~
 
-If the netzero algorithm is not used, this whole sections needs to be removed from the configuration.
+If the netzero algorithm shall not be used, this whole sections needs to be removed from the configuration.
 
-Parent key: ``inverter``, ``netzero``
+Parent key: ``inverter``/``netzero``
 
 +----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
 | Key                        | Datatype, Unit | Description                                                                  | Recommended Value |
@@ -144,15 +146,30 @@ Parent key: ``inverter``, ``netzero``
 |                            |                |                                                                              |                   |
 |                            |                | less than two data points.                                                   |                   |
 +----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
-| ``power_offset``           | integer, W     | Expected remaining minimum energy consumption.                               | n.a.              |
+| ``target``                 | integer, W     | Expected remaining minimum energy consumption.                               | n.a.              |
 +----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
-| ``power_hysteresis``       | integer, W     | Hysteresis of the remaing minimum energy consumption.                        | n.a.              |
+| ``hysteresis``             | integer, W     | Hysteresis of the remaing minimum energy consumption.                        | n.a.              |
 +----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
-| ``power_change_upwards``   | integer, W     | Maximum increase of the inverter power in a single inverter power change.    | n.a.              |
+| ``change_upwards``         | integer, W     | Maximum increase of the inverter power in a single inverter power change.    | n.a.              |
 +----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
-| ``power_change_downwards`` | integer, W     | Decrease of the inverter power in case of a backfeeding event.               | n.a.              |
+| ``change_downwards``       | integer, W     | Maximum decrease of the inverter power in case of a backfeeding event.       | n.a.              |
 +----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
 
+
+Heater
+------
+
+This section can be removed, if no heater is present.
+
+Parent key: ``heater``
+
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| Key                        | Datatype, Unit | Description                                                                  | Recommended Value |
++============================+================+==============================================================================+===================+
+| ``activate``/``battery``   | float, °C      | Minimum battery cell temperature that activates the heater.                  | 6                 |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
+| ``deactivate``/``battery`` | float, °C      | Minimum battery cell temperature that deactivates the heater.                | 8                 |
++----------------------------+----------------+------------------------------------------------------------------------------+-------------------+
 
 Supervisor
 ----------
@@ -162,7 +179,7 @@ Checks can be disabled by removing the corresponding sections from the configura
 Battery offline check
 ~~~~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``battery_offline``
+Parent key: ``supervisor``/``battery_offline``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -173,7 +190,7 @@ Parent key: ``supervisor``, ``battery_offline``
 Battery cell voltage low check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``cell_low``
+Parent key: ``supervisor``/``cell_low``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -186,7 +203,7 @@ Parent key: ``supervisor``, ``cell_low``
 Battery cell voltage high check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``cell_high``
+Parent key: ``supervisor``/``cell_high``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -199,12 +216,12 @@ Parent key: ``supervisor``, ``cell_high``
 Battery cell temperature low while charging check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``temp_low_charge``
+Parent key: ``supervisor``/``temp_low_charge``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
 +========================+================+==================================================================================+===================+
-| ``threshold``          | float, °C      | Minimum temperature of a battery.                                                | 10 for LiFePo4    |
+| ``threshold``          | float, °C      | Minimum temperature of a battery.                                                | 5 for LiFePo4     |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | ``hysteresis``         | float, °C      | Hysteresis of the threshold value.                                               | 2                 |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
@@ -212,7 +229,7 @@ Parent key: ``supervisor``, ``temp_low_charge``
 Battery cell temperature low while discharging check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``temp_low_discharge``
+Parent key: ``supervisor``/``temp_low_discharge``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -225,7 +242,7 @@ Parent key: ``supervisor``, ``temp_low_discharge``
 Battery cell temperature high while charging check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``temp_high_charge``
+Parent key: ``supervisor``/``temp_high_charge``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -238,7 +255,7 @@ Parent key: ``supervisor``, ``temp_high_charge``
 Battery cell temperature high while discharging check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``temp_high_discharge``
+Parent key: ``supervisor``/``temp_high_discharge``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -251,7 +268,7 @@ Parent key: ``supervisor``, ``temp_high_discharge``
 Live consumption data lost while charging check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``live_data_lost_charge``
+Parent key: ``supervisor``/``live_data_lost_charge``
 
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                     | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -262,7 +279,7 @@ Parent key: ``supervisor``, ``live_data_lost_charge``
 Live consumption data lost while discharging check
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``live_data_lost_discharge``
+Parent key: ``supervisor``/``live_data_lost_discharge``
 
 +-------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                     | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -273,7 +290,7 @@ Parent key: ``supervisor``, ``live_data_lost_discharge``
 MQTT offline check
 ~~~~~~~~~~~~~~~~~~
 
-Parent key: ``supervisor``, ``mqtt_offline``
+Parent key: ``supervisor``/``mqtt_offline``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
@@ -284,9 +301,9 @@ Parent key: ``supervisor``, ``mqtt_offline``
 Device drivers
 --------------
 
-Parent key: ``devices``, ``<device name>``
+Parent key: ``devices``/``<device name>``
 
-``<device name>`` is used as display name and in MQTT topics. It must be unique.
+``<device name>`` must be unique.
 
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype | Description                                                                      | Recommended Value |
@@ -297,41 +314,57 @@ Parent key: ``devices``, ``<device name>``
 Battery
 ~~~~~~~
 
-.. _confiuration_llt_power_bms_v4_ble:
-LLT Power BMS with Bluetooth
-''''''''''''''''''''''''''''
+.. _confiuration_llt_power_bms:
+LLT Power BMS
+'''''''''''''
 
 Driver name: ``lltPowerBmsV4Ble``
 
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
-+========================+================+==================================================================================+===================+
-| ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype | Description                                                                      | Recommended Value |
++========================+==========+==================================================================================+===================+
+| ``mac``                | string   | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 .. _confiuration_daly_8s_24v_60a:
-Daly H-Series Smart BMS with Bluetooth
-''''''''''''''''''''''''''''''''''''''
+Daly H-Series Smart BMS via Bluetooth
+'''''''''''''''''''''''''''''''''''''
 
 Driver name: ``daly8S24V60A``
 
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
-+========================+================+==================================================================================+===================+
-| ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype | Description                                                                      | Recommended Value |
++========================+==========+==================================================================================+===================+
+| ``mac``                | string   | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 .. _confiuration_jk_bms_bd:
-JK BMS BD4/BD6-Series
-'''''''''''''''''''''
+JK BMS BD-Series
+''''''''''''''''
 
 Driver name: ``jkBmsBd``
 
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
-+========================+================+==================================================================================+===================+
-| ``mac``                | string         | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype | Description                                                                      | Recommended Value |
++========================+==========+==================================================================================+===================+
+| ``mac``                | string   | Bluetooth MAC address of the device. Expected format is ``aa:bb:cc:dd:ee:ff``.   | n.a.              |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+
+.. _confiuration_pylontech_us_series:
+Pylontech US series
+'''''''''''''''''''
+
+Driver name: ``pylonLv``
+
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype | Description                                                                      | Recommended Value |
++========================+==========+==================================================================================+===================+
+| ``port``               | string   | Expansion slot the addon board is connected to. Possible values are ``ext1``     | n.a.              |
+|                        |          |                                                                                  |                   |
+|                        |          | and ``ext2``.                                                                    |                   |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| ``serial``             | string   | Serial number of the battery.                                                    | n.a.              |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 .. _confiuration_mqtt_battery:
 MQTT battery
@@ -339,24 +372,41 @@ MQTT battery
 
 Driver name: ``mqttBattery``
 
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
-+========================+================+==================================================================================+===================+
-| ``root_topic``         | string         | MQTT root topic for the battery data sent from another homebattery controller.   | n.a.              |
-|                        |                |                                                                                  |                   |
-|                        |                | Value has the following scheme: ``<root>/bat/dev/<name>``, where ``root`` is     |                   |
-|                        |                |                                                                                  |                   |
-|                        |                | the MQTT root topic of the other homebattery controller and ``name`` is the      |                   |
-|                        |                |                                                                                  |                   |
-|                        |                | device name of the battery.                                                      |                   |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``cells_count``        | int            | Number of cells of the battery.                                                  | n.a.              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``temperature_count``  | int            | Number of temperature sensors of the battery.                                    | n.a.              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype | Description                                                                      | Recommended Value |
++========================+==========+==================================================================================+===================+
+| ``root_topic``         | string   | MQTT root topic for the battery data sent from another homebattery controller.   | n.a.              |
+|                        |          |                                                                                  |                   |
+|                        |          | Value has the following scheme: ``<root>/bat/dev/<name>``, where ``root`` is     |                   |
+|                        |          |                                                                                  |                   |
+|                        |          | the MQTT root topic of the other homebattery controller and ``name`` is the      |                   |
+|                        |          |                                                                                  |                   |
+|                        |          | device name of the battery.                                                      |                   |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 Solar charger
 ~~~~~~~~~~~~~
+
+.. _confiuration_generic_solar:
+Generic Solar
+'''''''''''''
+
+Driver name: ``genericSolar``
+
++------------------------+----------------+--------------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit | Description                                                                          | Recommended Value |
++========================+================+======================================================================================+===================+
+| ``port``               | string, -      | Expansion slot the addon board is connected to. Possible values are ``ext1``         | n.a.              |
+|                        |                |                                                                                      |                   |
+|                        |                | and ``ext2``.                                                                        |                   |
++------------------------+----------------+--------------------------------------------------------------------------------------+-------------------+
+| ``address``            | integer, -     | Modbus address of the connected power meter.                                         | n.a.              |
++------------------------+----------------+--------------------------------------------------------------------------------------+-------------------+
+| ``current_range``      | int, A         | Current range of the shunt. Possible values are ``50``, ``100``, ``200`` or ``300``. | n.a.              |
++------------------------+----------------+--------------------------------------------------------------------------------------+-------------------+
+| ``threshold``          | int, W         | Minimum power that must be reached to consider the device as 'on'.                   | n.a.              |
++------------------------+----------------+--------------------------------------------------------------------------------------+-------------------+
+
 
 .. _confiuration_victron_mppt:
 Victron SmartSolar MPPT / Victron BlueSolar MPPT
@@ -371,8 +421,6 @@ Driver name: ``victronMppt``
 |                        |          |                                                                                  |                   |
 |                        |          | and ``ext2``.                                                                    |                   |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``power_hysteresis``   | integer  | Power hysteresis, power changes smaller than the hysteresis will be ignored.     | 2                 |
-+------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 Grid charger
 ~~~~~~~~~~~~
@@ -386,11 +434,13 @@ Driver name: ``shellyCharger``
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype | Description                                                                      | Recommended Value |
 +========================+==========+==================================================================================+===================+
-| ``host``               | string   | Host address of the device. Expected format is ``1.2.3.4:80``                    | n.a.              |
+| ``host``               | string   | Host address of the device. Expected format is ``<ip>:<port>``                   | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``relay_id``           | integer  | Relay id of the used output. Value is 0 for single switch models, 0 and 1 for    | n.a.              |
+| ``generation``         | int      | Device generation of the switch. Possible values are ``1`` or ``2``.             | n.a.              |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| ``relay_id``           | integer  | Relay id of the used output. Value is ``0`` for single switch models,            | n.a.              |
 |                        |          |                                                                                  |                   |
-|                        |          | dual switch models.                                                              |                   |
+|                        |          | ``0`` and ``1`` for dual switch models.                                          |                   |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
 Inverter
@@ -405,11 +455,29 @@ Driver name: ``ahoyDtu``
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype | Description                                                                      | Recommended Value |
 +========================+==========+==================================================================================+===================+
-| ``host``               | string   | Host address of the device. Expected format is ``1.2.3.4:80``                    | n.a.              |
+| ``host``               | string   | Host address of the device. Expected format is ``<ip>:<port>``.                  | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``id``                 | integer  | Id of the used inverter. Value can be taken from the AhoyDTU web interface start | n.a.              |
+| ``id``                 | integer  | Id of the inverter. Value can be taken from the AhoyDTU web interface start      | n.a.              |
 |                        |          |                                                                                  |                   |
 |                        |          | page.                                                                            |                   |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| ``power_lut``          | string   | File name of the inverter power lookup table.                                    | n.a.              |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+
+.. _confiuration_open_dtu:
+OpenDTU
+'''''''
+
+Driver name: ``openDtu``
+
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype | Description                                                                      | Recommended Value |
++========================+==========+==================================================================================+===================+
+| ``host``               | string   | Host address of the device. Expected format is ``<ip>:<port>``.                  | n.a.              |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| ``password``           | string   | OpenDTU password for write access.                                               | n.a.              |
++------------------------+----------+----------------------------------------------------------------------------------+-------------------+
+| ``serial``             | string   | Serial number of the inverter.                                                   | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 | ``power_lut``          | string   | File name of the inverter power lookup table.                                    | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
@@ -427,52 +495,59 @@ Driver name: ``growattinvertermodbus``
 |                        |          |                                                                                  |                   |
 |                        |          | and ``ext2``.                                                                    |                   |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``family``             | string   | Connected inverter family. Possible values are ``xx00-S`` and ``TL-X``.          | n.a.              |
+| ``family``             | string   | Inverter device family. Possible values are ``xx00-S`` and ``TL-X``.             | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``address``            | interger | Modbus address of the connected inverter.                                        | n.a.              |
-+------------------------+----------+----------------------------------------------------------------------------------+-------------------+
-| ``power_hysteresis``   | integer  | Power hysteresis, power changes smaller than the hysteresis will be ignored.     | 3                 |
+| ``address``            | interger | Modbus address of the inverter.                                                  | n.a.              |
 +------------------------+----------+----------------------------------------------------------------------------------+-------------------+
 
-Power consumption measurement
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Heater
+~~~~~~
 
-.. _confiuration_http_consumption:
-HTTP consumption
-''''''''''''''''
+.. _confiuration_shelly_heater:
+Shelly smart switch
+'''''''''''''''''''
+
+Driver name: ``shellyHeater``
+
+See :ref:`confiuration_shelly_charger`.
+
+Sensor
+~~~~~~
+
+.. _confiuration_http_power:
+HTTP power
+''''''''''
 
 Driver name: ``httpConsumption``
 
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
-+========================+================+==================================================================================+===================+
-| ``host``               | string         | Host address of the sender. Expected format is ``1.2.3.4:1883.``                 | n.a.              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``query``              | string         | HTTP query to retrieve data.                                                     | n.a.              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``path``               | list of string | Path through the json data to the field containing the consumption data.         | n.a.              |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``interval``           | integer        | Query interval in seconds.                                                       | 2                 |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
-| ``factor``             | float          | Factor the received consumption data is multiplied with.                         | n.a.              |
-|                        |                |                                                                                  |                   |
-|                        |                | If the received data already has unit ``watt``, the value is ``1.0``.            |                   |
-+------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
++------------------------+-----------------+----------------------------------------------------------------------------------+-------------------+
+| Key                    | Datatype, Unit  | Description                                                                      | Recommended Value |
++========================+=================+==================================================================================+===================+
+| ``host``               | string          | Host address of the sender. Expected format is ``1.2.3.4:1883.``                 | n.a.              |
++------------------------+-----------------+----------------------------------------------------------------------------------+-------------------+
+| ``query``              | string          | HTTP query to retrieve data.                                                     | n.a.              |
++------------------------+-----------------+----------------------------------------------------------------------------------+-------------------+
+| ``path``               | list of strings | Path through the json data to the field containing the consumption data.         | n.a.              |
++------------------------+-----------------+----------------------------------------------------------------------------------+-------------------+
+| ``interval``           | integer         | Query interval in seconds.                                                       | 2                 |
++------------------------+-----------------+----------------------------------------------------------------------------------+-------------------+
+| ``factor``             | float           | Factor the received consumption data is multiplied with.                         | n.a.              |
+|                        |                 |                                                                                  |                   |
+|                        |                 | If the received data already has unit ``watt``, the value is ``1.0``.            |                   |
++------------------------+-----------------+----------------------------------------------------------------------------------+-------------------+
 
-.. _confiuration_mqtt_consumption:
-MQTT consumption
-''''''''''''''''
+.. _confiuration_mqtt_power:
+MQTT power
+''''''''''
 
 Driver name: ``mqttConsumption``
 
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+
 | Key                    | Datatype, Unit | Description                                                                      | Recommended Value |
 +========================+================+==================================================================================+===================+
-| ``topic``              | string         | MQTT topic where live consumption data is published.                             | n.a.              |
+| ``topic``              | string         | MQTT topic where power data is published.                                        | n.a.              |
 |                        |                |                                                                                  |                   |
 |                        |                | The published data at this topic must be a 16 or 32 bit signed integer and       |                   |
 |                        |                |                                                                                  |                   |
-|                        |                | must have the unit watt (W). Positive values stand for power taken from grid,    |                   |
-|                        |                |                                                                                  |                   |
-|                        |                | negative values stand for power fed into grid.                                   |                   |
+|                        |                | must have the unit watt (W).                                                     |                   |
 +------------------------+----------------+----------------------------------------------------------------------------------+-------------------+

@@ -16,6 +16,7 @@ Tested devices
 --------------
 
 * Smartsolar MPPT 75/15
+* SmartSolar MPPT 250/100-MC4 VE.CAN
 
 Remarks
 -------
@@ -29,4 +30,5 @@ Installation steps
 
 * configure the TX pin of your charger to switch its charger output, see your device manual for more information
 * connect the solar charger to the VE.Direct add-on board using an original VE.Direct cable
+* if the solar charger has a remote on/off terminal, connect it with the corresponding terminal of the add-on board
 * edit the configuration as documented in :ref:`driver configuration <confiuration_victron_mppt>`

@@ -22,14 +22,14 @@ STATUS_OFF = const('off')
 STATUS_FAULT = const('fault')
 STATUS_OFFLINE = const('offline')
 
-MEASUREMENT_CAPACITY = const('capacity')
-MEASUREMENT_CURRENT = const('current')
-MEASUREMENT_ENERGY = const('energy')
-MEASUREMENT_POWER = const('power')
+MEASUREMENT_CAPACITY = const('capacity') # float, Ah
+MEASUREMENT_CURRENT = const('current') # float, A
+MEASUREMENT_ENERGY = const('energy') # int, Wh
+MEASUREMENT_POWER = const('power') # int, W
 MEASUREMENT_SOC = const('soc')
 MEASUREMENT_STATUS = const('status')
 MEASUREMENT_TEMPERATURE = const('temperature')
-MEASUREMENT_VOLTAGE = const('voltage')
+MEASUREMENT_VOLTAGE = const('voltage') # float, V
 
 def to_operation_mode(str):
     if str == MODE_CHARGE:

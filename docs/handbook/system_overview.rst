@@ -8,29 +8,34 @@ A typical home battery storage system
   :width: 400
   :alt: system overview
 
-A home battery storage system usually consists of the following components:
+A home battery storage system controlled by homebattery can consist of the following components:
 
 * batteries
-* chargers (powered by solar or grid)
+* solar chargers
+* grid chargers
 * inverters
-* a controller
+* heaters
+* sensors
 
-Some devices are a combination of components (e.g. a hybrid inverter is usually a solar charger, grid charger and inverter).
+These are called **device classes** in the homebattery world.
+
+Some devices out there are a combination of device classes (e.g. a hybrid inverter often combines solar charger, grid charger and inverter).
 
 Homebattery as controller of the system has two main tasks:
 
-* control the chargers and inverters to charge and discharge the batteries depending on the mode of operation
-* monitor the system and prevent unsafe operation states
+* control the chargers and inverters to ensure optimum charging and discharging of the batteries depending on the mode of operation
+* monitor the system to prevent unsafe operation states
 
-There is total flexibility regarding the connected devices. You can also use homebattery e.g. to control your solar inverter (a system without batteries or chargers), to charge your EV (a system with only chargers) or to get your battery data published via MQTT (a system with only batteries).
+There is a lot of flexibility regarding the connected devices. There are no mandatory device classes. For example, homebattery can also be used to read data from your solar power plant with no batteries at all.
 
 .. note::
-   Homebattery contains no logic *when* to switch its mode of operation (with the exception of changes to protection modes). It is designed to receive commands for switching its mode of operation via MQTT.
+   Homebattery only switches its mode of operation automatically, if this is necessary to protect connected devices.
+   The system is designed to receive commands for switching its mode of operation via MQTT.
 
 Modes of operation
 ------------------
 
-The modes of operation define which devices are active and which are not, which influences the energy flow in the system.
+The modes of operation define the energy flow in the system by turning device classes on and off.
 
 The trigger for changing the mode of operation is received via MQTT.
 
@@ -39,8 +44,8 @@ The trigger for changing the mode of operation is received via MQTT.
 +===========+=====================================+==================================================+
 | idle      | charge battery from solar           | feed output from solar + grid                    |
 +-----------+-------------------------------------+--------------------------------------------------+
-| grid      | charge battery from surplus grid    | feed output from grid,                           |
-|           | energy (for EV chargers only)       |                                                  |
+| grid      | charge battery from solar           | feed output from grid,                           |
+|           |                                     |                                                  |
 |           |                                     | charge battery from solar                        |
 +-----------+-------------------------------------+--------------------------------------------------+
 | charge    | charge battery from solar + grid    | feed output from grid,                           |
@@ -67,12 +72,13 @@ There are five device classes:
 * solar
 * charger
 * inverter
-* power measurement
+* heater
+* sensor
 
-Homebattery offers high flexibility regarding its connected devices:
+Homebattery is quite flexible when it comes to its connected devices:
 
 * all device classes are optional (e.g. you can have a system without a grid charger)
-* there is no device limit per class
+* there is no hard device limit per class
 * batteries and solar devices can be distributed across several controllers (see :ref:`multi controller setups <handbook_multi_controller_setups>`)
 * devices can be a combination of device classes (e.g. a hybrid inverter is usally solar, charger and inverter)
 
@@ -80,14 +86,20 @@ There are several ways to connect devices:
 
 * network via WLAN
 * Bluetooth (only for batteries)
-* add-on boards
+* wired connection via add-on boards
 
 The used interface depends on the device, see the driver documentation in the :doc:`software reference <../software/drivers>`.
 
 Device class locks
 ------------------
 
-A configured set of checks is constantly applied on device parameters. If a check fails, the affected device classes are locked (which means that they are turned off) until the check passes again.
+A configured set of checks is constantly applied on device parameters. If a check fails, the affected device classes are locked (which means that they are switched off) until the check passes again.
+
+Device locks are possible for the following device classes:
+
+* solar
+* charger
+* inverter
 
 Example: the battery cells are checked for their voltage. While a cell voltage too high locks the device classes solar and charger, a cell voltage too low locks the device class inverter.
 
@@ -98,7 +110,7 @@ System monitoring
 
 There are several ways to monitor the operation of homebattery.
 
-The system status and a collection of operating data are sent over MQTT and can be visualized in the home automation system of your choice.
+The system status and operating data are sent over :doc:`MQTT <../software/mqtt_interface>` for further usage of your choice.
 
 Depending on your :doc:`hardware selection <hardware_selection>`, system status and some operating data are visualized using display and LEDs.
 

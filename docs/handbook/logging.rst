@@ -1,7 +1,7 @@
 Logging
 =======
 
-Homebattery provides a verbose logging output for troubleshooting and optimizations.
+Homebattery provides a verbose logging output for troubleshooting and optimization.
 
 The log output can be retrieved in two ways, the content is the same:
 
@@ -24,7 +24,7 @@ Connection parameters are:
 You can use any terminal emulation program that supports serial connections, like `PuTTY <https://www.putty.org>`_ or `picocom <https://github.com/npat-efault/picocom>`_.
 
 .. warning::
-   If the baseboard is used, it is strongly recommended to disconnect all other power supplies while using USB. Otherwise the Pico might get damaged due to ESD.
+   If the baseboard is used, it is strongly recommended to disconnect all other power supplies and ground connections while using USB. Otherwise the Pico might get damaged due to ESD.
 
 UDP data stream
 ---------------

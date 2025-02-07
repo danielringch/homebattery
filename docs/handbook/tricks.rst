@@ -14,18 +14,18 @@ Many people use current limiting circuits (aka soft-start), but they have severa
 
 Homebattery is designed to have the inverter directly connected to the battery, a fuse is used for safety. This way, the capacitors are always charged and no current limiting is necessary.
 
-A little care is necessary if the system is shutdown for maintenance. After the batteries were disconnected, the following steps will bring your system back online without causing current spikes:
+A little care is necessary if the system is shutdown for maintenance. After the batteries are disconnected, the following steps will bring your system back online without causing current spikes:
 
 * turn off homebattery
 * turn both grid and solar chargers off
-* switch all batteries to protection mode (all MOS switches off) via your BMS software
+* switch all batteries to protection mode (all MOS switches off) via your BMS software or physical switch
 * ensure everything is really off using a multimeter
 * connect all inverters
 * turn on the solar charger or grid charger
 * wait until the inverter LED starts to blink
-* switch all batteries to normal mode (all MOS switches on) via your BMS software
+* switch all batteries to normal mode (all MOS switches on) via your BMS software or physical switch
 * turn off the solar/ grid charger
 * turn on homebattery
 
-So basically the inverter input capacitors are charged by turning on the solar/ grid charger, which prevents any current spike.
+So basically the inverter input capacitors are charged by turning on the solar/ grid charger instead of the batteries, which prevents any current spike.
 
