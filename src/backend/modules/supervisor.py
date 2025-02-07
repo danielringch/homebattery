@@ -1,7 +1,7 @@
 from asyncio import create_task, sleep
-from sys import print_exception
 from time import time
 from ..core.backendmqtt import Mqtt
+from ..core.logging import CustomLogger
 from ..core.types import TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
 from ..core.watchdog import Watchdog
 from .consumption import Consumption
@@ -20,7 +20,7 @@ class Supervisor:
         from ..core.singletons import Singletons
         config = config['supervisor']
 
-        self.__log = Singletons.log.create_logger('supervisor')
+        self.__log: CustomLogger = Singletons.log.create_logger('supervisor')
         self.__ui = Singletons.ui
 
         self.__watchdog = watchdog
@@ -36,7 +36,7 @@ class Supervisor:
                 fatal=True)
 
         self.__locks = list()
-        self.__previous_top_lock = None
+        self.__previous_locks = list()
         self.__checkers = (
                 # order represents priority, low to high
                 LiveDataOfflineChargeChecker(config, consumption),
@@ -60,8 +60,7 @@ class Supervisor:
                 await self.__tick()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ..core.singletons import Singletons
-                print_exception(e, Singletons.log.trace) 
+                self.__log.trace(e)
             await sleep(1)
 
     async def __tick(self):
@@ -79,17 +78,17 @@ class Supervisor:
         locked_devices = set()
         for lock in self.__locks:
             locked_devices.update(lock.locked_devices)
-        top_prio_lock = self.__locks[-1] if len(self.__locks) > 0 else None
 
-        if top_prio_lock != self.__previous_top_lock:
-            self.__previous_top_lock = top_prio_lock
+        if self.__previous_locks != self.__locks:
+            self.__previous_locks.clear()
+            self.__previous_locks.extend(self.__locks)
             for lock in self.__locks:
                 self.__log.info('System lock: ', lock.name)
             if len(self.__locks) == 0:
                 self.__log.info('System lock: none')
             self.__ui.update_locks(self.__locks)
             try: # if MQTT is offline, sending data results in an exception
-                await self.__mqtt.send_locked(top_prio_lock.name if top_prio_lock is not None else None)
+                await self.__mqtt.send_locked(list(x.name for x in self.__locks))
             except:
                 self.__log.error('Failed to send lock information over MQTT')
                 self.__previous_top_lock = None # ensure lock is sent over MQTT in next cycle

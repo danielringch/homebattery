@@ -1,21 +1,23 @@
-from asyncio import create_task, sleep
+from asyncio import sleep
 from bluetooth import UUID as BT_UUID
 from ubinascii import unhexlify
-from struct import unpack
-from sys import print_exception
-from .interfaces.batteryinterface import BatteryInterface
-from ..core.devicetools import print_battery
-from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
-from ..core.types import BatteryData, run_callbacks
+from ..interfaces.batteryinterface import BatteryInterface
+from ...core.devicetools import print_battery
+from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ...core.logging import CustomLogger
+from ...core.types import run_callbacks
+from ...helpers.batterydata import BatteryData
+from ...helpers.streamreader import read_little_uint8, read_little_uint16, read_little_int16, read_little_uint32, read_little_int32
 
 # ressources:
 
-class JkBmsBd4(BatteryInterface):
+class JkBmsBd(BatteryInterface):
     class MesssageDecoder:
         def __init__(self, log):
-            self.__log = log
+            self.__log: CustomLogger = log
             self.__length = 294 # 300 bytes - 6 bytes header
             self.__data = None
+            self.__checksum = 0
             self.__success = None
 
         def read(self, blob):
@@ -27,16 +29,22 @@ class JkBmsBd4(BatteryInterface):
                         and blob[0] == 0x55 and blob[1] == 0xaa and blob[2] == 0xeb and blob[3] == 0x90 \
                         and blob[4] == 0x02:
                     self.__data = blob[6:]
+                    for i in range(len(blob)):
+                        self.__checksum += blob[i]
                 else:
                     self.__success = None
                     return
             else:
                 self.__data += bytearray(blob)
+                for i in range(len(blob) - 1):
+                    self.__checksum += blob[i]
 
             if len(self.__data) < self.__length: # type: ignore
                 self.__success = None
             else:
-                if False: #TODO: crc
+                checksum = self.__checksum & 0xFF
+                received_checksum = self.__data[-1]
+                if received_checksum != checksum:
                     self.__log.error('Dropping packet: wrong checksum.')
                     return
                 self.__success = True
@@ -50,8 +58,8 @@ class JkBmsBd4(BatteryInterface):
             return self.__data
 
     def __init__(self, name, config):
-        from ..core.singletons import Singletons
-        from ..core.types import TYPE_BATTERY
+        from ...core.singletons import Singletons
+        from ...core.types import TYPE_BATTERY
         self.__name = name
         self.__device_types = (TYPE_BATTERY,)
         self.__mac = config['mac']
@@ -69,7 +77,7 @@ class JkBmsBd4(BatteryInterface):
         characteristic = None
         try:
             self.__ble.activate()
-            self.__data.invalidate()
+            self.__data.reset()
 
             if self.__device is None:
                 self.__device = MicroBleDevice(self.__ble)
@@ -105,8 +113,7 @@ class JkBmsBd4(BatteryInterface):
             self.__log.error(str(e))
         except Exception as e:
             self.__log.error('BLE error: ', e)
-            from ..core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
         finally:
             if characteristic is not None:
                 characteristic.disable_rx()
@@ -143,16 +150,12 @@ class JkBmsBd4(BatteryInterface):
         return False
     
     def __parse(self, data):
-        temps = tuple(x / 10 for x in unpack('<HH', data[156:160]))
-        cells = tuple(x / 1000 for x in unpack('<HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH', data[0:64]) if x > 0)
-
-        self.__data.update(
-            v=unpack('<I', data[144:148])[0] / 1000,
-            i=unpack('<i', data[152:156])[0] / 1000,
-            soc=unpack('!B', data[167:168])[0],
-            c=unpack('<I', data[168:172])[0] / 1000,
-            c_full=unpack('<I', data[172:176])[0] / 1000,
-            n=unpack('<I', data[176:180])[0],
-            temps=temps,
-            cells=cells
-        )
+        self.__data.cells = tuple(x / 1000 for x in (read_little_uint16(data, i) for i in range(0, 64, 2)) if x > 0)
+        self.__data.v=read_little_uint32(data, 144) / 1000
+        self.__data.i=read_little_int32(data, 152) / 1000
+        self.__data.temps = tuple(read_little_int16(data, i) / 10 for i in range(156, 160, 2))
+        self.__data.soc=read_little_uint8(data, 167)
+        self.__data.c=read_little_uint32(data, 168) / 1000
+        self.__data.c_full=read_little_uint32(data, 172) / 1000
+        self.__data.n=read_little_uint32(data, 176)
+        self.__data.validate()

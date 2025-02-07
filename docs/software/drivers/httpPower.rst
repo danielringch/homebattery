@@ -1,5 +1,5 @@
-[Power] HTTP power consumption
-==============================
+[Power] HTTP power power
+========================
 
 Driver name
 -----------
@@ -24,4 +24,4 @@ Installation steps
 
 * get the http query for power measurement data from your senders documentation
 * find the value in the json payload and note the corresponding keys
-* edit the configuration as documented in :ref:`driver configuration <confiuration_http_consumption>`
+* edit the configuration as documented in :ref:`driver configuration <confiuration_http_power>`

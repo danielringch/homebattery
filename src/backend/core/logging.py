@@ -1,10 +1,11 @@
 from asyncio import create_task, Event, sleep
+from collections import deque
 from micropython import const
 from socket import getaddrinfo, socket, AF_INET, SOCK_DGRAM
 from time import localtime
 from uio import IOBase
+from sys import print_exception
 from .microsocket import BUSY_ERRORS
-from .types import SimpleFiFo
 
 _UTF8 = const('utf-8')
 _NEWLINE = const('\n')
@@ -14,7 +15,7 @@ class Logging:
         self.__blacklist = set()
         self.__task = None
         self.__counter = 0
-        self.__buffer = SimpleFiFo()
+        self.__buffer = deque(tuple(), 1024)
         self.trace = TraceLogger(self, 'trace')
 
     def configure(self, config):
@@ -65,8 +66,8 @@ class Logging:
         self.__buffer.append(_NEWLINE)
 
         if self.__task is None:
-            while not self.__buffer.empty:
-                _ = self.__buffer.pop()
+            while self.__buffer:
+                _ = self.__buffer.popleft()
         else:
             self.__event.set()
     
@@ -80,9 +81,9 @@ class Logging:
                 while True:
                     await self.__event.wait()
                     self.__event.clear()
-                    while not self.__buffer.empty:
+                    while self.__buffer:
                         try:
-                            socke.sendto(self.__buffer.pop().encode(_UTF8), address)
+                            socke.sendto(self.__buffer.popleft().encode(_UTF8), address)
                         except OSError as e:
                             if e.args[0] in BUSY_ERRORS:
                                 await sleep(0.05)                 
@@ -103,6 +104,9 @@ class CustomLogger:
 
     def error(self, *msg):
         self.__logger.__send('error@%s' % self.__sender, *msg)
+
+    def trace(self, e: Exception):
+        print_exception(e, self.__logger.trace)
 
 class IgnoreLogger:
     def __init__(self, logger: Logging, sender: str):

@@ -1,7 +1,7 @@
 from asyncio import Event
 from micropython import const
 from struct import pack_into, unpack_from
-from time import time
+from collections import deque
 
 MODE_CHARGE = const('charge')
 MODE_DISCHARGE = const('discharge')
@@ -11,13 +11,25 @@ MODE_PROTECT = const('protect')
 TYPE_BATTERY = const('battery')
 TYPE_CHARGER = const('charger')
 TYPE_CONSUMPTION = const('consumption')
+TYPE_HEATER = const('heater')
 TYPE_INVERTER = const('inverter')
 TYPE_SOLAR = const('solar')
+TYPE_SENSOR = const('sensor')
 
 STATUS_ON = const('on')
 STATUS_SYNCING = const('syncing')
 STATUS_OFF = const('off')
 STATUS_FAULT = const('fault')
+STATUS_OFFLINE = const('offline')
+
+MEASUREMENT_CAPACITY = const('capacity') # float, Ah
+MEASUREMENT_CURRENT = const('current') # float, A
+MEASUREMENT_ENERGY = const('energy') # int, Wh
+MEASUREMENT_POWER = const('power') # int, W
+MEASUREMENT_SOC = const('soc')
+MEASUREMENT_STATUS = const('status')
+MEASUREMENT_TEMPERATURE = const('temperature')
+MEASUREMENT_VOLTAGE = const('voltage') # float, V
 
 def to_operation_mode(str):
     if str == MODE_CHARGE:
@@ -36,38 +48,6 @@ def to_port_id(str):
         return 1
     else:
         raise Exception(f'Unknown port: {str}')
-
-class BatteryData:
-    def __init__(self, name, is_forwarded=False):
-        self.name = name
-        self.is_forwarded = is_forwarded
-        self.v = 0
-        self.i = 0
-        self.soc = 0
-        self.c = 0
-        self.c_full = 0
-        self.n = 0
-        self.temps = tuple()
-        self.cells = tuple()
-        self.timestamp = 0
-
-    def update(self, v, i, soc, c, c_full, n, temps, cells):
-        self.v = v # voltage [V]
-        self.i = i # current [A]
-        self.soc = soc # state of charge [%]
-        self.c = c # capacity remaining [Ah]
-        self.c_full = c_full # capacity full [Ah]
-        self.n = n # cycles
-        self.temps = temps # cell temperatures [°C]
-        self.cells = cells # cell voltages [V]
-        self.timestamp = time()
-
-    def invalidate(self):
-        self.timestamp = 0
-
-    @property
-    def valid(self):
-        return self.timestamp > 0
     
 def run_callbacks(list, *args, **kwargs):
     for callback in list:
@@ -121,83 +101,18 @@ class InverterStatusValues:
     def from_string(self, str):
         return self.__dict[str]
     
-class SimpleFiFo:
-    class Item:
-        def __init__(self, payload):
-            self.payload = payload
-            self.newer = None
-
-    class Iter:
-        def __init__(self, start):
-            self.__item = start
-
-        def __iter__(self):
-            return self
-        
-        def __next__(self):
-            if self.__item is None:
-                raise StopIteration
-            payload = self.__item.payload
-            self.__item = self.__item.newer
-            return payload
-
-    def __init__(self):
-        self.__newest = None
-        self.__oldest = None
-        self.__length = 0
-
-    def __len__(self):
-        return self.__length
-    
-    def __iter__(self):
-        return self.Iter(self.__oldest)
-
-    @property
-    def empty(self):
-        return self.__oldest is None
-    
-    def clear(self):
-        self.__length = 0
-        if self.__oldest is not None:
-            item = self.__oldest
-            while item is not None:
-                next = item.newer
-                item.newer = None
-                item = next
-        self.__newest = None
-        self.__oldest = None
-    
-    def append(self, payload):
-        self.__length += 1
-        item = self.Item(payload)
-        if self.__newest is not None:
-            self.__newest.newer = item
-        self.__newest = item
-        if self.__oldest is None:
-            self.__oldest = item
-
-    def peek(self):
-        assert self.__oldest is not None
-        return self.__oldest.payload
-
-    def pop(self):
-        assert self.__oldest is not None
-        self.__length -= 1
-        item = self.__oldest
-        self.__oldest = item.newer
-        if item.newer is None:
-            self.__newest = None
-        item.newer = None
-        return item.payload
-    
-class CommandFiFo(SimpleFiFo):
-    def __init__(self):
-        super().__init__()
+class CommandFiFo(deque):
+    def __init__(self, size: int):
+        super().__init__(tuple(), size)
         self.event = Event()
 
     def append(self, payload):
         self.event.set()
         super().append(payload)
+
+    def appendleft(self, payload):
+        self.event.set()
+        super().appendleft(payload)
 
     async def wait_and_clear(self):
         await self.event.wait()

@@ -11,8 +11,9 @@ Homebattery is an embedded controller for your home battery storage. Its working
 
 * devices are connected to homebattery via their respective interfaces
 * homebattery switches the mode of operation (charge, discharge, ...) when a corresponding command is received via MQTT
-* if an operational parameter of any connected device is not okay, homebattery automatically shuts off affected devices for safety
-* a collection of relevant operational parameters is published via MQTT for further usage
+* homebattery controls the power of your inverter to minimize feeding electricity into the grid
+* if an operational parameter of any connected device is not okay, homebattery automatically switches off affected devices for safety
+* operational data of the system and its connected devices is published via MQTT for further usage
 
 Homebattery comes with:
 
@@ -23,9 +24,9 @@ Homebattery comes with:
 
 ## Typical use cases
 
-* Home battery storage in combination with dynamic energy pricing. Dending on rules programmed in a home automation system, homebattery switches between charging, discharging and idling the battery depending on the current energy price.
-
 * Home battery storage charged by solar. Homebattery monitors the system and disables the inverter if the battery SOC gets too low.
+
+* Home battery storage in combination with dynamic energy pricing. Dending on rules programmed in a home automation system, homebattery switches between charging, discharging and idling the battery depending on the current energy price.
 
 * Getting "incompatible" devices to talk to each other. Since homebattery supports a wide range of devices, protocols and connection methods, it can be used to combine devices with no direct communication possible, e.g. Pylontech batteries and Victron MPPT solar chargers.
 
@@ -41,29 +42,32 @@ Homebattery was not the first and will not be the last solution for controlling 
 * **modularity** was the design principle for both the hard- and the software. A wide variety of devices and physical interfaces (Bluetooth, ethernet, RS485, Modbus, VE.Direct, ...) is supported thanks to the usage of add-on boards and drivers. And even more will be suported in the future.
 * **MQTT** is used to communicate with homebattery. So everything with MQTT support can be used to control homebattery (Home Assistant, ioBroker, etc.). The MQTT interface is well documented.
 
-## What do I need?
+## How to start?
 
-* **homebattery hardware**. The [documentation](http://homebattery.readthedocs.io) contains a guide which hardware is necessary for witch connected devices
-* **a smart home solution** like Home Assistant or ioBroker, if you want implement some logic when to switch mode of operation. You can use any software that is capable of MQTT.
-* **compatible devices**. See the list below.
+* select **compatible devices**. See the list below.
+* get some **homebattery hardware**. The [hardware selection guide](https://homebattery.readthedocs.io/en/latest/handbook/hardware_selection.html) of the documentation helps you to find the right setup for your needs.
+* get the **homebattery firmware** from the latest release here on github
+* select a **a smart home solution** like Home Assistant or ioBroker, if you want implement some logic when to switch mode of operation. You can use any software that is capable of MQTT.
+
+Detailed information can be found in the [documentation](https://homebattery.readthedocs.io/en/latest/) of this project.
 
 ## What hardware is supported?
 
 | Group | Device family | Tested devices | Connection method | Remarks |
 | - | - | - | - | - |
-| battery | LLT Power BMS | Accurat Traction T60 LFP BT 24V | Bluetooth         | many China LiFePo4 batteries use this BMS |
-| | Daly H-Series Smart BMS | Daly H-Series Smart BMS 8S 60A | Bluetooth | - |
-| | JK BMS BD4-Series | BD4A17S4P | Bluetooth | - |
-| solar charger | Victron SmartSolar MPPT | Smartsolar MPPT 75/15 | VE.Direct | - |
-| | Victron BlueSolar MPPT | - | VE.Direct | configuration is still done via Victron USB interface |
+| battery | Daly H-Series Smart BMS | Daly H-Series Smart BMS 8S 60A | Bluetooth | - |
+| | JK BMS BD-Series | BD4A17S4P<br>BD6A17S6P | Bluetooth | - |
+| | LLT Power BMS | Accurat Traction T60 LFP BT 24V | Bluetooth         | many China LiFePo4 batteries use this BMS |
+| | Pylontech US series | Pylontech US5000 | RS485 | - |
+| solar charger | Victron BlueSolar MPPT | - | VE.Direct | configuration is still done via Victron USB interface |
+| | Victron SmartSolar MPPT | 75/15<br>250/100-MC4 VE.Can | VE.Direct | - |
 | grid charger | Shelly smart switch | Shelly Plus2PM<br>Shelly Plug S | network | - |
-| inverter | Hoymiles HM-Series | HM-300 | network | requires a AhoyDTU device |
-| | Growatt xx00-S series | 1000-S | RS485 / modbus | - |
+| inverter | Growatt xx00-S series | 1000-S | RS485 / modbus | - |
 | | Growatt MIC xxTL-X series | MIC 1500TL-X | RS485 / modbus | -
-
-## How to start?
-
-Please read the [handbook](https://homebattery.readthedocs.io/en/latest/handbook/index_handbook.html)  in the [documentation](https://homebattery.readthedocs.io/en/latest/).
+| | Hoymiles HM-Series<br>Hoymiles HMT-Series | HM-300<br>HMT-2000-4T | network | requires a OpenDTU or AhoyDTU device |
+| heater | Shelly smart switch | Shelly Plus2PM<br>Shelly Plug S | network | - |
+| sensor | Tasmota Smart Meter Interface | Volkszähler | network | - |
+| | Tibber Pulse | Tibber Pulse | network | requires [tibber2mqtt](https://github.com/danielringch/tibber2mqtt) |
 
 ## Disclaimer
 

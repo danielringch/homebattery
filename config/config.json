@@ -15,8 +15,11 @@
   "mqtt":
   {
     "host": <string>,
-    "ca": <optional, string>,
-    "tls_insecure": <optional, true or false>,
+    "tls":
+    {
+      "ca": <optional, string>,
+      "insecure": <true or false>
+    },
     "user": <optional, string>,
     "password": <optional, string>,
     "root": "homebattery"
@@ -42,10 +45,21 @@
       "signed": <true or false>,
       "evaluated_time_span": 30,
       "maturity_time_span": 15,
-      "power_offset": <integer>,
-      "power_hysteresis": <integer>,
-      "power_change_upwards": <integer>,
-      "power_change_downwards": <integer>
+      "target": <integer>,
+      "hysteresis": <integer>,
+      "change_upwards": <integer>,
+      "change_downwards": <integer>
+    }
+  },
+  "heater":
+  {
+    "activate":
+    {
+      "battery": 5
+    },
+    "deactivate":
+    {
+      "battery": 7
     }
   },
   "supervisor":
@@ -66,7 +80,7 @@
     },
     "temp_low_charge":
     {
-      "threshold": 10,
+      "threshold": 5,
       "hysteresis": 2
     },
     "temp_low_discharge":
@@ -111,26 +125,38 @@
     },
     "battery_jk":
     {
-      "driver": "jkBmsBd4",
+      "driver": "jkBmsBd",
       "mac": <string>
+    },
+    "battery_pylontech":
+    {
+      "driver": "pylonLv",
+      "port": <ext1 or ext2>,
+      "serial": <string>
     },
     "battery_mqtt":
     {
       "driver": "mqttBattery",
-      "root_topic": "<root>/bat/dev/<device>",
-      "cell_count": <integer>,
-      "temperature_count": <integer>
+      "root_topic": "<root>/bat/dev/<device>"
+    },
+    "solar_generic":
+    {
+      "driver": "genericSolar",
+      "port": <ext1 or ext2>,
+      "address": 1,
+      "current_range": <50, 100, 200 or 300>
+      "threshold": 0
     },
     "solar_victron":
     {
       "driver": "victronMppt",
-      "port": <ext1 or ext2>,
-      "power_hysteresis": 2
+      "port": <ext1 or ext2>
     },
     "charger_shelly":
     {
       "driver": "shellyCharger",
       "host": <string>,
+      "generation": <1 or 2>,
       "relay_id": 0
     },
     "inverter_ahoy_dtu":
@@ -140,13 +166,27 @@
       "id": 0,
       "power_lut": <string>
     },
+    "inverter_open_dtu":
+    {
+      "driver": "openDtu",
+      "host": <string>,
+      "password": <string>,
+      "serial": <string>,
+      "power_lut": <string>
+    },
     "inverter_growatt":
     {
       "driver": "growattinvertermodbus",
       "port": <ext1 or ext2>,
       "family": <xx00-S or TL-X>,
-      "address": <integer>,
-      "power_hysteresis": 3
+      "address": <integer>
+    },
+    "heater_shelly":
+    {
+      "driver": "shellyHeater",
+      "host": <string>,
+      "generation": <1 or 2>,
+      "relay_id": 0
     },
     "power_http":
     {

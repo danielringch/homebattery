@@ -44,13 +44,8 @@ class MicroBleConnectionClosedError(Exception):
     def __str__(self):
         return 'MicroBleNoDescriptorError'
 
-class MicroBleBuffer:
-    def __init__(self, size):
-        self.buffer = bytearray(size)
-        self.length = 0
-
 class MicroBleDevice:
-    def __init__(self, central: MicroBleCentral):
+    def __init__(self, central: 'MicroBleCentral'):
         from .singletons import Singletons
         self.__log = Singletons.log.create_logger(_BLUETOOTH_LOG_NAME)
         self.__ui = Singletons.ui
@@ -292,7 +287,6 @@ class MicroBleCentral:
         self.__ui = Singletons.ui
 
         self.__ble = BLE()
-        self.__buffer = MicroBleBuffer(512)
         self.__current_device = None
     
     def activate(self):

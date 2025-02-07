@@ -1,19 +1,19 @@
 from asyncio import create_task
-from sys import print_exception
 from ..core.backendmqtt import Mqtt
+from ..core.logging import CustomLogger
 from ..core.types import CommandFiFo, MODE_CHARGE, MODE_DISCHARGE, MODE_IDLE, MODE_PROTECT, to_operation_mode, TYPE_CHARGER, TYPE_INVERTER, TYPE_SOLAR
-from .inverter import Inverter
-from .charger import Charger
-from .solar import Solar
+from .classes.inverter import Inverter
+from .classes.charger import Charger
+from .classes.solar import Solar
 
 class ModeSwitcher:
     def __init__(self, config: dict, mqtt: Mqtt, inverter: Inverter, charger: Charger, solar: Solar):
         from ..core.singletons import Singletons
         #config = config['modeswitcher']
-        self.__commands = CommandFiFo()
+        self.__commands = CommandFiFo(16)
         self.__task = None
 
-        self.__log = Singletons.log.create_logger('modeswitcher')
+        self.__log: CustomLogger = Singletons.log.create_logger('modeswitcher')
         self.__ui = Singletons.ui
 
         self.__inverter = inverter
@@ -41,12 +41,11 @@ class ModeSwitcher:
             await self.__commands.wait_and_clear()
             #await asyncio.sleep(0.1)
             try:
-                while not self.__commands.empty:
-                    await self.__commands.pop()()
+                while self.__commands:
+                    await self.__commands.popleft()()
             except Exception as e:
                 self.__log.error('Cycle failed: ', e)
-                from ..core.singletons import Singletons
-                print_exception(e, Singletons.log.trace)
+                self.__log.trace(e)
 
     def update_locked_devices(self, devices: set):
         if devices == self.__locked_devices:

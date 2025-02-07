@@ -8,6 +8,8 @@ from ..core.microblecentral import MicroBleCentral
 gc_collect()
 from ..core.logging import Logging
 gc_collect()
+from ..core.triggers import triggers
+gc_collect()
 from ..core.userinterface import UserInterface
 gc_collect()
 from ..core.watchdog import Watchdog
@@ -18,11 +20,13 @@ from .consumption import Consumption
 gc_collect()
 from .battery import Battery
 gc_collect()
-from .charger import Charger
+from .classes.charger import Charger
 gc_collect()
-from .inverter import Inverter
+from .classes.heater import Heater
 gc_collect()
-from .solar import Solar
+from .classes.inverter import Inverter
+gc_collect()
+from .classes.solar import Solar
 gc_collect()
 from .modeswitcher import ModeSwitcher
 gc_collect()
@@ -31,7 +35,7 @@ gc_collect()
 from .outputs import Outputs
 gc_collect()
 
-_VERSION = const('1.1.0')
+_VERSION = const('1.2.0')
 
 prefix = '[homebattery] {0}'
 
@@ -99,11 +103,12 @@ async def homebattery():
     consumption = Consumption(devices)
     battery = Battery(config, devices)
     charger = Charger(config, devices)
+    heater = Heater(config, devices, battery)
     inverter = Inverter(config, devices, consumption)
     solar = Solar(config, devices)
     modeswitcher = ModeSwitcher(config, mqtt, inverter, charger, solar)
     supervisor = Supervisor(config, watchdog, mqtt, modeswitcher, consumption, battery)
-    outputs = Outputs(mqtt, supervisor, consumption, battery, charger, inverter, solar)
+    outputs = Outputs(mqtt, supervisor, devices, consumption, battery, charger, heater, inverter, solar)
     watchdog.feed()
 
     gc_collect()
@@ -117,10 +122,12 @@ async def homebattery():
 
     battery_task = create_task(battery.run())
     charger_task = create_task(charger.run())
+    heater_task = create_task(heater.run())
     inverter_task = create_task(inverter.run())
     solar_task = create_task(solar.run())
     modeswitcher.run()
     supervisor.run()
+    triggers.start()
     
 
     gc_collect()

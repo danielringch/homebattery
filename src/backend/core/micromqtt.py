@@ -1,10 +1,11 @@
-from asyncio import create_task, Event, Lock, sleep, wait_for, TimeoutError
+from asyncio import create_task, Lock, sleep, wait_for, TimeoutError
 from gc import collect as gc_collect
 from re import match
 from ubinascii import hexlify
 from machine import unique_id
 from micropython import const
 
+from .logging import CustomLogger
 from .microsocket import MicroSocket, MicroSocketTimeoutException, MicroSocketClosedExecption
 from .mqtttools import connect_to_bytes, bytes_to_connack, disconnect_to_bytes
 from .mqtttools import publish_to_bytes, bytes_to_publish
@@ -26,9 +27,9 @@ BUSY_ERRORS = [EINPROGRESS, ETIMEDOUT, -110]
 _KEEPALIVE = const(60)
 _PING_INTERVAL = const(30)
 _SEND_LOOP_INTERVAL = const(4)
-_MAX_PACKET_SIZE = const(256)
+_MAX_PACKET_SIZE = const(512)
 _OVERDUE_TIMEOUT = const(10)
-_OUTPUT_BUFFER_SIZE = const(24)
+_OUTPUT_BUFFER_SIZE = const(10)
 
 class MicroMqtt():
     class InputMessage:
@@ -78,7 +79,7 @@ class MicroMqtt():
 
     def __init__(self, topic_root: str, connect_callback):
         from .singletons import Singletons
-        self.__log = Singletons.log.create_logger('mqtt')
+        self.__log: CustomLogger = Singletons.log.create_logger('mqtt')
         self.__ui = Singletons.ui
 
         self.__ip = None
@@ -294,9 +295,7 @@ class MicroMqtt():
             pass
         except Exception as e:
             self.__log.error('Callback failed: ', e)
-            from sys import print_exception
-            from ..core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
 
     def __receive_puback(self, buffer: bytes):
         error, pid = bytes_to_pubx(buffer)

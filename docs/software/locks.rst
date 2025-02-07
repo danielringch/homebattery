@@ -6,11 +6,11 @@ Homebattery continuously monitors several parameters of the system and the conne
 * prevent unsafe operation states
 * prevent uneconomic operation
 
-This is done by running checks. If a check fails, the affected device types are locked for activity.
+This is done by running checks. If a check fails, the affected device classes are locked for activity.
 
-There might be multiple locks active at the same time, but only the most critical one gets broadcasted via MQTT and is shown on the display.
+There might be multiple locks active at the same time.
 
-The LEDs on the baseboard indicate whether a device type is locked or not.
+The LEDs on the baseboard indicate whether a device class is locked or not.
 
 .. note:: 
    Some checks can only be healed through a whole system reset. This can either be done by power cycling or triggering a reset over :doc:`MQTT <mqtt_interface>`.

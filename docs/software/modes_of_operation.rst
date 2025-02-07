@@ -7,19 +7,21 @@ Modes of operation
 Systems with grid tie inverter
 ------------------------------
 
-+--------------+--------------------+-------+----------+
-| Mode         | Charger            | Solar | Inverter |
-+==============+====================+=======+==========+
-| charge       | on, full power     | on    | off      |
-+--------------+--------------------+-------+----------+
-| grid         | on, variable power | on    | off      |
-+--------------+--------------------+-------+----------+
-| idle         | off                | on    | off      |
-+--------------+--------------------+-------+----------+
-| discharge    | off                | on    | on       |
-+--------------+--------------------+-------+----------+
-| protect      | off                | off   | off      |
-+--------------+--------------------+-------+----------+
++--------------+---------+-------+----------+
+| Mode         | Charger | Solar | Inverter |
++==============+=========+=======+==========+
+| charge       | on      | on    | off      |
++--------------+---------+-------+----------+
+| grid         | on      | on    | off      |
++--------------+---------+-------+----------+
+| idle         | off     | on    | off      |
++--------------+---------+-------+----------+
+| discharge    | off     | on    | on       |
++--------------+---------+-------+----------+
+| protect      | off     | off   | off      |
++--------------+---------+-------+----------+
+
+The mode ``grid`` is not relevant for systems with grid tie inverters, as it behaves the same way as the mode ``charge``.
 
 Systems with hybrid inverter
 ----------------------------
@@ -38,11 +40,4 @@ Systems with hybrid inverter
 | protect      | none                | grid                 |
 +--------------+---------------------+----------------------+
 
-Using mode grid
----------------
-
-Mode ``grid`` has different usecases depending on the system design.
-
-For AC coupled battery storage systems or EV chargers, this mode is used to charge the battery from surplus grid energy.
-
-For systems with hybrid inverters, this mode is useful to charge the battery from solar in winter during medium or low energy prices. Solar production in winter can usually not fully cover the energy demand of a home, but it would be economic to store the solar energy in the battery and use it when the energy prices are high.
+The mode ``grid`` is useful to charge the battery from solar in winter during medium or low energy prices. Solar production in winter can usually not fully cover the energy demand of a home, but it would be economic to store the solar energy in the battery and use it when the energy prices are high.

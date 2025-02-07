@@ -1,6 +1,6 @@
 from micropython import const
+from collections import deque
 from time import time
-from ..core.types import SimpleFiFo
 
 _MAX_EVALUATION_TIME = const(120)
 _MIN_ITEMS = const(5)
@@ -11,18 +11,19 @@ class NetZero:
         self.__log = Singletons.log.create_logger('netzero')
         
         self.__time_span = min(_MAX_EVALUATION_TIME, int(config['evaluated_time_span']))
-        self.__data = SimpleFiFo() 
+        self.__data = deque(tuple(), _MAX_EVALUATION_TIME)
         self.__last_data = 0
 
         self.__unsigned = not bool(config['signed'])
-        self.__offset = int(config['power_offset'])
-        self.__hysteresis = int(config['power_hysteresis'])
-        self.__step_up = int(config['power_change_upwards'])
-        self.__step_down = -int(config['power_change_downwards'])
+        self.__target = int(config['target'])
+        self.__hysteresis = int(config['hysteresis'])
+        self.__step_up = int(config['change_upwards'])
+        self.__step_down = -int(config['change_downwards'])
         self.__mature_interval = int(config['maturity_time_span'])
 
     def clear(self):
-        self.__data.clear()
+        while self.__data:
+            self.__data.popleft()
         self.__last_data = time()
 
     def update(self, timestamp, consumption):
@@ -30,16 +31,15 @@ class NetZero:
             self.__log.info('Omitting data consumption data, too old.')
             return
 
-        if self.__last_data == timestamp and len(self.__data) > 0:
+        if self.__last_data == timestamp and self.__data:
             self.__log.info('More than one data point for timestamp, dropping the newer one.')
         else:
             self.__data.append((timestamp, consumption))
 
         while True:
-            item = self.__data.peek()
-            if item[0] + self.__time_span <= timestamp:
-                _ = self.__data.pop()
-            else:
+            item = self.__data.popleft()
+            if item[0] + self.__time_span > timestamp:
+                self.__data.appendleft(item) # deque has no peek yet, so just put it back into the deque
                 break
 
         self.__last_data = timestamp
@@ -65,12 +65,12 @@ class NetZero:
             result = 0
         elif self.__unsigned and second_smallest == 0: # overproduction
             result = self.__step_down
-        elif second_smallest < (self.__offset - self.__hysteresis): # reduce
-            result = -(min(self.__step_down, self.__offset - second_smallest))
+        elif second_smallest < (self.__target - self.__hysteresis): # reduce
+            result = max(self.__step_down, second_smallest - self.__target)
         elif len(self.__data) < _MIN_ITEMS or oldest_age < self.__mature_interval: # wait
             result = 0
-        elif second_smallest > (self.__offset + self.__hysteresis): # increase
-            result = min(self.__step_up, second_smallest - self.__offset) 
+        elif second_smallest > (self.__target + self.__hysteresis): # increase
+            result = min(self.__step_up, second_smallest - self.__target) 
         else:
             result = 0
 

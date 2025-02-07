@@ -1,12 +1,13 @@
-from asyncio import create_task, sleep
+from asyncio import sleep
 from bluetooth import UUID as BT_UUID
 from ubinascii import unhexlify
-from struct import unpack
-from sys import print_exception
-from .interfaces.batteryinterface import BatteryInterface
-from ..core.devicetools import print_battery
-from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError, MicroBleBuffer
-from ..core.types import BatteryData, run_callbacks
+from ..interfaces.batteryinterface import BatteryInterface
+from ...core.devicetools import print_battery
+from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ...core.logging import CustomLogger
+from ...core.types import run_callbacks
+from ...helpers.batterydata import BatteryData
+from ...helpers.streamreader import read_big_uint8, read_big_uint16, read_big_int16
 
 # ressources:
 # https://blog.ja-ke.tech/2020/02/07/ltt-power-bms-chinese-protocol.html
@@ -34,23 +35,16 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 return None
             g = self.__general_blob
             c = self.__cells_blob
-            number_of_temperatures = (len(g) - 23) // 2
-            temp_format_string = '!' + ('H' * number_of_temperatures)
-            temps = tuple((x - 2731) / 10 for x in unpack(temp_format_string, g[23:23 +  (2 * number_of_temperatures)]))
-            number_of_cells = len(c) // 2
-            cell_format_string = '!' + ('H' * number_of_cells)
-            cells = tuple(x / 1000 for x in unpack(cell_format_string, c[0:(2 * number_of_cells)]))
 
-            battery_data.update(
-                v=unpack('!H', g[0:2])[0] / 100.0,
-                i=unpack('!h', g[2:4])[0] / 100.0,
-                soc=unpack('!B', g[19:20])[0],
-                c=unpack('!H', g[4:6])[0] / 100.0,
-                c_full=unpack('!H', g[6:8])[0] / 100.0,
-                n=unpack('!H', g[8:10])[0],
-                temps=temps,
-                cells=cells
-            )
+            battery_data.v=read_big_uint16(g, 0) / 100
+            battery_data.i=read_big_int16(g, 2) / 100
+            battery_data.c=read_big_uint16(g, 4) / 100
+            battery_data.c_full=read_big_uint16(g, 6) / 100
+            battery_data.n=read_big_uint16(g, 8)
+            battery_data.soc=read_big_uint8(g, 19)
+            battery_data.temps = tuple((read_big_uint16(g, i) - 2731) / 10 for i in range(23, len(g), 2))
+            battery_data.cells = tuple(read_big_uint16(c, i) / 1000 for i in range(0, len(c), 2))
+            battery_data.validate()
 
     class MesssageDecoder:
         def __init__(self, log):
@@ -58,6 +52,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
             self.__length = None
             self.__data = None
             self.__command = None
+            self.__checksum = 0x10000
             self.__success = None
 
         def read(self, blob):
@@ -74,15 +69,24 @@ class LltPowerBmsV4Ble(BatteryInterface):
                 if blob[2] != 0:
                     self.__log.error('Dropping packet: error indication.')
                     return
-                self.__command = unpack('!B', blob[1:2])[0]
-                self.__length = unpack('!B', blob[3:4])[0] + 3 # 2 bytes checksum + 1 byte end byte
+                self.__command = read_big_uint8(blob, 1)
+                self.__length = read_big_uint8(blob, 3) + 3 # 2 bytes checksum + 1 byte end byte
                 self.__data = bytearray(blob[4:])
+                for i in range(2, len(blob)):
+                    self.__checksum -= blob[i]
             else:
                 self.__data += bytearray(blob)
+                for i in range(0, len(blob) - 3):
+                    self.__checksum -= blob[i]
 
             if len(self.__data) < self.__length: # type: ignore
                 self.__success = None
             else:
+                received_checksum = read_big_uint16(self.__data, -3)
+                if received_checksum != self.__checksum:
+                    self.__log.error('Dropping packet: wrong checksum.')
+                    return
+
                 if self.__data[-1] != 0x77:
                     self.__log.error('Dropping packet: wrong end byte.')
                     return
@@ -101,14 +105,14 @@ class LltPowerBmsV4Ble(BatteryInterface):
             return memoryview(self.__data)[:-3] if self.__data is not None else None
 
     def __init__(self, name, config):
-        from ..core.singletons import Singletons
-        from ..core.types import TYPE_BATTERY
+        from ...core.singletons import Singletons
+        from ...core.types import TYPE_BATTERY
         self.__name = name
         self.__device_types = (TYPE_BATTERY,)
         self.__mac = config['mac']
 
         self.__ble = Singletons.ble
-        self.__log = Singletons.log.create_logger(name)
+        self.__log: CustomLogger = Singletons.log.create_logger(name)
 
         self.__on_data = list()
 
@@ -121,7 +125,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
         rx_characteristic = None
         try:
             self.__ble.activate()
-            self.__data.invalidate()
+            self.__data.reset()
             self.__current_bundle = self.DataBundle()
 
             if self.__device is None:
@@ -158,8 +162,7 @@ class LltPowerBmsV4Ble(BatteryInterface):
             self.__log.error(str(e))
         except Exception as e:
             self.__log.error('BLE error: ', e)
-            from ..core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
         finally:
             if rx_characteristic is not None:
                 rx_characteristic.disable_rx()

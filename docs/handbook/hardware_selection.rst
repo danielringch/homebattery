@@ -19,11 +19,11 @@ This setup comes with some limitations:
 Raspberry Pico W on baseboard
 -----------------------------
 
-homebattery comes with a baseboard featuring
+The homebattery baseboard features
 
 * an OLED display
 * status LEDs
-* power via wide voltage range input or micro USB
+* power via wide voltage range input, 5V input or micro USB
 * two extension ports for add-on boards
 
 .. image:: ../images/baseboard_rpi_front.jpg
@@ -40,7 +40,7 @@ For more information, see the :doc:`hardware reference <../hardware/baseboard>`.
 Multi controller setups
 -----------------------
 
-If one Raspberry Pico W (with or without baseboard) is not sufficient to connect all devices, multiple controllers can be combined to one system.
+If more devices than two add-on boards can connect shall be used, a multi controller setup is necessary.
 
 Example setup:
 
@@ -55,7 +55,11 @@ For more information, see TODO.
 Housing
 -------
 
-The homebattery PCBs can be mounted using M3 screws. When using add-on boards, the PCBs are stacked behind the baseboard.
+The homebattery PCBs have
+
+* 60x70 mm dimension
+* mounting holes for M3 screws
+* a height of approx. 75mm for 1 baseboard and 2 add-on boards stacked onto each other
 
 There is no case specifically for home battery, but there are instructions how to use a standard case with transparent front, see the :doc:`hardware reference <../hardware/housing>`.
 

@@ -1,24 +1,24 @@
-from asyncio import create_task, sleep
+from asyncio import sleep
 from bluetooth import UUID as BT_UUID
-from micropython import const
 from ubinascii import unhexlify
-from struct import unpack
-from sys import print_exception
-from .interfaces.batteryinterface import BatteryInterface
-from ..core.devicetools import print_battery
-from ..core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
-from ..core.types import BatteryData, run_callbacks
+from ..interfaces.batteryinterface import BatteryInterface
+from ...core.logging import CustomLogger
+from ...core.devicetools import print_battery
+from ...core.microblecentral import MicroBleCentral, MicroBleDevice, MicroBleTimeoutError
+from ...core.types import run_callbacks
+from ...helpers.batterydata import BatteryData
+from ...helpers.streamreader import BigEndianSteamReader
 
 class Daly8S24V60A(BatteryInterface):
     def __init__(self, name, config):
-        from ..core.singletons import Singletons
-        from ..core.types import TYPE_BATTERY
+        from ...core.singletons import Singletons
+        from ...core.types import TYPE_BATTERY
         self.__name = name
         self.__device_types = (TYPE_BATTERY,)
         self.__mac = config['mac']
 
         self.__ble = Singletons.ble
-        self.__log = Singletons.log.create_logger(name)
+        self.__log: CustomLogger = Singletons.log.create_logger(name)
 
         self.__on_data = list()
 
@@ -31,7 +31,7 @@ class Daly8S24V60A(BatteryInterface):
         rx_characteristic = None
         try:
             self.__ble.activate()
-            self.__data.invalidate()
+            self.__data.reset()
 
             if self.__device is None:
                 self.__device = MicroBleDevice(self.__ble)
@@ -67,8 +67,7 @@ class Daly8S24V60A(BatteryInterface):
             self.__log.error(str(e))
         except Exception as e:
             self.__log.error('BLE error: ', e)
-            from ..core.singletons import Singletons
-            print_exception(e, Singletons.log.trace)
+            self.__log.trace(e)
         finally:
             if self.__receive_task is not None:
                 self.__receive_task.cancel()
@@ -95,25 +94,48 @@ class Daly8S24V60A(BatteryInterface):
             return
         if len(data) < 128:
             self.__log.error('Dropping too short bluetooth packet, mac=', self.__mac, ' len=', len(data))
-        elif data[0] == 0xd2 and data[1] == 0x03 and data[2] == 0x7c:
-            self.__parse(data)
-            self.__receiving = False
-        else:    
+            return
+        if data[0] != 0xd2 or data[1] != 0x03 or data[2] != 0x7c:
             self.__log.error('Dropping unknown bluetooth packet, mac=', self.__mac, ' data=', data)
+            return
+        
+        if not self.__parse(data):
+            self.__log.error('Dropping inplausible bluetooth packet, mac=', self.__mac, ' data=', data)
+            return
+        
+        self.__receiving = False
 
     def __parse(self, data):
-        temp_1 = unpack('!B', data[94:95])[0] - 40
-        temp_2 = unpack('!B', data[96:97])[0] - 40
-        temps = (temp_1, temp_2)
-        cells = tuple(x / 1000 for x in unpack('!HHHHHHHHHHHHHHHH', data[3:35]) if x > 0)
+        reader = BigEndianSteamReader(data, 0)
+        temp_1 = reader.uint8_at(94) - 40
+        temp_2 = reader.uint8_at(96) - 40
+        self.__data.temps = (temp_1, temp_2)
+        self.__data.cells = tuple(x / 1000 for x in (reader.uint16_at(i) for i in range(3, 35, 2)) if x > 0)
 
-        self.__data.update(
-                v=unpack('!H', data[83:85])[0] / 10,
-                i=(unpack('!H', data[85:87])[0] - 30000) / 10,
-                soc=unpack('!H', data[87:89])[0] / 10.0,
-                c=unpack('!H', data[99:101])[0] / 10.0,
-                c_full=0,
-                n=unpack('!H', data[105:107])[0],
-                temps=temps,
-                cells=cells
-        )
+        self.__data.v=reader.uint16_at(83) / 10
+        self.__data.i=(reader.uint16_at(85) - 30000) / 10
+        self.__data.soc=reader.uint16_at(87) / 10
+        self.__data.c=reader.uint16_at(99) / 10
+        self.__data.n=reader.uint16_at(105)
+
+        data_plausible = True
+        data_plausible &= self.__check_range(self.__data.v / len(self.__data.cells), 0.5, 5)
+        data_plausible &= self.__check_range(self.__data.i, -300, 300)
+        data_plausible &= self.__check_range(self.__data.soc, 0, 100)
+        data_plausible &= self.__check_range(self.__data.c, 0, 750)
+        data_plausible &= self.__check_range(self.__data.n, 0, 30000)
+        for temp in self.__data.temps:
+            data_plausible &= self.__check_range(temp, -40, 80)
+        for cell in self.__data.cells:
+            data_plausible &= self.__check_range(cell, 0.5, 5)
+
+        if not data_plausible:
+            self.__data.reset()
+            return False
+
+        self.__data.validate()
+        return True
+
+    @staticmethod
+    def __check_range(value, min, max):
+        return value >= min and value <= max

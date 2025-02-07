@@ -5,20 +5,19 @@ Install or update the homebattery firmware
 ------------------------------------------
 
 * download the latest homebattery ``.uf2`` file from https://github.com/danielringch/homebattery/releases
-* press the BOOTSEL button and connect the Pico to your computer while holding the button
+* press and hold the BOOTSEL button and connect the Pico to your computer
 * a mass storage device should appear on your computer
 * copy the .uf2 file to the mass storage device
 * disconnect the Pico from your computer
 
 .. warning::
-   If the baseboard is used, it is strongly recommended to disconnect all other power supplies while using USB. Otherwise, the Pico might get damaged due to ESD.
+   If the baseboard is used, it is strongly recommended to disconnect all other power supplies and ground connections while using USB. Otherwise, the Pico might get damaged due to ESD.
 
 Create the configuration file
 -----------------------------
 
 * copy the template from the release or https://github.com/danielringch/homebattery/tree/main/config
-* adapt the file to your needs
-* the documentation of the config file can be found in the :doc:`software reference <../software/configuration>`
+* adapt the file to your needs (see :doc:`software reference <../software/configuration>`)
 
 .. _handbook_file_upload:
 Upload configuration and files
